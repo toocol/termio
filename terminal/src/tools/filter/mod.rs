@@ -17,7 +17,7 @@ use regex::Regex;
 use std::ptr::NonNull;
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 use tmui::prelude::*;
-use widestring::U16String;
+use widestring::{WideString};
 
 lazy_static! {
     pub static ref FULL_URL_REGEX: Regex = Regex::new(r"[a-zA-z]+://[^\s]*").unwrap();
@@ -260,11 +260,12 @@ impl BaseFilterImpl for BaseFilter {
             {
                 line_col.0 = i as i32;
                 let line_position = *self.line_positions.deref().borrow().get(i).unwrap() as usize;
-                let mut u16string = U16String::from_str(
+                let mut u16string = WideString::from_str(
                     &self.buffer.deref().borrow()[line_position..position as usize],
                 );
                 u16string.push_char('\0');
-                line_col.1 = string_width(u16string.as_slice()) as i32;
+                line_col.1 =
+                    string_width(unsafe { std::mem::transmute(u16string.as_slice()) }) as i32;
                 return line_col;
             }
         }
@@ -362,18 +363,26 @@ impl FilterObject {
         let filter_ref = self.filter.as_ref();
         if let Some(filter) = filter_ref {
             let copy = NonNull::new(filter.clone());
-            self.connect(self.action_open(), self.id(), Box::new(move |_| unsafe {
-                if let Some(filter_ref) = copy.as_ref() {
-                    filter_ref.as_ref().activate(Self::ACTION_OPEN)
-                }
-            }));
+            self.connect(
+                self.action_open(),
+                self.id(),
+                Box::new(move |_| unsafe {
+                    if let Some(filter_ref) = copy.as_ref() {
+                        filter_ref.as_ref().activate(Self::ACTION_OPEN)
+                    }
+                }),
+            );
 
             let copy = NonNull::new(filter.clone());
-            self.connect(self.action_copy(), self.id(), Box::new(move |_| unsafe {
-                if let Some(filter_ref) = copy.as_ref() {
-                    filter_ref.as_ref().activate(Self::ACTION_COPY)
-                }
-            }));
+            self.connect(
+                self.action_copy(),
+                self.id(),
+                Box::new(move |_| unsafe {
+                    if let Some(filter_ref) = copy.as_ref() {
+                        filter_ref.as_ref().activate(Self::ACTION_COPY)
+                    }
+                }),
+            );
         }
     }
 

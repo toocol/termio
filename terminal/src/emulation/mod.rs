@@ -1,8 +1,9 @@
 #![allow(dead_code)]
 pub mod vt102_emulation;
 
+use libc::wchar_t;
 pub use vt102_emulation::*;
-use widestring::U16String;
+use widestring::WideString;
 
 use crate::{
     core::{
@@ -27,7 +28,7 @@ use tmui::{
         timer::Timer,
     },
 };
-use wchar::{wch, wchar_t};
+use wchar::wch;
 
 const BULK_TIMEOUT1: u64 = 10;
 const BULK_TIMEOUT2: u64 = 40;
@@ -601,12 +602,12 @@ impl Emulation for BaseEmulation {
 
         let utf8_text = String::from_utf8(buffer.clone())
             .expect("`Emulation` receive_data() parse utf-8 string failed.");
-        let utf16_text = U16String::from_str(&utf8_text);
+        let utf16_text = WideString::from_str(&utf8_text);
 
         // Send characters to terminal emulator
         let text_slice = utf16_text.as_slice();
         for i in 0..text_slice.len() {
-            self.receive_char(text_slice[i]);
+            self.receive_char(text_slice[i] as wchar_t);
         }
 
         // Look for z-modem indicator

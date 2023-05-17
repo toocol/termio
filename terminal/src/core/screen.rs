@@ -40,7 +40,7 @@ pub fn bound<T: Ord>(min: T, val: T, max: T) -> T {
 pub struct SavedState {
     cursor_column: i32,
     cursor_line: i32,
-    rendition: u16,
+    rendition: wchar_t,
     foreground: CharacterColor,
     background: CharacterColor,
 }
@@ -102,7 +102,7 @@ pub struct Screen {
     ////// Cursor color and rendition info.
     cursor_foreground: CharacterColor,
     cursor_background: CharacterColor,
-    cursor_rendition: u16,
+    cursor_rendition: wchar_t,
 
     ////// Margins
     top_margin: i32,
@@ -127,7 +127,7 @@ pub struct Screen {
     ////// Effective colors and rendition
     effective_foreground: CharacterColor,
     effective_background: CharacterColor,
-    effective_rendition: u16,
+    effective_rendition: wchar_t,
 
     saved_state: Box<SavedState>,
 
@@ -135,7 +135,7 @@ pub struct Screen {
     last_pos: i32,
 
     // Used in repeating char.
-    last_drawn_char: u16,
+    last_drawn_char: wchar_t,
 
     character_buffer: RefCell<[Character; MAX_CHARS]>,
 }
@@ -692,7 +692,7 @@ impl Screen {
     /// appearance of characters on the screen.
     ///
     /// @see Character::rendition
-    pub fn set_rendition(&mut self, rendition: u16) {
+    pub fn set_rendition(&mut self, rendition: wchar_t) {
         self.cursor_rendition |= rendition;
         self.update_effective_rendition();
     }
@@ -701,7 +701,7 @@ impl Screen {
     /// appearance of characters on the screen.
     ///
     /// @see Character::rendition
-    pub fn reset_rendition(&mut self, rendition: u16) {
+    pub fn reset_rendition(&mut self, rendition: wchar_t) {
         self.cursor_rendition &= !rendition;
         self.update_effective_rendition();
     }
@@ -1409,7 +1409,7 @@ impl Screen {
         let bottom_line = loce / self.columns;
 
         let clear_ch = Character::new(
-            c as u16,
+            c as wchar_t,
             self.cursor_foreground,
             self.cursor_background,
             DEFAULT_RENDITION,

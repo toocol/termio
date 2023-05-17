@@ -2,3 +2,4 @@
 *.log
 /build
 /.vscode
+.DS_Store

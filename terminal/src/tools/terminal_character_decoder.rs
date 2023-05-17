@@ -4,13 +4,14 @@ use super::{
     character_color::{CharacterColor, ColorEntry, BASE_COLOR_TABLE},
     text_stream::TextStream,
 };
-use crate::tools::{
+use crate::{tools::{
     character::{RE_BOLD, RE_UNDERLINE},
     character_color::FontWeight,
     system_ffi::wcwidth,
-};
+}, core::u_wchar_t};
+use libc::wchar_t;
 use wchar::wch;
-use widestring::U16String;
+use widestring::{U32String, WideString};
 
 const TRANSMIT_U16STRING_ERROR: &'static str =
     "Trasmit `U16String` to `String` failed, unvalid u16 datas.";
@@ -121,7 +122,10 @@ impl<'a> TerminalCharacterDecoder<'a> for PlainTextDecoder<'a> {
             }
         }
 
+        #[cfg(target_os = "windows")]
         let mut plain_text = U16String::new();
+        #[cfg(target_os = "macos")]
+        let mut plain_text = U32String::new();
 
         let mut output_count = count;
 
@@ -152,6 +156,9 @@ impl<'a> TerminalCharacterDecoder<'a> for PlainTextDecoder<'a> {
             if i >= output_count {
                 break;
             }
+            #[cfg(target_os = "macos")]
+            plain_text.push_slice([character[i as usize].character_union.data() as u32]);
+            #[cfg(target_os = "windows")]
             plain_text.push_slice([character[i as usize].character_union.data()]);
             i += 1.max(wcwidth(character[i as usize].character_union.data()));
         }
@@ -169,7 +176,7 @@ pub struct HtmlDecoder<'a> {
     /// the HTML colour codes in its output
     color_table: &'a [ColorEntry],
     inner_span_open: bool,
-    last_rendition: u16,
+    last_rendition: wchar_t,
     last_fore_color: Option<CharacterColor>,
     last_back_color: Option<CharacterColor>,
 }
@@ -190,19 +197,19 @@ impl<'a> HtmlDecoder<'a> {
         self.color_table = table;
     }
 
-    fn open_span(text: &mut U16String, style: &str) {
+    fn open_span(text: &mut WideString, style: &str) {
         let str = format!("<span style=\"{}\">", style);
-        text.push(U16String::from_str(&str))
+        text.push(WideString::from_str(&str))
     }
 
-    fn close_span(text: &mut U16String) {
-        text.push(U16String::from_str("</span>"))
+    fn close_span(text: &mut WideString) {
+        text.push(WideString::from_str("</span>"))
     }
 }
 
 impl<'a> TerminalCharacterDecoder<'a> for HtmlDecoder<'a> {
     fn begin(&mut self, output: &'a mut TextStream<'a>) {
-        let mut text = U16String::new();
+        let mut text = WideString::new();
         HtmlDecoder::open_span(&mut text, "font-family:monospace;");
         output.append(&text.to_string().expect(TRANSMIT_U16STRING_ERROR));
 
@@ -212,7 +219,7 @@ impl<'a> TerminalCharacterDecoder<'a> for HtmlDecoder<'a> {
     fn end(&mut self) {
         assert!(self.output.is_some());
 
-        let mut text = U16String::new();
+        let mut text = WideString::new();
         HtmlDecoder::close_span(&mut text);
         self.output
             .as_mut()
@@ -225,8 +232,7 @@ impl<'a> TerminalCharacterDecoder<'a> for HtmlDecoder<'a> {
     fn decode_line(&mut self, character: &[Character], count: i32, _: LineProperty) {
         assert!(self.output.is_some());
         let output = self.output.as_deref_mut().unwrap();
-
-        let mut text = U16String::new();
+        let mut text = WideString::new();
 
         let space_count = 0;
 
@@ -287,7 +293,7 @@ impl<'a> TerminalCharacterDecoder<'a> for HtmlDecoder<'a> {
                 } else if ch == wch!('>') {
                     text.push_str("&gt;")
                 } else {
-                    text.push_slice([ch])
+                    text.push_slice([ch as u_wchar_t])
                 }
             } else {
                 text.push_str("&nbsp;")

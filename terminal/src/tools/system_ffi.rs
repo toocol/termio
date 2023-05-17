@@ -1,5 +1,5 @@
 #![allow(dead_code)]
-use std::ffi::{c_int, c_long};
+use std::ffi::c_int;
 
 use libc::c_void;
 use wchar::wchar_t;
@@ -23,7 +23,8 @@ pub const MAP_ANON: i32 = MAP_ANONYMOUS;
 
 pub const MAP_FAILED: *const c_void = &-1 as *const i32 as *const c_void;
 
-#[link(name = "native-system-bundle", kind = "static")]
+#[cfg(Windows)]
+#[link(name = "native-system", kind = "static")]
 extern "C" {
     fn mmap_ffi(
         addr: *const u8,
@@ -34,7 +35,23 @@ extern "C" {
         offset_type: i64,
     ) -> *const u8;
     fn munmap_ffi(addr: *const u8, len: usize) -> c_int;
-    fn chsize_ffi(file_handle: c_int, size: c_long) -> c_int;
+    fn chsize_ffi(file_handle: c_int, size: c_int) -> c_int;
+    fn wcwidth_ffi(ucs: wchar_t) -> c_int;
+    fn string_width_ffi(wstr: *const wchar_t) -> c_int;
+}
+#[cfg(not(Windows))]
+#[link(name = "native-system", kind = "static")]
+extern "C" {
+    fn mmap_ffi(
+        addr: *const u8,
+        len: usize,
+        prot: c_int,
+        flags: c_int,
+        fildes: c_int,
+        offset_type: i64,
+    ) -> *const u8;
+    fn munmap_ffi(addr: *const u8, len: usize) -> c_int;
+    fn chsize_ffi(file_handle: c_int, size: c_int) -> c_int;
     fn wcwidth_ffi(ucs: wchar_t) -> c_int;
     fn string_width_ffi(wstr: *const wchar_t) -> c_int;
 }
@@ -58,11 +75,11 @@ pub fn chsize(file_handle: i32, size: i32) -> i32 {
     unsafe { chsize_ffi(file_handle, size) }
 }
 
-pub fn wcwidth(ucs: u16) -> c_int {
+pub fn wcwidth(ucs: wchar_t) -> c_int {
     unsafe { wcwidth_ffi(wchar_t::from(ucs)) }
 }
 
-pub fn string_width(wstr: &[u16]) -> c_int {
+pub fn string_width(wstr: &[wchar_t]) -> c_int {
     unsafe { string_width_ffi(wstr.as_ptr()) }
 }
 
@@ -70,7 +87,7 @@ pub fn string_width(wstr: &[u16]) -> c_int {
 mod tests {
     use std::ptr::null;
 
-    use libc::{tmpfile, dup, fileno, close};
+    use libc::{close, dup, fileno, tmpfile};
     use wchar::{wch, wchz};
     use widestring::U16String;
 

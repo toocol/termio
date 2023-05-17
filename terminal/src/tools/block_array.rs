@@ -1,5 +1,5 @@
 #![allow(dead_code)]
-use super::system_ffi::{chsize, mmap, munmap, MAP_PRIVATE, PROT_READ, SEEK_SET, MAP_FAILED};
+use super::system_ffi::{chsize, mmap, munmap, MAP_FAILED, MAP_PRIVATE, PROT_READ, SEEK_SET};
 use libc::{
     c_void, close, dup, fclose, fdopen, fileno, fread, fseek, fwrite, lseek, tmpfile, write, FILE,
 };
@@ -83,7 +83,16 @@ impl BlockArray {
             self.current = 0
         }
 
-        let mut rc = unsafe {
+        #[cfg(target_os = "macos")]
+        let rc = unsafe {
+            lseek(
+                self.ion,
+                self.current as i64 * BLOCK_SIZE.load(Ordering::SeqCst) as i64,
+                SEEK_SET,
+            )
+        };
+        #[cfg(target_os = "windows")]
+        let rc = unsafe {
             lseek(
                 self.ion,
                 self.current * BLOCK_SIZE.load(Ordering::SeqCst),
@@ -97,7 +106,10 @@ impl BlockArray {
         }
 
         let ptr = self.last_block.as_ref().unwrap() as *const Block as *const c_void;
-        rc = unsafe { write(self.ion, ptr, BLOCK_SIZE.load(Ordering::SeqCst) as u32) };
+        #[cfg(target_os = "macos")]
+        let rc = unsafe { write(self.ion, ptr, BLOCK_SIZE.load(Ordering::SeqCst) as usize) };
+        #[cfg(target_os = "windows")]
+        let rc = unsafe { write(self.ion, ptr, BLOCK_SIZE.load(Ordering::SeqCst) as u32) };
 
         if rc < 0 {
             self.set_history_size(0);
@@ -146,7 +158,7 @@ impl BlockArray {
         );
         if block as *const c_void == MAP_FAILED {
             error!("`mmap` failed.");
-            return None
+            return None;
         }
         let block = unsafe { *(block as *const Block) };
 
@@ -293,10 +305,18 @@ impl BlockArray {
             return;
         }
 
-        let mut res;
         for i in 0..runs {
             let first_block = (offset + i) % self.size as i32;
-            res = unsafe {
+            #[cfg(target_os = "macos")]
+            let res = unsafe {
+                fseek(
+                    fion,
+                    first_block as i64 * BLOCK_SIZE.load(Ordering::SeqCst) as i64,
+                    SEEK_SET,
+                )
+            };
+            #[cfg(target_os = "windows")]
+            let res = unsafe {
                 fseek(
                     fion,
                     first_block * BLOCK_SIZE.load(Ordering::SeqCst),
@@ -306,7 +326,7 @@ impl BlockArray {
             if res > 0 {
                 error!("`fseek` result > 0")
             }
-            res = unsafe {
+            let res = unsafe {
                 fread(
                     buffer1.as_ptr() as *mut c_void,
                     BLOCK_SIZE.load(Ordering::SeqCst) as usize,
@@ -325,11 +345,24 @@ impl BlockArray {
                 newpos = (cursor - offset + self.size as i32) % self.size as i32;
                 self.move_block(fion, cursor, newpos, buffer2.as_ptr());
             }
-            res = unsafe { fseek(fion, i * BLOCK_SIZE.load(Ordering::SeqCst), SEEK_SET) };
+            #[cfg(target_os = "macos")]
+            let res = unsafe { fseek(fion, i as i64 * BLOCK_SIZE.load(Ordering::SeqCst) as i64, SEEK_SET) };
+            #[cfg(target_os = "windows")]
+            let res = unsafe { fseek(fion, i * BLOCK_SIZE.load(Ordering::SeqCst), SEEK_SET) };
             if res > 0 {
                 error!("`fseek` result > 0")
             }
-            res = unsafe {
+            #[cfg(target_os = "macos")]
+            let res = unsafe {
+                fwrite(
+                    buffer1.as_ptr() as *mut c_void,
+                    BLOCK_SIZE.load(Ordering::SeqCst) as usize,
+                    1usize,
+                    fion,
+                ) as i32
+            };
+            #[cfg(target_os = "windows")]
+            let res = unsafe {
                 fwrite(
                     buffer1.as_ptr() as *mut c_void,
                     BLOCK_SIZE.load(Ordering::SeqCst) as usize,
@@ -393,6 +426,9 @@ impl BlockArray {
     }
 
     fn move_block(&self, fion: *mut FILE, cursor: i32, newpos: i32, buffer2: *const u8) {
+        #[cfg(target_os = "macos")]
+        let res = unsafe { fseek(fion, cursor as i64 * BLOCK_SIZE.load(Ordering::SeqCst) as i64, SEEK_SET) };
+        #[cfg(target_os = "windows")]
         let res = unsafe { fseek(fion, cursor * BLOCK_SIZE.load(Ordering::SeqCst), SEEK_SET) };
         if res > 0 {
             error!("`fseek` result > 0")
@@ -409,6 +445,9 @@ impl BlockArray {
             error!("`fread` result != 1")
         }
 
+        #[cfg(target_os = "macos")]
+        let res = unsafe { fseek(fion, newpos as i64 * BLOCK_SIZE.load(Ordering::SeqCst) as i64, SEEK_SET) };
+        #[cfg(target_os = "windows")]
         let res = unsafe { fseek(fion, newpos * BLOCK_SIZE.load(Ordering::SeqCst), SEEK_SET) };
         if res > 0 {
             error!("`fseek` result > 0")

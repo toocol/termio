@@ -4,7 +4,7 @@ use crate::tools::{
     character_color::CharacterColor,
     system_ffi::{mmap, munmap, MAP_ANON, MAP_FAILED, MAP_PRIVATE, PROT_READ, PROT_WRITE},
 };
-use libc::c_void;
+use libc::{c_void, wchar_t};
 use std::{
     cell::RefCell,
     mem::size_of,
@@ -21,7 +21,7 @@ pub struct CharacterFormat {
     fg_color: CharacterColor,
     bg_color: CharacterColor,
     start_pos: u16,
-    rendition: u16,
+    rendition: wchar_t,
 }
 impl CharacterFormat {
     pub fn new(c: &Character) -> Self {
@@ -165,8 +165,8 @@ pub struct CompactHistoryLine {
     format_array_ref: Option<&'static mut [CharacterFormat]>,
     length: usize,
     format_length: usize,
-    text: *mut u16,
-    text_ref: Option<&'static mut [u16]>,
+    text: *mut wchar_t,
+    text_ref: Option<&'static mut [wchar_t]>,
     wrapped: bool,
 }
 impl CompactHistoryLine {
@@ -180,7 +180,7 @@ impl CompactHistoryLine {
         let mut format_array = null_mut();
         let mut format_array_ref: Option<&'static mut [CharacterFormat]> = None;
         let mut text = null_mut();
-        let mut text_ref: Option<&'static mut [u16]> = None;
+        let mut text_ref: Option<&'static mut [wchar_t]> = None;
         let wrapped = false;
 
         // count number of different formats in this text line
@@ -204,8 +204,8 @@ impl CompactHistoryLine {
                 Some(unsafe { slice::from_raw_parts_mut(format_array, format_length) });
 
             text = block_list
-                .allocate(size_of::<u16>() * line.len())
-                .cast::<u16>();
+                .allocate(size_of::<wchar_t>() * line.len())
+                .cast::<wchar_t>();
             assert!(text != null_mut());
             text_ref = Some(unsafe { slice::from_raw_parts_mut(text, line.len()) });
 

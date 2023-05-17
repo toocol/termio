@@ -1,12 +1,13 @@
 #![allow(dead_code)]
 use lazy_static::lazy_static;
+use libc::wchar_t;
 use std::{
     cell::RefCell,
     collections::HashMap,
     ptr::null_mut,
     sync::atomic::{AtomicPtr, Ordering},
 };
-use wchar::{wch, wchar_t};
+use wchar::wch;
 
 use super::character_color::{
     CharacterColor, ColorEntry, FontWeight, BASE_COLORS, COLOR_SPACE_DEFAULT, COLOR_SPACE_SYSTEM,
@@ -19,19 +20,19 @@ pub const LINE_WRAPPED: u8 = 1 << 0;
 pub const LINE_DOUBLE_WIDTH: u8 = 1 << 1;
 pub const LINE_DOUBLE_HEIGHT: u8 = 1 << 2;
 
-pub const DEFAULT_RENDITION: u16 = 0;
-pub const RE_BOLD: u16 = 1 << 0;
-pub const RE_BLINK: u16 = 1 << 1;
-pub const RE_UNDERLINE: u16 = 1 << 2;
-pub const RE_REVERSE: u16 = 1 << 3; // screen only
-pub const RE_INTENSIVE: u16 = 1 << 3; // widget only
-pub const RE_ITALIC: u16 = 1 << 4;
-pub const RE_CURSOR: u16 = 1 << 5;
-pub const RE_EXTEND_CHAR: u16 = 1 << 6;
-pub const RE_FAINT: u16 = 1 << 7;
-pub const RE_STRIKEOUT: u16 = 1 << 8;
-pub const RE_CONCEAL: u16 = 1 << 9;
-pub const RE_OVERLINE: u16 = 1 << 10;
+pub const DEFAULT_RENDITION: wchar_t = 0;
+pub const RE_BOLD: wchar_t = 1 << 0;
+pub const RE_BLINK: wchar_t = 1 << 1;
+pub const RE_UNDERLINE: wchar_t = 1 << 2;
+pub const RE_REVERSE: wchar_t = 1 << 3; // screen only
+pub const RE_INTENSIVE: wchar_t = 1 << 3; // widget only
+pub const RE_ITALIC: wchar_t = 1 << 4;
+pub const RE_CURSOR: wchar_t = 1 << 5;
+pub const RE_EXTEND_CHAR: wchar_t = 1 << 6;
+pub const RE_FAINT: wchar_t = 1 << 7;
+pub const RE_STRIKEOUT: wchar_t = 1 << 8;
+pub const RE_CONCEAL: wchar_t = 1 << 9;
+pub const RE_OVERLINE: wchar_t = 1 << 10;
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum CharacterUnion {
@@ -42,24 +43,24 @@ pub enum CharacterUnion {
     ///
     /// charSequence is a hash code which can be used to look up the unicode
     /// character sequence in the ExtendedCharTable used to create the sequence.
-    CharSequence(u16),
+    CharSequence(wchar_t),
 }
 impl CharacterUnion {
-    pub fn equals(&self, data: u16) -> bool {
+    pub fn equals(&self, data: wchar_t) -> bool {
         match self {
             Self::Character(wch) => *wch == data,
             Self::CharSequence(seq) => *seq == data,
         }
     }
 
-    pub fn data(&self) -> u16 {
+    pub fn data(&self) -> wchar_t {
         match self {
             Self::Character(wch) => *wch,
             Self::CharSequence(seq) => *seq,
         }
     }
 
-    pub fn set_data(&mut self, data: u16) {
+    pub fn set_data(&mut self, data: wchar_t) {
         match self {
             Self::Character(ch) => *ch = data,
             Self::CharSequence(seq) => *seq = data,
@@ -71,16 +72,16 @@ impl Default for CharacterUnion {
         Self::Character(wch!(' '))
     }
 }
-impl Into<u16> for CharacterUnion {
-    fn into(self) -> u16 {
+impl Into<wchar_t> for CharacterUnion {
+    fn into(self) -> wchar_t {
         match self {
             Self::Character(ch) => ch,
             Self::CharSequence(seq) => seq,
         }
     }
 }
-impl From<u16> for CharacterUnion {
-    fn from(x: u16) -> Self {
+impl From<wchar_t> for CharacterUnion {
+    fn from(x: wchar_t) -> Self {
         Self::Character(x.into())
     }
 }
@@ -90,7 +91,7 @@ pub struct Character {
     // The union of character, is one of `Character` or `CharSequence`
     pub character_union: CharacterUnion,
     /// A combination of `rendition` flags which specify options for drawing the character.
-    pub rendition: u16,
+    pub rendition: wchar_t,
     /// The foreground color used to draw this character. */
     pub foreground_color: CharacterColor,
     /// The color used to draw this character's background. */
@@ -109,7 +110,7 @@ impl Default for Character {
 }
 
 impl Character {
-    pub fn new(c: wchar_t, f: CharacterColor, b: CharacterColor, r: u16) -> Self {
+    pub fn new(c: wchar_t, f: CharacterColor, b: CharacterColor, r: wchar_t) -> Self {
         Self {
             character_union: CharacterUnion::Character(c),
             rendition: r,
@@ -185,9 +186,9 @@ impl Character {
 /// character ( ushort ) so that it can occupy the same space in a structure.
 #[derive(Debug, Default)]
 pub struct ExtendedCharTable(
-    /// internal, maps hash keys to character sequence buffers.  The first u16
+    /// internal, maps hash keys to character sequence buffers.  The first wchar_t
     /// in each value is the length of the buffer, followed by the ushorts in the buffer themselves.
-    RefCell<HashMap<u16, Vec<u16>>>,
+    RefCell<HashMap<wchar_t, Vec<wchar_t>>>,
 );
 
 impl ExtendedCharTable {
@@ -206,7 +207,7 @@ impl ExtendedCharTable {
     ///
     /// @param unicodePoints An array of unicode character points
     /// @param length Length of @p unicodePoints
-    pub fn create_extended_char(&self, unicode_points: &[u16], length: u16) -> u16 {
+    pub fn create_extended_char(&self, unicode_points: &[wchar_t], length: wchar_t) -> wchar_t {
         // look for the sequence of points in the table
         let mut hash = self.extended_char_hash(unicode_points, length);
 
@@ -220,7 +221,7 @@ impl ExtendedCharTable {
         }
 
         // add the new sequence to the table and return that index.
-        let mut buffer = vec![0u16; (length + 1) as usize];
+        let mut buffer = vec![0 as wchar_t; (length + 1) as usize];
         buffer[0] = length;
         buffer[1..].copy_from_slice(&unicode_points[0..length as usize]);
 
@@ -235,7 +236,7 @@ impl ExtendedCharTable {
     /// @param length This variable is set to the length of the character sequence.
     ///
     /// @return A unicode character sequence of size @p length.
-    pub fn lookup_extended_char(&self, hash: u16, length: &mut u16) -> Option<Vec<u16>> {
+    pub fn lookup_extended_char(&self, hash: wchar_t, length: &mut wchar_t) -> Option<Vec<wchar_t>> {
         // lookup index in table and if found, set the length
         // argument and return a reference to the character sequence
         let map = self.0.borrow();
@@ -252,8 +253,8 @@ impl ExtendedCharTable {
     }
 
     /// calculates the hash key of a sequence of unicode points of size 'length'
-    fn extended_char_hash(&self, unicode_points: &[u16], length: u16) -> u16 {
-        let mut hash = 0u16;
+    fn extended_char_hash(&self, unicode_points: &[wchar_t], length: wchar_t) -> wchar_t {
+        let mut hash = 0 as wchar_t;
         for i in 0..length as usize {
             hash = 31 * hash + unicode_points[i];
         }
@@ -262,7 +263,7 @@ impl ExtendedCharTable {
 
     /// tests whether the entry in the table specified by 'hash' matches the
     /// character sequence 'unicodePoints' of size 'length'
-    fn extended_char_match(&self, hash: u16, unicode_points: &[u16], length: u16) -> bool {
+    fn extended_char_match(&self, hash: wchar_t, unicode_points: &[wchar_t], length: wchar_t) -> bool {
         let map = self.0.borrow();
         let entry = map.get(&hash);
         if let Some(entry) = entry {

@@ -50,14 +50,19 @@ impl HistoryFile {
 
         self.read_write_balance += 1;
 
-        let mut rc;
-        rc = unsafe { lseek(self.ion, self.length as i32, SEEK_SET) };
+        #[cfg(target_os = "macos")]
+        let rc = unsafe { lseek(self.ion, self.length as i64, SEEK_SET) };
+        #[cfg(target_os = "windows")]
+        let rc = unsafe { lseek(self.ion, self.length as i32, SEEK_SET) };
         if rc < 0 {
             error!("`HistoryFile` lseek failed");
             return;
         }
 
-        rc = unsafe { write(self.ion, bytes as *const c_void, len as u32) };
+        #[cfg(target_os = "macos")]
+        let rc = unsafe { write(self.ion, bytes as *const c_void, len as usize) };
+        #[cfg(target_os = "windows")]
+        let rc = unsafe { write(self.ion, bytes as *const c_void, len as u32) };
         if rc < 0 {
             error!("`HistoryFile` write failed");
             return;
@@ -83,19 +88,23 @@ impl HistoryFile {
                 );
             }
         } else {
-            let mut rc;
-
             if loc < 0 || len < 0 || loc + len > self.length as i32 {
                 error!("`HistoryFile` get(): invalid args: {}, {}", len, loc);
                 return;
             }
 
-            rc = unsafe { lseek(self.ion, loc, SEEK_SET) };
+            #[cfg(target_os = "macos")]
+            let rc = unsafe { lseek(self.ion, loc as i64, SEEK_SET) };
+            #[cfg(target_os = "windows")]
+            let rc = unsafe { lseek(self.ion, loc, SEEK_SET) };
             if rc < 0 {
                 error!("`HistoryFile` get(): lseek failed.");
                 return;
             }
-            rc = unsafe { read(self.ion, bytes as *mut c_void, len as u32) };
+            #[cfg(target_os = "macos")]
+            let rc = unsafe { read(self.ion, bytes as *mut c_void, len as usize) };
+            #[cfg(target_os = "windows")]
+            let rc = unsafe { read(self.ion, bytes as *mut c_void, len as u32) };
             if rc < 0 {
                 error!("`HistoryFile` get(): lseek failed.");
                 return;

@@ -8,8 +8,9 @@ use crate::{
         },
         screen_window::ScreenWindow,
         terminal_view::KeyboardCursorShape,
+        u_wchar_t,
     },
-    emulation::{EmulationState, EmulationSignal},
+    emulation::{EmulationSignal, EmulationState},
     tools::{
         character::{
             LINE_DOUBLE_HEIGHT, LINE_DOUBLE_WIDTH, RE_BLINK, RE_BOLD, RE_CONCEAL, RE_FAINT,
@@ -35,7 +36,7 @@ use tmui::{
     },
 };
 use wchar::{wch, wchar_t};
-use widestring::U16String;
+use widestring::WideString;
 
 /// Processing the incoming byte stream.
 /// --------------------------------------------------------------------
@@ -231,8 +232,8 @@ pub struct VT102Emulation {
     token_buffer_pos: usize,
     argv: [i32; MAXARGS],
     argc: i32,
-    cc: u16,
-    prev_cc: u16,
+    cc: wchar_t,
+    prev_cc: wchar_t,
     /// Set of flags for each of the ASCII characters which indicates what category they fall into
     /// (printable character, control, digit etc.) for the purposes of decoding terminal output
     char_class: [i32; 256],
@@ -1269,16 +1270,19 @@ impl VT102Emulation {
         // copy from the first char after ';', and skipping the ending delimiter
         // 0x07 or 0x92. Note that as control characters in OSC text parts are
         // ignored, only the second char in ST ("\e\\") is appended to tokenBuffer.
-        let mut new_value = U16String::new();
-        new_value.push_slice(
-            &self.token_buffer[i as usize + 1..(self.token_buffer_pos - i - 2) as usize],
-        );
+        let mut new_value = WideString::new();
+        let slice: &[u_wchar_t] = unsafe {
+            std::mem::transmute(
+                &self.token_buffer[i as usize + 1..(self.token_buffer_pos - i - 2) as usize],
+            )
+        };
+        new_value.push_slice(slice);
 
         self.pending_title_updates.insert(
             attribute_to_change,
             new_value
                 .to_string()
-                .expect("`U16String` transmit to String failed."),
+                .expect("`wchar_tString` transmit to String failed."),
         );
         // TODO: Update title update timer
     }
@@ -1629,8 +1633,8 @@ impl VT102Emulation {
         self.pending_title_updates.clear();
     }
 }
-const ESC: u16 = 27;
-const DEL: u16 = 127;
+const ESC: wchar_t = 27;
+const DEL: wchar_t = 127;
 impl VT102Emulation {
     /**
        Ok, here comes the nasty part of the decoder.
@@ -1649,7 +1653,7 @@ impl VT102Emulation {
        and thoes macros used in [`VT102Emulation::receive_char(&self, cc: wchar_t)`]]
     */
     #[inline]
-    fn lec(&self, p: usize, l: usize, c: u16) -> bool {
+    fn lec(&self, p: usize, l: usize, c: wchar_t) -> bool {
         self.token_buffer_pos == p && self.token_buffer[l] == c
     }
 
@@ -1659,26 +1663,26 @@ impl VT102Emulation {
     }
 
     #[inline]
-    fn les(&self, p: usize, l: usize, c: u16) -> bool {
+    fn les(&self, p: usize, l: usize, c: wchar_t) -> bool {
         self.token_buffer_pos == p
             && self.token_buffer[l] < 256
             && self.char_class[self.token_buffer[l] as usize] & c as i32 == c as i32
     }
 
     #[inline]
-    fn eec(&self, c: u16) -> bool {
+    fn eec(&self, c: wchar_t) -> bool {
         self.token_buffer_pos >= 3 && self.cc == c
     }
 
     #[inline]
-    fn ees(&self, c: u16) -> bool {
+    fn ees(&self, c: wchar_t) -> bool {
         self.token_buffer_pos >= 3
             && self.cc < 256
             && self.char_class[self.cc as usize] & c as i32 == c as i32
     }
 
     #[inline]
-    fn eps(&self, c: u16) -> bool {
+    fn eps(&self, c: wchar_t) -> bool {
         self.token_buffer_pos >= 3
             && self.token_buffer[2] != wch!('?')
             && self.token_buffer[2] != wch!('!')
@@ -1718,12 +1722,12 @@ impl VT102Emulation {
     }
 
     #[inline]
-    fn ces(&self, c: u16) -> bool {
+    fn ces(&self, c: wchar_t) -> bool {
         self.cc < 256 && self.char_class[self.cc as usize] & c as i32 == c as i32 && !self.xte()
     }
 
     #[inline]
-    fn cntl(&self, c: u16) -> u16 {
+    fn cntl(&self, c: wchar_t) -> wchar_t {
         c - wch!('@')
     }
 }
@@ -1738,7 +1742,7 @@ impl Emulation for VT102Emulation {
         }
         self.cc = cc;
 
-        if self.ces(CTL as u16) {
+        if self.ces(CTL as wchar_t) {
             // ignore control characters in the text part of Xpe (aka OSC) "ESC]"
             // escape sequences; this matches what XTERM docs say
             if self.xpe() {
@@ -1771,7 +1775,7 @@ impl Emulation for VT102Emulation {
                 self.receive_char(wch!('['));
                 return;
             }
-            if self.les(2, 1, GRP as u16) {
+            if self.les(2, 1, GRP as wchar_t) {
                 return;
             }
             if self.xte() {
@@ -1798,23 +1802,23 @@ impl Emulation for VT102Emulation {
                 self.reset_tokenizer();
                 return;
             }
-            if self.lec(2, 0, ESC as u16) {
+            if self.lec(2, 0, ESC as wchar_t) {
                 self.process_token(ty_esc!(self.token_buffer[1]), 0, 0);
                 self.reset_tokenizer();
                 return;
             }
-            if self.lec(3, 1, SCS as u16) {
+            if self.lec(3, 1, SCS as wchar_t) {
                 self.process_token(ty_esc_cs!(self.token_buffer[1], self.token_buffer[2]), 0, 0);
                 self.reset_tokenizer();
                 return;
             }
             if self.lec(3, 1, wch!('#')) {
-                self.process_token(ty_csi_pn!(cc), self.argv[0] as u16, self.argv[1]);
+                self.process_token(ty_csi_pn!(cc), self.argv[0] as wchar_t, self.argv[1]);
                 self.reset_tokenizer();
                 return;
             }
-            if self.eps(CPN as u16) {
-                self.process_token(ty_csi_pn!(cc), self.argv[0] as u16, self.argv[1]);
+            if self.eps(CPN as wchar_t) {
+                self.process_token(ty_csi_pn!(cc), self.argv[0] as wchar_t, self.argv[1]);
                 self.reset_tokenizer();
                 return;
             }
@@ -1822,16 +1826,16 @@ impl Emulation for VT102Emulation {
                 return;
             }
             if self.lec(5, 4, wch!('q')) && self.token_buffer[3] == wch!(' ') {
-                self.process_token(ty_csi_ps_sp!(cc, self.argv[0]), self.argv[0] as u16, 0);
+                self.process_token(ty_csi_ps_sp!(cc, self.argv[0]), self.argv[0] as wchar_t, 0);
                 self.reset_tokenizer();
                 return;
             }
 
             // resize = \e[8;<row>;<col>t
-            if self.eps(CPS as u16) {
+            if self.eps(CPS as wchar_t) {
                 self.process_token(
                     ty_csi_ps!(cc, self.argv[0]),
-                    self.argv[1] as u16,
+                    self.argv[1] as wchar_t,
                     self.argv[2],
                 );
                 self.reset_tokenizer();
@@ -1843,7 +1847,7 @@ impl Emulation for VT102Emulation {
                 self.reset_tokenizer();
                 return;
             }
-            if self.ees(DIG as u16) {
+            if self.ees(DIG as wchar_t) {
                 self.add_digit((cc - wch!('0')) as i32);
                 return;
             }
@@ -1871,7 +1875,11 @@ impl Emulation for VT102Emulation {
                     // 38;2;<red>;<green>;<blue> ... m
                     i += 2;
                     let q = self.argv[i] << 16 | self.argv[i + 1] << 8 | self.argv[i + 2];
-                    self.process_token(ty_csi_ps!(cc, self.argv[i - 2]), COLOR_SPACE_RGB as u16, q);
+                    self.process_token(
+                        ty_csi_ps!(cc, self.argv[i - 2]),
+                        COLOR_SPACE_RGB as wchar_t,
+                        q,
+                    );
                     i += 2;
                 } else if cc == wch!('m')
                     && self.argc - i as i32 >= 2
@@ -1882,7 +1890,7 @@ impl Emulation for VT102Emulation {
                     i += 2;
                     self.process_token(
                         ty_csi_ps!(cc, self.argv[i - 2]),
-                        COLOR_SPACE_256 as u16,
+                        COLOR_SPACE_256 as wchar_t,
                         self.argv[i],
                     );
                 } else {
@@ -1895,10 +1903,10 @@ impl Emulation for VT102Emulation {
             self.reset_tokenizer();
         } else {
             // VT52 Mode
-            if self.lec(1, 0, ESC as u16) {
+            if self.lec(1, 0, ESC as wchar_t) {
                 return;
             }
-            if self.les(1, 0, CHR as u16) {
+            if self.les(1, 0, CHR as wchar_t) {
                 self.process_token(ty_chr!(), self.token_buffer[0], 0);
                 self.reset_tokenizer();
                 return;
@@ -1931,12 +1939,12 @@ impl Emulation for VT102Emulation {
 
         let utf8_text = String::from_utf8(buffer.clone())
             .expect("`Emulation` receive_data() parse utf-8 string failed.");
-        let utf16_text = U16String::from_str(&utf8_text);
+        let utf16_text = WideString::from_str(&utf8_text);
 
         // Send characters to terminal emulator
         let text_slice = utf16_text.as_slice();
         for i in 0..text_slice.len() {
-            self.receive_char(text_slice[i]);
+            self.receive_char(text_slice[i] as wchar_t);
         }
 
         // Look for z-modem indicator

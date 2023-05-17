@@ -1,5 +1,8 @@
 #![allow(dead_code)]
-use super::screen_window::{ScreenWindow, ScreenWindowSignals};
+use super::{
+    screen_window::{ScreenWindow, ScreenWindowSignals},
+    u_wchar_t,
+};
 use crate::tools::{
     character::{
         Character, ExtendedCharTable, LineProperty, DEFAULT_RENDITION, LINE_DOUBLE_HEIGHT,
@@ -42,7 +45,7 @@ use tmui::{
     widget::WidgetImpl,
 };
 use wchar::{wch, wchar_t};
-use widestring::U16String;
+use widestring::{U16String, U32String, WideString};
 use LineEncode::*;
 
 lazy_static! {
@@ -171,7 +174,7 @@ pub struct TerminalView {
 
 #[derive(Default)]
 struct InputMethodData {
-    preedit_string: U16String,
+    preedit_string: WideString,
     previous_preedit_rect: Rect,
 }
 
@@ -310,7 +313,7 @@ impl TerminalView {
             .min(0.max((rect.bottom() - tly - self.top_margin) / self.font_height));
 
         let buffer_size = self.used_columns as usize;
-        let mut unistr = vec![0u16; buffer_size];
+        let mut unistr = vec![0 as wchar_t; buffer_size];
 
         let mut y = luy;
         while y <= rly {
@@ -336,7 +339,7 @@ impl TerminalView {
                     != 0
                 {
                     // sequence of characters
-                    let mut extended_char_length = 0u16;
+                    let mut extended_char_length = 0 as wchar_t;
                     let chars = ExtendedCharTable::instance()
                         .lookup_extended_char(
                             self.image.as_ref().unwrap()[self.loc(x, y) as usize]
@@ -441,12 +444,8 @@ impl TerminalView {
 
                 // paint text fragment
                 let style = self.image.as_ref().unwrap()[self.loc(x, y) as usize];
-                self.draw_text_fragment(
-                    painter,
-                    text_area,
-                    U16String::from_vec(unistr.clone()),
-                    &style,
-                );
+                let slice: Vec<u_wchar_t> = unsafe { std::mem::transmute(unistr.clone()) };
+                self.draw_text_fragment(painter, text_area, WideString::from_vec(slice), &style);
 
                 self.fixed_font = save_fixed_font;
 
@@ -473,7 +472,7 @@ impl TerminalView {
         &mut self,
         painter: &mut Painter,
         rect: Rect,
-        text: U16String,
+        text: WideString,
         style: &Character,
     ) {
         painter.save();
@@ -581,7 +580,7 @@ impl TerminalView {
         &mut self,
         painter: &mut Painter,
         rect: Rect,
-        text: &U16String,
+        text: &WideString,
         style: &Character,
         invert_character_color: bool,
     ) {
@@ -624,7 +623,7 @@ impl TerminalView {
         } else {
             let text = text
                 .to_string()
-                .expect("`draw_characters()` transfer u16 text to utf-8 failed.");
+                .expect("`draw_characters()` transfer wchar_t text to utf-8 failed.");
 
             if self.bidi_enable {
                 painter.fill_rect(rect, style.background_color.color(&self.color_table));
@@ -665,7 +664,7 @@ impl TerminalView {
         painter: &mut Painter,
         x: i32,
         y: i32,
-        str: &U16String,
+        str: &WideString,
         attributes: &Character,
     ) {
         painter.save_pen();
@@ -674,9 +673,9 @@ impl TerminalView {
             painter.set_line_width(3.);
         }
 
-        let u16_bytes = str.as_vec();
-        for i in 0..u16_bytes.len() {
-            let code = (u16_bytes[i] & 0xff) as u8;
+        let wchar_t_bytes = str.as_vec();
+        for i in 0..wchar_t_bytes.len() {
+            let code = (wchar_t_bytes[i] & 0xff) as u8;
             if LINE_CHARS[code as usize] != 0 {
                 draw_line_char(
                     painter,
@@ -1376,7 +1375,7 @@ performance degradation and display/alignment errors."
         let lines_to_update = self.lines.min(0.max(lines));
         let columns_to_update = self.columns.min(0.max(columns));
 
-        let mut disstr_u = vec![0u16; columns_to_update as usize];
+        let mut disstr_u = vec![0 as wchar_t; columns_to_update as usize];
         // The dirty mask indicates which characters need repainting. We also
         // mark surrounding neighbours dirty, in case the character exceeds
         // its cell boundaries
@@ -1460,7 +1459,7 @@ performance degradation and display/alignment errors."
                             len += 1;
                         }
 
-                        // let unistr = U16String::from_vec(disstr_u[0..p].to_vec());
+                        // let unistr = WideString::from_vec(disstr_u[0..p].to_vec());
 
                         let save_fixed_font = self.fixed_font;
                         if line_draw {
@@ -1766,12 +1765,14 @@ performance degradation and display/alignment errors."
         // "Base character width on widest ASCII character. This prevents too wide
         // characters in the presence of double wide (e.g. Japanese) characters."
         // Get the width from representative normal width characters
-        let wstring = U16String::from_str(REPCHAR);
-        let u16_repchar = wstring.as_slice();
-        let mut widths = vec![0f32; u16_repchar.len()];
-        font.get_widths(u16_repchar, &mut widths);
+        let wstring = WideString::from_str(REPCHAR);
+        let str = wstring.to_string().unwrap();
+        let wstring = U16String::from_str(&str);
+        let wchar_t_repchar = wstring.as_slice();
+        let mut widths = vec![0f32; wchar_t_repchar.len()];
+        font.get_widths(wchar_t_repchar, &mut widths);
         let sum_width: f32 = widths.iter().sum();
-        self.font_width = round(sum_width as f64 / u16_repchar.len() as f64);
+        self.font_width = round(sum_width as f64 / wchar_t_repchar.len() as f64);
 
         self.fixed_font = true;
 
@@ -2059,17 +2060,17 @@ performance degradation and display/alignment errors."
     ///     - A space (returns ' ')
     ///     - Part of a word (returns 'a')
     ///     - Other characters (returns the input character)
-    fn char_class(&mut self, ch: u16) -> u16 {
-        if ch == b' ' as u16 {
-            return b' ' as u16;
+    fn char_class(&mut self, ch: wchar_t) -> wchar_t {
+        if ch == b' ' as wchar_t {
+            return b' ' as wchar_t;
         }
 
-        if (ch >= b'0' as u16 && ch <= b'9' as u16)
-            || (ch >= b'a' as u16 && ch <= b'z' as u16)
-            || (ch >= b'A' as u16 && ch <= b'Z' as u16
+        if (ch >= b'0' as wchar_t && ch <= b'9' as wchar_t)
+            || (ch >= b'a' as wchar_t && ch <= b'z' as wchar_t)
+            || (ch >= b'A' as wchar_t && ch <= b'Z' as wchar_t
                 || self.word_characters.contains(ch as u8 as char))
         {
-            return b'a' as u16;
+            return b'a' as wchar_t;
         }
 
         ch
@@ -2172,12 +2173,25 @@ performance degradation and display/alignment errors."
         let mut result = 0;
         let mut widths = vec![];
         for column in 0..length {
-            font.get_widths(
-                &[image[self.loc(start_column + column, line) as usize]
+            let c: &[u_wchar_t; 1] = unsafe {
+                std::mem::transmute(&[image[self.loc(start_column + column, line) as usize]
                     .character_union
-                    .data()],
-                &mut widths,
-            );
+                    .data()])
+            };
+            let ws16: U16String;
+            #[cfg(not(Windows))]
+            let c = {
+                let ws32 = U32String::from_vec(c.to_vec());
+                let str = ws32.to_string().unwrap();
+                ws16 = U16String::from_str(&str);
+                ws16.as_slice()
+            };
+            #[cfg(Windows)]
+            let c = {
+                ws16 = U16String::from_vec(c.to_vec());
+                ws16.as_slice()
+            };
+            font.get_widths(c, &mut widths);
             let width: f32 = widths.iter().sum();
             result += width as i32;
         }
@@ -2225,7 +2239,9 @@ performance degradation and display/alignment errors."
 
     /// the area where the preedit string for input methods will be draw.
     fn preedit_rect(&mut self) -> Rect {
-        let preedit_length = string_width(self.input_method_data.preedit_string.as_slice());
+        let slice =
+            unsafe { std::mem::transmute(self.input_method_data.preedit_string.as_slice()) };
+        let preedit_length = string_width(slice);
 
         if preedit_length == 0 {
             return Rect::default();
@@ -2505,8 +2521,8 @@ performance degradation and display/alignment errors."
     fn is_line_char(&self, c: wchar_t) -> bool {
         self.draw_line_chars && ((c & 0xFF80) == 0x2500)
     }
-    fn is_line_char_string(&self, string: &U16String) -> bool {
-        string.len() > 0 && self.is_line_char(string.as_slice()[0])
+    fn is_line_char_string(&self, string: &WideString) -> bool {
+        string.len() > 0 && self.is_line_char(string.as_slice()[0] as wchar_t)
     }
 }
 
@@ -2523,7 +2539,7 @@ abcdefgjijklmnopqrstuvwxyz
 0123456789./+@
 ";
 
-const LTR_OVERRIDE_CHAR: u16 = 0x202D;
+const LTR_OVERRIDE_CHAR: wchar_t = 0x202D;
 
 #[inline]
 pub fn bound(min: f64, val: f64, max: f64) -> f64 {
