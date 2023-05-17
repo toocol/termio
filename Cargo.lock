@@ -1282,7 +1282,7 @@ dependencies = [
 [[package]]
 name = "macros"
 version = "0.1.0"
-source = "git+https://github.com/toocol/tmui#7611d42084ee4928275d4332e16648d66d3c58a5"
+source = "git+https://github.com/toocol/tmui#252b46acb3453856e13a23633720065ae20ba53f"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2425,6 +2425,7 @@ version = "0.1.0"
 dependencies = [
  "bitvec",
  "criterion",
+ "derivative",
  "hex",
  "lazy_static",
  "libc",
@@ -2552,7 +2553,7 @@ checksum = "1f3ccbac311fea05f86f61904b462b55fb3df8837a366dfc601a0161d0532f20"
 [[package]]
 name = "tipc"
 version = "0.1.0"
-source = "git+https://github.com/toocol/tmui#7611d42084ee4928275d4332e16648d66d3c58a5"
+source = "git+https://github.com/toocol/tmui#252b46acb3453856e13a23633720065ae20ba53f"
 dependencies = [
  "log",
  "parking_lot 0.12.1",
@@ -2565,7 +2566,7 @@ dependencies = [
 [[package]]
 name = "tlib"
 version = "0.1.0"
-source = "git+https://github.com/toocol/tmui#7611d42084ee4928275d4332e16648d66d3c58a5"
+source = "git+https://github.com/toocol/tmui#252b46acb3453856e13a23633720065ae20ba53f"
 dependencies = [
  "lazy_static",
  "libc",
@@ -2584,7 +2585,7 @@ dependencies = [
 [[package]]
 name = "tmui"
 version = "0.1.0"
-source = "git+https://github.com/toocol/tmui#7611d42084ee4928275d4332e16648d66d3c58a5"
+source = "git+https://github.com/toocol/tmui#252b46acb3453856e13a23633720065ae20ba53f"
 dependencies = [
  "clipboard",
  "cocoa",

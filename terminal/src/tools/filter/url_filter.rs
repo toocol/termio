@@ -1,7 +1,7 @@
 use regex::Regex;
-use tmui::tlib::object::{ObjectSubclass, ObjectImpl};
 use std::{cell::RefCell, rc::Rc};
 use tmui::prelude::*;
+use tmui::tlib::object::{ObjectImpl, ObjectSubclass};
 
 use super::regex_filter::{RegexFilter, RegexFilterHotSpot, RegexFilterHotSpotImpl};
 use super::{
@@ -70,7 +70,7 @@ impl HotSpotConstructer for UrlFilterHotSpot {
 impl HotSpotImpl for UrlFilterHotSpot {
     fn initialize(&self) {
         self.url_object.borrow().activate();
-    }    
+    }
 
     #[inline]
     fn start_line(&self) -> i32 {
@@ -143,21 +143,17 @@ impl HotSpotImpl for UrlFilterHotSpot {
 
         match kind {
             UrlType::StandardUrl => {
-                let open_action = self
-                    .create_action_with_param(self.url_object.borrow().action_open(), "Open link");
-                let copy_action = self.create_action_with_param(
-                    self.url_object.borrow().action_open(),
-                    "Copy link address",
-                );
+                let open_action =
+                    Action::with_param(self.url_object.borrow().action_open(), "Open link");
+                let copy_action =
+                    Action::with_param(self.url_object.borrow().action_open(), "Copy link address");
                 list.push(open_action);
                 list.push(copy_action);
             }
             UrlType::Email => {
-                let open_action = self.create_action_with_param(
-                    self.url_object.borrow().action_open(),
-                    "Send email to...",
-                );
-                let copy_action = self.create_action_with_param(
+                let open_action =
+                    Action::with_param(self.url_object.borrow().action_open(), "Send email to...");
+                let copy_action = Action::with_param(
                     self.url_object.borrow().action_copy(),
                     "Copy email address",
                 );

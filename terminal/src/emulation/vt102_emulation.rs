@@ -9,7 +9,7 @@ use crate::{
         screen_window::ScreenWindow,
         terminal_view::KeyboardCursorShape,
     },
-    emulation::EmulationState,
+    emulation::{EmulationState, EmulationSignal},
     tools::{
         character::{
             LINE_DOUBLE_HEIGHT, LINE_DOUBLE_WIDTH, RE_BLINK, RE_BOLD, RE_CONCEAL, RE_FAINT,
@@ -314,6 +314,21 @@ const GRP: i32 = 32;
 const CPS: i32 = 64;
 
 impl VT102Emulation {
+    /// Constructer to create a new Emulation.
+    pub fn new(translator_manager: Option<NonNull<KeyboardTranslatorManager>>) -> Self {
+        let base_emulation = BaseEmulation::new(translator_manager);
+        let mut vt102_emulation: VT102Emulation = Default::default();
+        vt102_emulation.emulation = Some(base_emulation);
+        vt102_emulation
+    }
+
+    /// Wrap trait `Emulation` to `EmulationWrapper`.
+    pub fn wrap(self: Self) -> Box<dyn Emulation> {
+        let mut wrapper: Box<dyn Emulation> = Box::new(self);
+        wrapper.init();
+        wrapper
+    }
+
     //////////////////////////////////////////////////////// Private function
     fn init_tokenizer(&mut self) {
         for i in 0..256 {
@@ -1713,15 +1728,6 @@ impl VT102Emulation {
     }
 }
 impl Emulation for VT102Emulation {
-    type Type = VT102Emulation;
-
-    fn new(translator_manager: Option<NonNull<KeyboardTranslatorManager>>) -> Self::Type {
-        let base_emulation = BaseEmulation::new(translator_manager);
-        let mut vt102_emulation: VT102Emulation = Default::default();
-        vt102_emulation.emulation = Some(base_emulation);
-        vt102_emulation
-    }
-
     fn init(&mut self) {
         self.emulation.as_mut().unwrap().init()
     }

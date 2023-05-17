@@ -49,7 +49,7 @@ lazy_static! {
     pub static ref REGULAR_EXPRESSION: Regex = Regex::new("\\r+$").unwrap();
 }
 
-#[extends(Widget, Layout(Stack))]
+#[extends(Widget)]
 #[derive(Default)]
 pub struct TerminalView {
     extended_char_table: ExtendedCharTable,
@@ -1076,9 +1076,6 @@ impl TerminalView {
         } else {
             self.scroll_bar.size_hint().unwrap().1.width()
         };
-        // else {
-        //     self.scroll_bar.size_hint().width() as i32
-        // };
 
         let horizontal_margin = 2 * self.left_base_margin;
         let vertical_margin = 2 * self.top_base_margin;
@@ -1764,7 +1761,7 @@ performance degradation and display/alignment errors."
     fn font_change(&mut self) {
         let font = self.font();
         let (_, fm) = font.metrics();
-        self.font_height = fm.x_height as i32 + self.line_spacing as i32;
+        self.font_height = fm.cap_height as i32 + self.line_spacing as i32;
 
         // "Base character width on widest ASCII character. This prevents too wide
         // characters in the presence of double wide (e.g. Japanese) characters."

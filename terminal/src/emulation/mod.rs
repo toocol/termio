@@ -1,10 +1,8 @@
 #![allow(dead_code)]
 pub mod vt102_emulation;
-pub mod wrapper;
 
 pub use vt102_emulation::*;
 use widestring::U16String;
-pub use wrapper::*;
 
 use crate::{
     core::{
@@ -86,97 +84,7 @@ impl ObjectSubclass for BaseEmulation {
 }
 impl ObjectImpl for BaseEmulation {}
 
-pub trait Emulation: ActionExt + Sized + 'static {
-    type Type: Emulation + ActionExt;
-
-    /// Constructer to create a new Emulation.
-    fn new(translator_manager: Option<NonNull<KeyboardTranslatorManager>>) -> Self::Type;
-
-    /// Wrap trait `Emulation` to `EmulationWrapper`.
-    fn wrap(self: Self) -> Box<dyn EmulationWrapper> {
-        let mut wrapper: Box<dyn EmulationWrapper> = Box::new(Some(self));
-        wrapper.init();
-        wrapper
-    }
-
-    /// initialize the emulation.
-    fn init(&mut self);
-
-    /// Creates a new window onto the output from this emulation.  The contents of the window are then rendered by views
-    /// which are set to use this window using the TerminalDisplay::setScreenWindow() method.
-    fn create_window(&mut self) -> Option<NonNull<ScreenWindow>>;
-
-    /// Returns the size of the screen image which the emulation produces.
-    fn image_size(&self) -> Size;
-
-    /// Returns the total number of lines, including those stored in the history.
-    fn line_count(&self) -> i32;
-
-    /// Sets the history store used by this emulation.  When new lines are added to the output,
-    /// older lines at the top of the screen are transferred to a history store.
-    ///
-    /// The number of lines which are kept and the storage location depend on the type of store.
-    fn set_history(&mut self, history_type: Rc<dyn HistoryType>);
-
-    /// Returns the history store used by this emulation.  @see set_history().
-    fn history(&self) -> Rc<dyn HistoryType>;
-
-    /// Clears the history scroll.
-    fn clear_history(&mut self);
-
-    /// Copies the output history from @p startLine to @p endLine
-    /// into @p stream, using @p decoder to convert the terminal characters into text.
-    ///
-    /// @param decoder A decoder which converts lines of terminal characters with
-    /// appearance attributes into output text.  PlainTextDecoder is the most commonly used decoder. <br>
-    /// @param startLine Index of first line to copy <br>
-    /// @param endLine Index of last line to copy
-    fn write_to_stream(
-        &mut self,
-        decoder: &mut dyn TerminalCharacterDecoder,
-        start_line: i32,
-        end_line: i32,
-    );
-
-    /// Return the char of erase.
-    fn erase_char(&self) -> char;
-
-    /// Sets the key bindings used to key events ( received through send_key_event() ) into character
-    /// streams to send to the terminal.
-    fn set_keyboard_layout(&mut self, name: &str);
-
-    /// Returns the name of the emulation's current key bindings.
-    /// @see set_key_bindings()
-    fn keyboard_layout(&self) -> String;
-
-    /// Copies the current image into the history and clears the screen.
-    fn clear_entire_screen(&mut self);
-
-    /// Resets the state of the terminal.
-    fn reset(&self);
-
-    /// Returns true if the active terminal program wants mouse input events.
-    fn program_use_mouse(&self) -> bool;
-    ///The programUsesMouseChanged() signal is emitted when this changes.
-    fn set_use_mouse(&mut self, on: bool);
-
-    fn program_bracketed_paste_mode(&self) -> bool;
-    fn set_bracketed_paste_mode(&mut self, on: bool);
-
-    fn set_mode(&mut self, mode: usize);
-    fn reset_mode(&mut self, mode: usize);
-
-    /// Processes an incoming character.  @see receive_data() <br>
-    /// @p ch A unicode character code.
-    fn receive_char(&mut self, ch: wchar_t);
-
-    /// Sets the active screen.  The terminal has two screens, primary andalternate.
-    /// The primary screen is used by default.  When certain interactive
-    /// programs such as Vim are run, they trigger a switch to the alternate screen.
-    ///
-    /// @param index 0 to switch to the primary screen, or 1 to switch to the alternate screen
-    fn set_screen(&mut self, index: i32);
-
+pub trait EmulationSignal: ActionExt {
     ////////////////////////////////////////////////// Signals //////////////////////////////////////////////////
     signals! {
         /// Emitted when a buffer of data is ready to send to the standard input of the terminal.
@@ -282,6 +190,89 @@ pub trait Emulation: ActionExt + Sized + 'static {
         output_from_keypress_event();
     }
     /////////////////////////////////////////////////////////////////////////////////////////////////////////////
+}
+
+impl<T: Emulation> EmulationSignal for T {}
+
+pub trait Emulation: 'static + EmulationSignal + ActionExt {
+    /// initialize the emulation.
+    fn init(&mut self);
+
+    /// Creates a new window onto the output from this emulation.  The contents of the window are then rendered by views
+    /// which are set to use this window using the TerminalDisplay::setScreenWindow() method.
+    fn create_window(&mut self) -> Option<NonNull<ScreenWindow>>;
+
+    /// Returns the size of the screen image which the emulation produces.
+    fn image_size(&self) -> Size;
+
+    /// Returns the total number of lines, including those stored in the history.
+    fn line_count(&self) -> i32;
+
+    /// Sets the history store used by this emulation.  When new lines are added to the output,
+    /// older lines at the top of the screen are transferred to a history store.
+    ///
+    /// The number of lines which are kept and the storage location depend on the type of store.
+    fn set_history(&mut self, history_type: Rc<dyn HistoryType>);
+
+    /// Returns the history store used by this emulation.  @see set_history().
+    fn history(&self) -> Rc<dyn HistoryType>;
+
+    /// Clears the history scroll.
+    fn clear_history(&mut self);
+
+    /// Copies the output history from @p startLine to @p endLine
+    /// into @p stream, using @p decoder to convert the terminal characters into text.
+    ///
+    /// @param decoder A decoder which converts lines of terminal characters with
+    /// appearance attributes into output text.  PlainTextDecoder is the most commonly used decoder. <br>
+    /// @param startLine Index of first line to copy <br>
+    /// @param endLine Index of last line to copy
+    fn write_to_stream(
+        &mut self,
+        decoder: &mut dyn TerminalCharacterDecoder,
+        start_line: i32,
+        end_line: i32,
+    );
+
+    /// Return the char of erase.
+    fn erase_char(&self) -> char;
+
+    /// Sets the key bindings used to key events ( received through send_key_event() ) into character
+    /// streams to send to the terminal.
+    fn set_keyboard_layout(&mut self, name: &str);
+
+    /// Returns the name of the emulation's current key bindings.
+    /// @see set_key_bindings()
+    fn keyboard_layout(&self) -> String;
+
+    /// Copies the current image into the history and clears the screen.
+    fn clear_entire_screen(&mut self);
+
+    /// Resets the state of the terminal.
+    fn reset(&self);
+
+    /// Returns true if the active terminal program wants mouse input events.
+    fn program_use_mouse(&self) -> bool;
+    ///The programUsesMouseChanged() signal is emitted when this changes.
+    fn set_use_mouse(&mut self, on: bool);
+
+    fn program_bracketed_paste_mode(&self) -> bool;
+    fn set_bracketed_paste_mode(&mut self, on: bool);
+
+    fn set_mode(&mut self, mode: usize);
+    fn reset_mode(&mut self, mode: usize);
+
+    /// Processes an incoming character.  @see receive_data() <br>
+    /// @p ch A unicode character code.
+    fn receive_char(&mut self, ch: wchar_t);
+
+    /// Sets the active screen.  The terminal has two screens, primary andalternate.
+    /// The primary screen is used by default.  When certain interactive
+    /// programs such as Vim are run, they trigger a switch to the alternate screen.
+    ///
+    /// @param index 0 to switch to the primary screen, or 1 to switch to the alternate screen
+    fn set_screen(&mut self, index: i32);
+
 
     ////////////////////////////////////////////////// Slots //////////////////////////////////////////////////
     /// Change the size of the emulation's image.
@@ -332,10 +323,9 @@ pub trait Emulation: ActionExt + Sized + 'static {
     fn emit_cursor_change(&mut self, cursor_shape: u8, enable_blinking_cursor: bool);
 }
 
-impl Emulation for BaseEmulation {
-    type Type = BaseEmulation;
-
-    fn new(translator_manager: Option<NonNull<KeyboardTranslatorManager>>) -> Self::Type {
+impl BaseEmulation {
+    /// Constructer to create a new Emulation.
+    fn new(translator_manager: Option<NonNull<KeyboardTranslatorManager>>) -> Self {
         let mut screen_0 = Box::new(Screen::new(40, 80));
         let screen_1 = Box::new(Screen::new(40, 80));
 
@@ -348,6 +338,15 @@ impl Emulation for BaseEmulation {
         emulation
     }
 
+    /// Wrap trait `Emulation` to `EmulationWrapper`.
+    fn wrap(self: Self) -> Box<dyn Emulation> {
+        let mut wrapper: Box<dyn Emulation> = Box::new(self);
+        wrapper.init();
+        wrapper
+    }
+}
+
+impl Emulation for BaseEmulation {
     fn init(&mut self) {
         connect!(self.bulk_timer1, timeout(), self, show_bulk());
         connect!(self.bulk_timer2, timeout(), self, show_bulk());

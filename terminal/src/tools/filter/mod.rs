@@ -362,18 +362,18 @@ impl FilterObject {
         let filter_ref = self.filter.as_ref();
         if let Some(filter) = filter_ref {
             let copy = NonNull::new(filter.clone());
-            self.connect(self.action_open(), self.object_id(), move |_| unsafe {
+            self.connect(self.action_open(), self.id(), Box::new(move |_| unsafe {
                 if let Some(filter_ref) = copy.as_ref() {
                     filter_ref.as_ref().activate(Self::ACTION_OPEN)
                 }
-            });
+            }));
 
             let copy = NonNull::new(filter.clone());
-            self.connect(self.action_copy(), self.object_id(), move |_| unsafe {
+            self.connect(self.action_copy(), self.id(), Box::new(move |_| unsafe {
                 if let Some(filter_ref) = copy.as_ref() {
                     filter_ref.as_ref().activate(Self::ACTION_COPY)
                 }
-            });
+            }));
         }
     }
 
