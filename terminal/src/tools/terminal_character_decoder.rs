@@ -11,7 +11,10 @@ use crate::{tools::{
 }, core::u_wchar_t};
 use libc::wchar_t;
 use wchar::wch;
-use widestring::{U32String, WideString};
+use widestring::WideString;
+#[cfg(target_os = "macos")]
+use widestring::U32String;
+#[cfg(target_os = "windows")]
 
 const TRANSMIT_U16STRING_ERROR: &'static str =
     "Trasmit `U16String` to `String` failed, unvalid u16 datas.";
@@ -122,10 +125,7 @@ impl<'a> TerminalCharacterDecoder<'a> for PlainTextDecoder<'a> {
             }
         }
 
-        #[cfg(target_os = "windows")]
-        let mut plain_text = U16String::new();
-        #[cfg(target_os = "macos")]
-        let mut plain_text = U32String::new();
+        let mut plain_text = WideString::new();
 
         let mut output_count = count;
 

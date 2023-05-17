@@ -2179,14 +2179,14 @@ performance degradation and display/alignment errors."
                     .data()])
             };
             let ws16: U16String;
-            #[cfg(not(Windows))]
+            #[cfg(target_os = "macos")]
             let c = {
                 let ws32 = U32String::from_vec(c.to_vec());
                 let str = ws32.to_string().unwrap();
                 ws16 = U16String::from_str(&str);
                 ws16.as_slice()
             };
-            #[cfg(Windows)]
+            #[cfg(target_os = "windows")]
             let c = {
                 ws16 = U16String::from_vec(c.to_vec());
                 ws16.as_slice()
