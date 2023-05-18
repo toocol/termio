@@ -14,6 +14,8 @@ use tmui::{
     },
 };
 
+use super::{terminal_view::{TerminalView, BellMode, TripleClickMode}, terminal_panel::ViewLocation};
+
 /// Session represents an open tab used to bridge emulation and pty process.
 #[extends(Object)]
 #[derive(Derivative)]
@@ -52,7 +54,10 @@ pub struct Session {
     // Zmodem
     zmodem_busy: bool,
     // zmodem_proc: Process
+
     emultaion: Option<Box<dyn Emulation>>,
+    view: Option<TerminalView>,
+    location: ViewLocation,
 }
 impl ObjectSubclass for Session {
     const NAME: &'static str = "Session";
@@ -107,8 +112,39 @@ pub trait SessionSignal: ActionExt {
         /// 
         /// @param url: [`String`]
         open_url_request();
+
+        /// Detected the zmodem.
+        zmodem_detected();
+
+        /// Emitted when the terminal process requests a change
+        /// in the size of the terminal window.
+        /// 
+        /// @param size: [`Size`] The requested window size in terms of lines and columns.
+        resize_request();
+
+        /// Emitted when a profile change command is received from the terminal.
+        /// 
+        /// @param [`String`] The text of the command.  This is a string of the form
+        /// "PropertyName=Value;PropertyName=Value ..."
+        profile_change_command_received();
+
+        /// Emitted when the flow control state changes.
+        /// 
+        /// @param [`bool`]
+        flow_control_enabled_changed();
+
+        /// Broker for Emulation::cursorChanged() signal.
+        /// 
+        /// @param [`SystemCursorShape`]
+        /// @param [`bool`] Enable blinking cursor or not.
+        cursor_changed();
+
+        silence();
+
+        activity();
     }
 }
+impl SessionSignal for Session {}
 
 impl Session {
     pub fn new() -> Box<Self> {
@@ -119,6 +155,26 @@ impl Session {
         connect!(emulation, image_resize_request(), session, on_emulation_size_change(Size));
         connect!(emulation, image_size_changed(), session, on_view_size_change(i32:0, i32:1));
         session
+    }
+
+    pub fn create_terminal_view(&mut self) {
+        let mut view = TerminalView::new(self.id());
+        view.set_bell_mode(BellMode::NotifyBell);
+        view.set_terminal_size_hint(true);
+        view.set_triple_click_mode(TripleClickMode::SelectWholeLine);
+        view.set_terminal_size_startup(true);
+        view.set_random_seed(view.id() as u32);
+        self.view = Some(view);
+    }
+
+    #[inline]
+    pub fn view(&mut self) -> TerminalView {
+        self.view.take().unwrap()
+    }
+
+    #[inline]
+    pub fn set_view(&mut self, view: TerminalView) {
+        self.view = Some(view);
     }
 
     pub fn init(&mut self) {}

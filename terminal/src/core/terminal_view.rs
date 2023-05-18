@@ -15,6 +15,7 @@ use crate::tools::{
     filter::{FilterChainImpl, TerminalImageFilterChain},
     system_ffi::string_width,
 };
+use derivative::Derivative;
 use lazy_static::lazy_static;
 use log::warn;
 use regex::Regex;
@@ -45,7 +46,9 @@ use tmui::{
     widget::WidgetImpl,
 };
 use wchar::{wch, wchar_t};
-use widestring::{U16String, U32String, WideString};
+use widestring::{U16String, WideString};
+#[cfg(not(windows))]
+use widestring::U32String;
 use LineEncode::*;
 
 lazy_static! {
@@ -53,7 +56,8 @@ lazy_static! {
 }
 
 #[extends(Widget)]
-#[derive(Default)]
+#[derive(Derivative)]
+#[derivative(Default)]
 pub struct TerminalView {
     extended_char_table: ExtendedCharTable,
 
@@ -170,6 +174,8 @@ pub struct TerminalView {
     input_method_data: InputMethodData,
 
     draw_line_chars: bool,
+
+    bind_session: u16,
 }
 
 #[derive(Default)]
@@ -221,8 +227,10 @@ impl WidgetImpl for TerminalView {
 }
 
 impl TerminalView {
-    pub fn new() -> Self {
-        todo!()
+    pub fn new(session_id: u16) -> Self {
+        let mut view: Self = Object::new(&[]);
+        view.bind_session = session_id;
+        view
     }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -2179,14 +2187,14 @@ performance degradation and display/alignment errors."
                     .data()])
             };
             let ws16: U16String;
-            #[cfg(target_os = "macos")]
+            #[cfg(not(windows))]
             let c = {
                 let ws32 = U32String::from_vec(c.to_vec());
                 let str = ws32.to_string().unwrap();
                 ws16 = U16String::from_str(&str);
                 ws16.as_slice()
             };
-            #[cfg(target_os = "windows")]
+            #[cfg(windows)]
             let c = {
                 ws16 = U16String::from_vec(c.to_vec());
                 ws16.as_slice()
