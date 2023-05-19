@@ -12,8 +12,6 @@ use crate::{tools::{
 use libc::wchar_t;
 use wchar::wch;
 use widestring::WideString;
-#[cfg(target_os = "macos")]
-use widestring::U32String;
 
 const TRANSMIT_U16STRING_ERROR: &'static str =
     "Trasmit `U16String` to `String` failed, unvalid u16 datas.";
