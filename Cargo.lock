@@ -2431,6 +2431,7 @@ dependencies = [
  "libc",
  "log",
  "log4rs",
+ "once_cell",
  "page_size",
  "regex",
  "rust-embed",

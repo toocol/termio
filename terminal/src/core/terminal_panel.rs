@@ -37,6 +37,8 @@ pub enum ViewLocation {
 
 /// TerminalPanel was built to manage the terminal view, it holds all the terminal session,
 /// and each session has a binded TerminalView.
+///
+/// Every TerminalPanel has an tab page, it drawed in the main program, not in the terminal program.
 #[extends(Widget)]
 #[derive(Derivative)]
 #[derivative(Default)]

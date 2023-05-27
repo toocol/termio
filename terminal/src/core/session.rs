@@ -1,7 +1,14 @@
 #![allow(dead_code)]
+use std::rc::Rc;
+
+use super::{
+    terminal_panel::ViewLocation,
+    terminal_view::{BellMode, TerminalView, TripleClickMode},
+};
 use crate::{
     emulation::{Emulation, VT102Emulation},
     pty::ProtocolType,
+    tools::history::HistoryType,
 };
 use derivative::Derivative;
 use tmui::{
@@ -10,11 +17,9 @@ use tmui::{
     tlib::{
         connect,
         object::{ObjectImpl, ObjectSubclass},
-        Object, signals,
+        signals, Object,
     },
 };
-
-use super::{terminal_view::{TerminalView, BellMode, TripleClickMode}, terminal_panel::ViewLocation};
 
 /// Session represents an open tab used to bridge emulation and pty process.
 #[extends(Object)]
@@ -54,7 +59,6 @@ pub struct Session {
     // Zmodem
     zmodem_busy: bool,
     // zmodem_proc: Process
-
     emultaion: Option<Box<dyn Emulation>>,
     view: Option<TerminalView>,
     location: ViewLocation,
@@ -73,7 +77,7 @@ pub trait SessionSignal: ActionExt {
         finished();
 
         /// Emitted when output is received from the terminal process.
-        /// 
+        ///
         /// @param text: [`String`]
         receive_data();
 
@@ -81,35 +85,35 @@ pub trait SessionSignal: ActionExt {
         title_changed();
 
         /// Emitted when the session's profile has changed.
-        /// 
+        ///
         /// @param profile: [`String`]
         profile_changed();
 
         /// Emitted when the activity state of this session changes.
-        /// 
+        ///
         /// @param state: [`i32`] The new state of the session.  This may be one
         /// of NOTIFYNORMAL, NOTIFYSILENCE or NOTIFYACTIVITY
         state_changed();
 
         /// Emitted when a bell event occurs in the session.
-        /// 
+        ///
         /// @param message: [`String`]
         bell_request();
 
         /// Requests that the color the text for any tabs associated with
         /// this session should be changed;
-        /// 
+        ///
         /// @param [`i32`]
         change_tab_text_color_request();
 
         /// Requests that the background color of views on this session
         /// should be changed.
-        /// 
+        ///
         /// @param [`Color`]
         change_background_color_request();
 
         /// User click on url link.
-        /// 
+        ///
         /// @param url: [`String`]
         open_url_request();
 
@@ -118,23 +122,23 @@ pub trait SessionSignal: ActionExt {
 
         /// Emitted when the terminal process requests a change
         /// in the size of the terminal window.
-        /// 
+        ///
         /// @param size: [`Size`] The requested window size in terms of lines and columns.
         resize_request();
 
         /// Emitted when a profile change command is received from the terminal.
-        /// 
+        ///
         /// @param [`String`] The text of the command.  This is a string of the form
         /// "PropertyName=Value;PropertyName=Value ..."
         profile_change_command_received();
 
         /// Emitted when the flow control state changes.
-        /// 
+        ///
         /// @param [`bool`]
         flow_control_enabled_changed();
 
         /// Broker for Emulation::cursorChanged() signal.
-        /// 
+        ///
         /// @param [`SystemCursorShape`]
         /// @param [`bool`] Enable blinking cursor or not.
         cursor_changed();
@@ -152,8 +156,15 @@ impl Session {
         let emulation = VT102Emulation::new(None).wrap();
         connect!(emulation, title_changed(), session, set_user_title());
         connect!(emulation, state_set(), session, activate_state_set(i32));
-        connect!(emulation, image_resize_request(), session, on_emulation_size_change(Size));
+        connect!(
+            emulation,
+            image_resize_request(),
+            session,
+            on_emulation_size_change(Size)
+        );
         connect!(emulation, image_size_changed(), session, on_view_size_change(i32:0, i32:1));
+
+        session.emultaion = Some(emulation);
         session
     }
 
@@ -167,6 +178,8 @@ impl Session {
         self.view = Some(view);
     }
 
+    pub fn init(&mut self) {}
+
     #[inline]
     pub fn view(&mut self) -> TerminalView {
         self.view.take().unwrap()
@@ -177,9 +190,42 @@ impl Session {
         self.view = Some(view);
     }
 
-    pub fn init(&mut self) {}
+    #[inline]
+    pub fn emulation(&self) -> &dyn Emulation {
+        self.emultaion.as_ref().unwrap().as_ref()
+    }
 
-    pub fn set_user_title(&mut self) {}
+    #[inline]
+    pub fn emultaion_mut(&mut self) -> &mut dyn Emulation {
+        self.emultaion.as_mut().unwrap().as_mut()
+    }
+
+    #[inline]
+    pub fn session_id(&self) -> u64 {
+        self.session_id
+    }
+
+    #[inline]
+    pub fn set_auto_close(&mut self, auto: bool) {
+        self.auto_close = auto
+    }
+
+    #[inline]
+    pub fn set_history_type(&mut self, ty: Rc<dyn HistoryType>) {
+        self.emultaion_mut().set_history(ty)
+    }
+
+    #[inline]
+    pub fn set_key_binding(&mut self, id: &str) {
+        self.emultaion_mut().set_key_binding(id)
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////
+    // Slots
+    ///////////////////////////////////////////////////////////////////////////////////////////
+    pub fn set_user_title(&mut self) {
+        // Notice the main program to update the user title.
+    }
 
     pub fn activate_state_set(&mut self, state: i32) {}
 

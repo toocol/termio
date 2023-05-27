@@ -1,6 +1,7 @@
 use super::{KeyboardTranslator, KeyboardTranslatorReader};
 use crate::asset::Asset;
 use log::warn;
+use once_cell::sync::Lazy;
 use std::{collections::HashMap, ptr::NonNull};
 
 const LAYOUT_PATH_PREFIX: &'static str = "kb-layouts/";
@@ -18,6 +19,7 @@ pub struct KeyboardTranslatorManager {
 }
 
 impl KeyboardTranslatorManager {
+    #[inline]
     pub fn new() -> Self {
         let mut manager = Self {
             translators: HashMap::new(),
@@ -26,6 +28,13 @@ impl KeyboardTranslatorManager {
         };
         manager.collect_valid_translators();
         manager
+    }
+
+    #[inline]
+    pub fn instance() -> &'static mut KeyboardTranslatorManager {
+        static mut KEYBOARD_TRANSLATOR_MANAGER: Lazy<KeyboardTranslatorManager> =
+            Lazy::new(|| KeyboardTranslatorManager::new());
+        unsafe { &mut KEYBOARD_TRANSLATOR_MANAGER }
     }
 
     /// Returns the default translator.

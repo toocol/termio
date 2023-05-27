@@ -322,6 +322,8 @@ pub trait Emulation: 'static + EmulationSignal + ActionExt {
     fn bracketed_paste_mode_changed(&mut self, bracketed_paste_mode: bool);
 
     fn emit_cursor_change(&mut self, cursor_shape: u8, enable_blinking_cursor: bool);
+
+    fn set_key_binding(&mut self, id: &str);
 }
 
 impl BaseEmulation {
@@ -661,5 +663,13 @@ impl Emulation for BaseEmulation {
                 )
             )
         );
+    }
+
+    #[inline]
+    fn set_key_binding(&mut self, id: &str) {
+        self.key_translator = KeyboardTranslatorManager::instance().find_translator(id.to_string());
+        if self.key_translator.is_none() {
+            self.key_translator = KeyboardTranslatorManager::instance().default_translator();
+        }
     }
 }

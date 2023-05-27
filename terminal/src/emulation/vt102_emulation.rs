@@ -1736,6 +1736,161 @@ impl Emulation for VT102Emulation {
         self.emulation.as_mut().unwrap().init()
     }
 
+    fn create_window(&mut self) -> Option<NonNull<ScreenWindow>> {
+        self.emulation.as_mut().unwrap().create_window()
+    }
+
+    fn image_size(&self) -> Size {
+        self.emulation.as_ref().unwrap().image_size()
+    }
+
+    fn line_count(&self) -> i32 {
+        self.emulation.as_ref().unwrap().line_count()
+    }
+
+    fn set_history(&mut self, history_type: Rc<dyn HistoryType>) {
+        self.emulation.as_mut().unwrap().set_history(history_type)
+    }
+
+    fn history(&self) -> Rc<dyn HistoryType> {
+        self.emulation.as_ref().unwrap().history()
+    }
+
+    fn clear_history(&mut self) {
+        self.emulation.as_mut().unwrap().clear_history()
+    }
+
+    fn write_to_stream(
+        &mut self,
+        decoder: &mut dyn TerminalCharacterDecoder,
+        start_line: i32,
+        end_line: i32,
+    ) {
+        self.emulation
+            .as_mut()
+            .unwrap()
+            .write_to_stream(decoder, start_line, end_line)
+    }
+
+    fn erase_char(&self) -> char {
+        let entry = unsafe {
+            self.emulation
+                .as_ref()
+                .unwrap()
+                .key_translator
+                .as_ref()
+                .unwrap()
+                .as_ref()
+                .find_entry(
+                    KeyCode::KeyBackspace as u32,
+                    KeyboardModifier::NoModifier,
+                    Some(State::NoState),
+                )
+        };
+        if let Some(entry) = entry {
+            let text = entry.text(None, None);
+            if text.len() > 0 {
+                text[0] as char
+            } else {
+                '\u{b}'
+            }
+        } else {
+            '\u{b}'
+        }
+    }
+
+    fn set_keyboard_layout(&mut self, name: &str) {
+        self.emulation.as_mut().unwrap().set_keyboard_layout(name)
+    }
+
+    fn keyboard_layout(&self) -> String {
+        self.emulation.as_ref().unwrap().keyboard_layout()
+    }
+
+    fn clear_entire_screen(&mut self) {
+        self.emulation.as_mut().unwrap().clear_entire_screen()
+    }
+
+    fn reset(&self) {
+        self.emulation.as_ref().unwrap().reset()
+    }
+
+    fn program_use_mouse(&self) -> bool {
+        self.emulation.as_ref().unwrap().program_use_mouse()
+    }
+
+    fn set_use_mouse(&mut self, on: bool) {
+        self.emulation.as_mut().unwrap().set_use_mouse(on)
+    }
+
+    fn program_bracketed_paste_mode(&self) -> bool {
+        self.emulation
+            .as_ref()
+            .unwrap()
+            .program_bracketed_paste_mode()
+    }
+
+    fn set_bracketed_paste_mode(&mut self, on: bool) {
+        self.emulation
+            .as_mut()
+            .unwrap()
+            .set_bracketed_paste_mode(on)
+    }
+
+    fn set_mode(&mut self, mode: usize) {
+        self.current_modes.mode[mode] = true;
+
+        match mode {
+            MODE_132_COLUMNS => {
+                if self.get_mode(MODE_ALLOW_132_COLUMNS) {
+                    self.clear_screen_and_set_columns(132);
+                }
+            }
+            MODE_MOUSE_1000 => emit!(self.program_uses_mouse_changed(), false),
+            MODE_MOUSE_1001 => emit!(self.program_uses_mouse_changed(), false),
+            MODE_MOUSE_1002 => emit!(self.program_uses_mouse_changed(), false),
+            MODE_MOUSE_1003 => emit!(self.program_uses_mouse_changed(), false),
+            MODE_BRACKETD_PASTE => emit!(self.program_bracketed_paste_mode_changed(), true),
+            MODE_APP_SCREEN => {
+                self.emulation.as_mut().unwrap().screen[1].clear_selection();
+                self.set_screen(1);
+            }
+            _ => {}
+        }
+
+        if mode < MODES_SCREEN || mode == MODE_NEWLINE {
+            self.emulation.as_mut().unwrap().screen[0].set_mode(mode);
+            self.emulation.as_mut().unwrap().screen[1].set_mode(mode);
+        }
+    }
+
+    fn reset_mode(&mut self, mode: usize) {
+        self.current_modes.mode[mode] = false;
+
+        match mode {
+            MODE_132_COLUMNS => {
+                if self.get_mode(MODE_ALLOW_132_COLUMNS) {
+                    self.clear_screen_and_set_columns(80);
+                }
+            }
+            MODE_MOUSE_1000 => emit!(self.program_uses_mouse_changed(), true),
+            MODE_MOUSE_1001 => emit!(self.program_uses_mouse_changed(), true),
+            MODE_MOUSE_1002 => emit!(self.program_uses_mouse_changed(), true),
+            MODE_MOUSE_1003 => emit!(self.program_uses_mouse_changed(), true),
+            MODE_BRACKETD_PASTE => emit!(self.program_bracketed_paste_mode_changed(), false),
+            MODE_APP_SCREEN => {
+                self.emulation.as_mut().unwrap().screen[0].clear_selection();
+                self.set_screen(0);
+            }
+            _ => {}
+        }
+
+        if mode < MODES_SCREEN || mode == MODE_NEWLINE {
+            self.emulation.as_mut().unwrap().screen[0].reset_mode(mode);
+            self.emulation.as_mut().unwrap().screen[1].reset_mode(mode);
+        }
+    }
+
     fn receive_char(&mut self, cc: wchar_t) {
         if cc == DEL {
             return;
@@ -1932,6 +2087,51 @@ impl Emulation for VT102Emulation {
         }
     }
 
+    #[inline]
+    fn set_screen(&mut self, index: i32) {
+        self.emulation.as_mut().unwrap().set_screen(index)
+    }
+
+    ////////////////////////////////////////////////// Slots //////////////////////////////////////////////////
+    #[inline]
+    fn set_image_size(&mut self, lines: i32, columns: i32) {
+        self.emulation
+            .as_mut()
+            .unwrap()
+            .set_image_size(lines, columns)
+    }
+
+    #[inline]
+    fn send_text(&self, text: String) {
+        self.emulation.as_ref().unwrap().send_text(text)
+    }
+
+    #[inline]
+    fn send_key_event(&self, event: KeyEvent, from_paste: bool) {
+        self.emulation
+            .as_ref()
+            .unwrap()
+            .send_key_event(event, from_paste)
+    }
+
+    #[inline]
+    fn send_mouse_event(&self, buttons: i32, column: i32, line: i32, event_type: u8) {
+        self.emulation
+            .as_ref()
+            .unwrap()
+            .send_mouse_event(buttons, column, line, event_type)
+    }
+
+    #[inline]
+    fn send_string(&self, string: String, length: i32) {
+        if length >= 0 {
+            emit!(self.send_data(), (string, length));
+        } else {
+            let len = string.len() as i32;
+            emit!(self.send_data(), (string, len));
+        }
+    }
+
     fn receive_data(&mut self, buffer: Vec<u8>, len: i32) {
         emit!(self.state_set(), EmulationState::NotifyActivity as u8);
 
@@ -1959,208 +2159,17 @@ impl Emulation for VT102Emulation {
         }
     }
 
-    fn create_window(&mut self) -> Option<NonNull<ScreenWindow>> {
-        self.emulation.as_mut().unwrap().create_window()
-    }
-
-    fn image_size(&self) -> Size {
-        self.emulation.as_ref().unwrap().image_size()
-    }
-
-    fn line_count(&self) -> i32 {
-        self.emulation.as_ref().unwrap().line_count()
-    }
-
-    fn set_history(&mut self, history_type: Rc<dyn HistoryType>) {
-        self.emulation.as_mut().unwrap().set_history(history_type)
-    }
-
-    fn history(&self) -> Rc<dyn HistoryType> {
-        self.emulation.as_ref().unwrap().history()
-    }
-
-    fn clear_history(&mut self) {
-        self.emulation.as_mut().unwrap().clear_history()
-    }
-
-    fn write_to_stream(
-        &mut self,
-        decoder: &mut dyn TerminalCharacterDecoder,
-        start_line: i32,
-        end_line: i32,
-    ) {
-        self.emulation
-            .as_mut()
-            .unwrap()
-            .write_to_stream(decoder, start_line, end_line)
-    }
-
-    fn erase_char(&self) -> char {
-        let entry = unsafe {
-            self.emulation
-                .as_ref()
-                .unwrap()
-                .key_translator
-                .as_ref()
-                .unwrap()
-                .as_ref()
-                .find_entry(
-                    KeyCode::KeyBackspace as u32,
-                    KeyboardModifier::NoModifier,
-                    Some(State::NoState),
-                )
-        };
-        if let Some(entry) = entry {
-            let text = entry.text(None, None);
-            if text.len() > 0 {
-                text[0] as char
-            } else {
-                '\u{b}'
-            }
-        } else {
-            '\u{b}'
-        }
-    }
-
-    fn set_keyboard_layout(&mut self, name: &str) {
-        self.emulation.as_mut().unwrap().set_keyboard_layout(name)
-    }
-
-    fn keyboard_layout(&self) -> String {
-        self.emulation.as_ref().unwrap().keyboard_layout()
-    }
-
-    fn clear_entire_screen(&mut self) {
-        self.emulation.as_mut().unwrap().clear_entire_screen()
-    }
-
-    fn reset(&self) {
-        self.emulation.as_ref().unwrap().reset()
-    }
-
-    fn program_use_mouse(&self) -> bool {
-        self.emulation.as_ref().unwrap().program_use_mouse()
-    }
-
-    fn set_use_mouse(&mut self, on: bool) {
-        self.emulation.as_mut().unwrap().set_use_mouse(on)
-    }
-
-    fn program_bracketed_paste_mode(&self) -> bool {
-        self.emulation
-            .as_ref()
-            .unwrap()
-            .program_bracketed_paste_mode()
-    }
-
-    fn set_bracketed_paste_mode(&mut self, on: bool) {
-        self.emulation
-            .as_mut()
-            .unwrap()
-            .set_bracketed_paste_mode(on)
-    }
-
-    fn set_mode(&mut self, mode: usize) {
-        self.current_modes.mode[mode] = true;
-
-        match mode {
-            MODE_132_COLUMNS => {
-                if self.get_mode(MODE_ALLOW_132_COLUMNS) {
-                    self.clear_screen_and_set_columns(132);
-                }
-            }
-            MODE_MOUSE_1000 => emit!(self.program_uses_mouse_changed(), false),
-            MODE_MOUSE_1001 => emit!(self.program_uses_mouse_changed(), false),
-            MODE_MOUSE_1002 => emit!(self.program_uses_mouse_changed(), false),
-            MODE_MOUSE_1003 => emit!(self.program_uses_mouse_changed(), false),
-            MODE_BRACKETD_PASTE => emit!(self.program_bracketed_paste_mode_changed(), true),
-            MODE_APP_SCREEN => {
-                self.emulation.as_mut().unwrap().screen[1].clear_selection();
-                self.set_screen(1);
-            }
-            _ => {}
-        }
-
-        if mode < MODES_SCREEN || mode == MODE_NEWLINE {
-            self.emulation.as_mut().unwrap().screen[0].set_mode(mode);
-            self.emulation.as_mut().unwrap().screen[1].set_mode(mode);
-        }
-    }
-
-    fn reset_mode(&mut self, mode: usize) {
-        self.current_modes.mode[mode] = false;
-
-        match mode {
-            MODE_132_COLUMNS => {
-                if self.get_mode(MODE_ALLOW_132_COLUMNS) {
-                    self.clear_screen_and_set_columns(80);
-                }
-            }
-            MODE_MOUSE_1000 => emit!(self.program_uses_mouse_changed(), true),
-            MODE_MOUSE_1001 => emit!(self.program_uses_mouse_changed(), true),
-            MODE_MOUSE_1002 => emit!(self.program_uses_mouse_changed(), true),
-            MODE_MOUSE_1003 => emit!(self.program_uses_mouse_changed(), true),
-            MODE_BRACKETD_PASTE => emit!(self.program_bracketed_paste_mode_changed(), false),
-            MODE_APP_SCREEN => {
-                self.emulation.as_mut().unwrap().screen[0].clear_selection();
-                self.set_screen(0);
-            }
-            _ => {}
-        }
-
-        if mode < MODES_SCREEN || mode == MODE_NEWLINE {
-            self.emulation.as_mut().unwrap().screen[0].reset_mode(mode);
-            self.emulation.as_mut().unwrap().screen[1].reset_mode(mode);
-        }
-    }
-
-    fn set_screen(&mut self, index: i32) {
-        self.emulation.as_mut().unwrap().set_screen(index)
-    }
-
-    ////////////////////////////////////////////////// Slots //////////////////////////////////////////////////
-    fn set_image_size(&mut self, lines: i32, columns: i32) {
-        self.emulation
-            .as_mut()
-            .unwrap()
-            .set_image_size(lines, columns)
-    }
-
-    fn send_text(&self, text: String) {
-        self.emulation.as_ref().unwrap().send_text(text)
-    }
-
-    fn send_key_event(&self, event: KeyEvent, from_paste: bool) {
-        self.emulation
-            .as_ref()
-            .unwrap()
-            .send_key_event(event, from_paste)
-    }
-
-    fn send_mouse_event(&self, buttons: i32, column: i32, line: i32, event_type: u8) {
-        self.emulation
-            .as_ref()
-            .unwrap()
-            .send_mouse_event(buttons, column, line, event_type)
-    }
-
-    fn send_string(&self, string: String, length: i32) {
-        if length >= 0 {
-            emit!(self.send_data(), (string, length));
-        } else {
-            let len = string.len() as i32;
-            emit!(self.send_data(), (string, len));
-        }
-    }
-
+    #[inline]
     fn show_bulk(&mut self) {
         self.emulation.as_mut().unwrap().show_bulk()
     }
 
+    #[inline]
     fn buffered_update(&mut self) {
         self.emulation.as_mut().unwrap().buffered_update()
     }
 
+    #[inline]
     fn uses_mouse_changed(&mut self, uses_mouse: bool) {
         self.emulation
             .as_mut()
@@ -2168,6 +2177,7 @@ impl Emulation for VT102Emulation {
             .uses_mouse_changed(uses_mouse)
     }
 
+    #[inline]
     fn bracketed_paste_mode_changed(&mut self, bracketed_paste_mode: bool) {
         self.emulation
             .as_mut()
@@ -2175,10 +2185,16 @@ impl Emulation for VT102Emulation {
             .bracketed_paste_mode_changed(bracketed_paste_mode)
     }
 
+    #[inline]
     fn emit_cursor_change(&mut self, cursor_shape: u8, enable_blinking_cursor: bool) {
         self.emulation
             .as_mut()
             .unwrap()
             .emit_cursor_change(cursor_shape, enable_blinking_cursor)
+    }
+
+    #[inline]
+    fn set_key_binding(&mut self, id: &str) {
+        self.emulation.as_mut().unwrap().set_key_binding(id)
     }
 }
