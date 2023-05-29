@@ -46,9 +46,9 @@ use tmui::{
     widget::WidgetImpl,
 };
 use wchar::{wch, wchar_t};
-use widestring::{U16String, WideString};
 #[cfg(not(windows))]
 use widestring::U32String;
+use widestring::{U16String, WideString};
 use LineEncode::*;
 
 lazy_static! {
@@ -121,7 +121,7 @@ pub struct TerminalView {
     preserve_line_breaks: bool,
     column_selection_mode: bool,
 
-    scroll_bar: ScrollBar,
+    scroll_bar: Option<NonNull<ScrollBar>>,
     scroll_bar_location: ScrollBarPosition,
     word_characters: String,
     bell_mode: BellMode,
@@ -791,19 +791,20 @@ impl TerminalView {
     }
     /// Setting the current position and range of the display scroll bar.
     pub fn set_scroll(&mut self, cursor: i32, lines: i32) {
-        if self.scroll_bar.minimum() == 0
-            && self.scroll_bar.maximum() == (lines - self.lines)
-            && self.scroll_bar.value() == cursor
+        let scroll_bar = unsafe { self.scroll_bar.as_mut().unwrap().as_mut() };
+        if scroll_bar.minimum() == 0
+            && scroll_bar.maximum() == (lines - self.lines)
+            && scroll_bar.value() == cursor
         {
             return;
         }
-        disconnect!(self.scroll_bar, value_changed(), self, null);
-        self.scroll_bar.set_range(0, lines - self.lines);
-        self.scroll_bar.set_single_step(1);
-        self.scroll_bar.set_page_step(lines);
-        self.scroll_bar.set_value(cursor);
+        disconnect!(scroll_bar, value_changed(), self, null);
+        scroll_bar.set_range(0, lines - self.lines);
+        scroll_bar.set_single_step(1);
+        scroll_bar.set_page_step(lines);
+        scroll_bar.set_value(cursor);
         connect!(
-            self.scroll_bar,
+            scroll_bar,
             value_changed(),
             self,
             scroll_bar_position_changed(i32)
@@ -811,17 +812,18 @@ impl TerminalView {
     }
     /// Scroll to the bottom of the terminal (reset scrolling).
     pub fn scroll_to_end(&mut self) {
-        disconnect!(self.scroll_bar, value_changed(), self, null);
-        self.scroll_bar.set_value(self.scroll_bar.maximum());
+        let scroll_bar = unsafe { self.scroll_bar.as_mut().unwrap().as_mut() };
+        disconnect!(scroll_bar, value_changed(), self, null);
+        scroll_bar.set_value(scroll_bar.maximum());
         connect!(
-            self.scroll_bar,
+            scroll_bar,
             value_changed(),
             self,
             scroll_bar_position_changed(i32)
         );
 
         let screen_window = unsafe { self.screen_window.as_mut().unwrap().as_mut() };
-        screen_window.scroll_to(self.scroll_bar.value() + 1);
+        screen_window.scroll_to(scroll_bar.value() + 1);
         screen_window.set_track_output(screen_window.at_end_of_output());
     }
 
@@ -932,6 +934,11 @@ impl TerminalView {
     #[inline]
     pub fn margin(&mut self) -> i32 {
         self.top_base_margin
+    }
+
+    #[inline]
+    pub fn set_scroll_bar(&mut self, scroll_bar: &mut ScrollBar) {
+        self.scroll_bar = NonNull::new(scroll_bar)
     }
 
     /// @param [`use_x_selection`] Store and retrieve data from global mouse selection.
@@ -1078,10 +1085,11 @@ impl TerminalView {
     }
 
     pub fn set_size(&mut self, _cols: i32, _lins: i32) {
-        let scroll_bar_width = if !self.scroll_bar.visible() {
+        let scroll_bar = unsafe { self.scroll_bar.as_mut().unwrap().as_mut() };
+        let scroll_bar_width = if !scroll_bar.visible() {
             0
         } else {
-            self.scroll_bar.size_hint().unwrap().1.width()
+            scroll_bar.size_hint().unwrap().1.width()
         };
 
         let horizontal_margin = 2 * self.left_base_margin;
@@ -1681,10 +1689,11 @@ performance degradation and display/alignment errors."
     /// Sets the background of the view to the specified color.
     /// @see [`set_color_table()`], [`set_foreground_color()`]
     pub fn set_background_color(&mut self, color: Color) {
+        let scroll_bar = unsafe { self.scroll_bar.as_mut().unwrap().as_mut() };
         self.color_table[DEFAULT_BACK_COLOR as usize].color = color;
 
         self.set_background(color);
-        self.scroll_bar.set_background(color);
+        scroll_bar.set_background(color);
 
         self.update();
     }
@@ -1716,13 +1725,14 @@ performance degradation and display/alignment errors."
             return;
         }
 
+        let scroll_bar = unsafe { self.scroll_bar.as_mut().unwrap().as_mut() };
         let screen_window = unsafe { self.screen_window.as_mut().unwrap().as_mut() };
-        screen_window.scroll_to(self.scroll_bar.value());
+        screen_window.scroll_to(scroll_bar.value());
 
         // if the thumb has been moved to the bottom of the _scrollBar then set
         // the display to automatically track new output,
         // that is, scroll down automatically to how new _lines as they are added.
-        let at_end_of_output = self.scroll_bar.value() == self.scroll_bar.maximum();
+        let at_end_of_output = scroll_bar.value() == scroll_bar.maximum();
         screen_window.set_track_output(at_end_of_output);
 
         self.update_image();
@@ -1815,11 +1825,12 @@ performance degradation and display/alignment errors."
         if self.screen_window.is_none() {
             return;
         }
+        let scroll_bar = unsafe { self.scroll_bar.as_mut().unwrap().as_mut() };
 
         let tl = self.contents_rect(Some(Coordinate::Widget)).top_left();
         let tlx = tl.x();
         let tly = tl.y();
-        let scroll = self.scroll_bar.value();
+        let scroll = scroll_bar.value();
 
         // we're in the process of moving the mouse with the left button pressed
         // the mouse cursor will kept caught within the bounds of the text in this widget.
@@ -1849,13 +1860,11 @@ performance degradation and display/alignment errors."
         if old_pos.y() > text_bounds.bottom() {
             lines_beyond_widget = (old_pos.y() - text_bounds.bottom()) / self.font_height;
             // Scroll forward
-            self.scroll_bar
-                .set_value(self.scroll_bar.value() + lines_beyond_widget + 1);
+            scroll_bar.set_value(scroll_bar.value() + lines_beyond_widget + 1);
         }
         if old_pos.y() < text_bounds.top() {
             lines_beyond_widget = (text_bounds.top() - old_pos.y()) / self.font_height;
-            self.scroll_bar
-                .set_value(self.scroll_bar.value() - lines_beyond_widget - 1);
+            scroll_bar.set_value(scroll_bar.value() - lines_beyond_widget - 1);
         }
 
         let (char_line, char_column) = self.get_character_position(pos);
@@ -1863,9 +1872,9 @@ performance degradation and display/alignment errors."
         let mut here = Point::new(char_column, char_line);
         let mut ohere = Point::default();
         let mut i_pnt_sel_corr = self.i_pnt_sel;
-        i_pnt_sel_corr.set_y(i_pnt_sel_corr.y() - self.scroll_bar.value());
+        i_pnt_sel_corr.set_y(i_pnt_sel_corr.y() - scroll_bar.value());
         let mut pnt_sel_corr = self.pnt_sel;
-        pnt_sel_corr.set_y(pnt_sel_corr.y() - self.scroll_bar.value());
+        pnt_sel_corr.set_y(pnt_sel_corr.y() - scroll_bar.value());
         let mut swapping = false;
 
         if self.word_selection_mode {
@@ -2026,7 +2035,7 @@ performance degradation and display/alignment errors."
             }
         }
 
-        if here == pnt_sel_corr && scroll == self.scroll_bar.value() {
+        if here == pnt_sel_corr && scroll == scroll_bar.value() {
             // Not moved.
             return;
         }
@@ -2048,8 +2057,7 @@ performance degradation and display/alignment errors."
 
         self.act_sel = 2;
         self.pnt_sel = here;
-        self.pnt_sel
-            .set_y(self.pnt_sel.y() + self.scroll_bar.value());
+        self.pnt_sel.set_y(self.pnt_sel.y() + scroll_bar.value());
 
         if self.column_selection_mode && !self.line_selection_mode && !self.word_selection_mode {
             screen_window.set_selection_end(here.x(), here.y());
@@ -2102,6 +2110,7 @@ performance degradation and display/alignment errors."
         if self.screen_window.is_none() {
             return;
         }
+        let scroll_bar = unsafe { self.scroll_bar.as_mut().unwrap().as_mut() };
         let screen_window = unsafe { self.screen_window.as_mut().unwrap().as_mut() };
 
         let (char_line, char_column) = self.get_character_position(ev.position().into());
@@ -2168,7 +2177,7 @@ performance degradation and display/alignment errors."
         self.set_selection(screen_window.selected_text(self.preserve_line_breaks));
 
         self.i_pnt_sel
-            .set_y(self.i_pnt_sel.y() + self.scroll_bar.value());
+            .set_y(self.i_pnt_sel.y() + scroll_bar.value());
     }
 
     /// determine the width of this text.
@@ -2283,6 +2292,8 @@ performance degradation and display/alignment errors."
             return;
         }
 
+        let scroll_bar = unsafe { self.scroll_bar.as_mut().unwrap().as_mut() };
+
         // constrain the region to the display
         // the bottom of the region is capped to the number of lines in the display's
         // internal image - 2, so that the height of 'region' is strictly less
@@ -2305,8 +2316,8 @@ performance degradation and display/alignment errors."
             self.resize_widget.hide()
         }
 
-        let scroll_bar_width = if self.scroll_bar.visible() {
-            self.scroll_bar.size().width()
+        let scroll_bar_width = if scroll_bar.visible() {
+            scroll_bar.size().width()
         } else {
             0
         };
@@ -2348,13 +2359,13 @@ performance degradation and display/alignment errors."
     }
 
     fn calc_geometry(&mut self) {
-        let size_hint = self.scroll_bar.size_hint().unwrap().1;
-        self.scroll_bar
-            .resize(size_hint.width(), size_hint.height());
+        let scroll_bar = unsafe { self.scroll_bar.as_mut().unwrap().as_mut() };
+        let size_hint = scroll_bar.size_hint().unwrap().1;
+        scroll_bar.resize(size_hint.width(), size_hint.height());
         let contents_rect = self.contents_rect(Some(Coordinate::Widget));
 
-        let scrollbar_width = if self.scroll_bar.visible() {
-            self.scroll_bar.size().width()
+        let scrollbar_width = if scroll_bar.visible() {
+            scroll_bar.size().width()
         } else {
             0
         };
