@@ -27,10 +27,7 @@ use std::{
 };
 use tmui::{
     clipboard::ClipboardLevel,
-    graphics::{
-        figure::{Color, FRect, FontTypeface, Size, Transform},
-        painter::Painter,
-    },
+    graphics::painter::Painter,
     label::Label,
     prelude::*,
     scroll_bar::ScrollBar,
@@ -38,6 +35,7 @@ use tmui::{
     tlib::{
         connect, disconnect, emit,
         events::{EventType, KeyEvent, MouseEvent},
+        figure::{Color, FRect, FontTypeface, Size, Transform},
         namespace::{KeyCode, KeyboardModifier},
         object::{ObjectImpl, ObjectSubclass},
         signals,

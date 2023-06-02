@@ -14,7 +14,13 @@ use crate::tools::{
 };
 use bitvec::vec::BitVec;
 use std::{cell::RefCell, rc::Rc};
-use tmui::{graphics::figure::Rect, prelude::*, tlib::object::{ObjectSubclass, ObjectImpl}};
+use tmui::{
+    prelude::*,
+    tlib::{
+        figure::Rect,
+        object::{ObjectImpl, ObjectSubclass},
+    },
+};
 use wchar::{wch, wchar_t};
 
 pub const MODE_ORIGIN: usize = 0;
@@ -1375,7 +1381,8 @@ impl Screen {
         }
 
         // Add new line character at end.
-        let omit_line_break = (current_line_properties & LINE_WRAPPED != 0) || !preserve_line_breaks;
+        let omit_line_break =
+            (current_line_properties & LINE_WRAPPED != 0) || !preserve_line_breaks;
 
         if !omit_line_break && append_new_line && (count + 1 < MAX_CHARS as i32) {
             self.character_buffer.borrow_mut()[count as usize]

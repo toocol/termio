@@ -12,9 +12,9 @@ use crate::{
 };
 use derivative::Derivative;
 use tmui::{
-    graphics::figure::Color,
     prelude::*,
     tlib::{
+        figure::Color,
         connect,
         object::{ObjectImpl, ObjectSubclass},
         signals, Object,
@@ -66,7 +66,9 @@ pub struct Session {
 impl ObjectSubclass for Session {
     const NAME: &'static str = "Session";
 }
-impl ObjectImpl for Session {}
+impl ObjectImpl for Session {
+    fn construct(&mut self) {}
+}
 
 pub trait SessionSignal: ActionExt {
     signals! {

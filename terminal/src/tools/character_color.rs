@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 use libc::wchar_t;
-use tmui::graphics::figure::Color;
+use tmui::tlib::figure::Color;
 
 ///  Specifies the weight to use when drawing text with this color.
 #[derive(Default, Debug, PartialEq, Eq, Clone, Copy)]

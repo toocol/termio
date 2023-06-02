@@ -27,11 +27,11 @@ use crate::{
 };
 use std::{collections::HashMap, ptr::NonNull, rc::Rc};
 use tmui::{
-    graphics::figure::Size,
     prelude::*,
     tlib::{
         emit,
         events::KeyEvent,
+        figure::Size,
         namespace::{KeyCode, KeyboardModifier},
     },
 };

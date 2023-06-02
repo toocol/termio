@@ -6,9 +6,9 @@ use crate::tools::{
 };
 use std::ptr::NonNull;
 use tmui::{
-    graphics::figure::Rect,
     prelude::*,
     tlib::{
+        figure::Rect,
         emit,
         object::{ObjectImpl, ObjectSubclass},
         signals,

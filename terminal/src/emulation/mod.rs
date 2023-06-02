@@ -18,11 +18,11 @@ use crate::{
 };
 use std::{ptr::NonNull, rc::Rc, time::Duration};
 use tmui::{
-    graphics::figure::Size,
     prelude::*,
     tlib::{
         connect, disconnect, emit,
         events::KeyEvent,
+        figure::Size,
         object::{ObjectImpl, ObjectSubclass},
         signals,
         timer::Timer,
@@ -273,7 +273,6 @@ pub trait Emulation: 'static + EmulationSignal + ActionExt {
     ///
     /// @param index 0 to switch to the primary screen, or 1 to switch to the alternate screen
     fn set_screen(&mut self, index: i32);
-
 
     ////////////////////////////////////////////////// Slots //////////////////////////////////////////////////
     /// Change the size of the emulation's image.
