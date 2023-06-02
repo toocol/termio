@@ -1,10 +1,7 @@
 #![allow(dead_code)]
-use std::rc::Rc;
+use std::{ptr::NonNull, rc::Rc};
 
-use super::{
-    terminal_panel::ViewLocation,
-    terminal_view::{BellMode, TerminalView, TripleClickMode},
-};
+use super::terminal_view::{BellMode, TerminalView, TripleClickMode};
 use crate::{
     emulation::{Emulation, VT102Emulation},
     pty::ProtocolType,
@@ -13,9 +10,12 @@ use crate::{
 use derivative::Derivative;
 use tmui::{
     prelude::*,
+    scroll_area::ScrollArea,
+    scroll_bar::ScrollBarPosition,
     tlib::{
-        figure::Color,
         connect,
+        figure::Color,
+        namespace::Orientation,
         object::{ObjectImpl, ObjectSubclass},
         signals, Object,
     },
@@ -60,8 +60,7 @@ pub struct Session {
     zmodem_busy: bool,
     // zmodem_proc: Process
     emultaion: Option<Box<dyn Emulation>>,
-    view: Option<TerminalView>,
-    location: ViewLocation,
+    view: Option<NonNull<ScrollArea>>,
 }
 impl ObjectSubclass for Session {
     const NAME: &'static str = "Session";
@@ -170,27 +169,23 @@ impl Session {
         session
     }
 
-    pub fn create_terminal_view(&mut self) {
+    pub fn create_terminal_view(&mut self) -> ScrollArea {
         let mut view = TerminalView::new(self.id());
         view.set_bell_mode(BellMode::NotifyBell);
         view.set_terminal_size_hint(true);
         view.set_triple_click_mode(TripleClickMode::SelectWholeLine);
         view.set_terminal_size_startup(true);
         view.set_random_seed(view.id() as u32);
-        self.view = Some(view);
+
+        let mut scroll_area: ScrollArea = Object::new(&[]);
+        scroll_area.set_area(view);
+        scroll_area.set_scroll_bar_position(ScrollBarPosition::End);
+        scroll_area.set_orientation(Orientation::Vertical);
+
+        scroll_area
     }
 
     pub fn init(&mut self) {}
-
-    #[inline]
-    pub fn view(&mut self) -> TerminalView {
-        self.view.take().unwrap()
-    }
-
-    #[inline]
-    pub fn set_view(&mut self, view: TerminalView) {
-        self.view = Some(view);
-    }
 
     #[inline]
     pub fn emulation(&self) -> &dyn Emulation {

@@ -1,39 +1,10 @@
 use super::session::Session;
+use crate::tools::history::HistoryTypeBuffer;
 use derivative::Derivative;
+use std::rc::Rc;
 use tmui::{prelude::*, tlib::object::ObjectSubclass};
 
-#[repr(u8)]
-#[derive(Debug, Default, PartialEq, Eq, Clone, Copy)]
-pub enum SplitState {
-    #[default]
-    Zero = 0,
-    One = 1,
-    Two = 2,
-    Three = 4,
-    Four = 8,
-}
 
-#[repr(C)]
-#[derive(Debug, Default, PartialEq, Eq, Clone, Copy)]
-pub enum ViewLocation {
-    #[default]
-    OneCenter,
-
-    // Split screen for two
-    TwoLeft,
-    TwoRight,
-
-    // Split screen for three
-    ThreeLeft,
-    ThreeRightTop,
-    ThreeRightBottom,
-
-    // Split screen for four
-    FourLeftTop,
-    FourLeftBottom,
-    FourRightTop,
-    FourRightBottom,
-}
 
 /// TerminalPanel was built to manage the terminal view, it holds all the terminal session,
 /// and each session has a binded TerminalView.
@@ -44,10 +15,25 @@ pub enum ViewLocation {
 #[derivative(Default)]
 pub struct TerminalPanel {
     /// All the terminal sessions.
-    sessions: Vec<Session>,
+    sessions: Vec<Box<Session>>,
 }
 impl ObjectSubclass for TerminalPanel {
     const NAME: &'static str = "TerminalPanel";
 }
-impl ObjectImpl for TerminalPanel {}
+impl ObjectImpl for TerminalPanel {
+    fn initialize(&mut self) {
+        
+    }
+}
 impl WidgetImpl for TerminalPanel {}
+
+impl TerminalPanel {
+    pub fn create_session(&mut self) -> &mut Box<Session> {
+        let mut session = Session::new();
+        session.set_auto_close(true);
+        session.set_history_type(Rc::new(HistoryTypeBuffer::new(10000)));
+        session.set_key_binding("");
+        self.sessions.push(session);
+        self.sessions.last_mut().unwrap()
+    }
+}

@@ -1,11 +1,6 @@
 #![allow(dead_code)]
-use std::rc::Rc;
-
 use tmui::{prelude::*, tlib::object::ObjectSubclass};
 
-use crate::tools::history::HistoryTypeBuffer;
-
-use super::session::Session;
 /*
                           |- Session/Emulation |- ScreenWidow/Screens
           - TerminalPanel |
@@ -30,12 +25,4 @@ impl ObjectImpl for TerminalEmulator {
 }
 impl WidgetImpl for TerminalEmulator {}
 
-impl TerminalEmulator {
-    pub fn create_session(&self) -> Box<Session> {
-        let mut session = Session::new();
-        session.set_auto_close(true);
-        session.set_history_type(Rc::new(HistoryTypeBuffer::new(10000)));
-        session.set_key_binding("");
-        session
-    }
-}
+impl TerminalEmulator {}
