@@ -170,6 +170,10 @@ impl Session {
     }
 
     pub fn create_terminal_view(&mut self) -> ScrollArea {
+        if self.view.is_some() {
+            panic!("Session has already create the `TerminalView`, session id {}", self.session_id)
+        }
+        
         let mut view = TerminalView::new(self.id());
         view.set_bell_mode(BellMode::NotifyBell);
         view.set_terminal_size_hint(true);
@@ -181,6 +185,8 @@ impl Session {
         scroll_area.set_area(view);
         scroll_area.set_scroll_bar_position(ScrollBarPosition::End);
         scroll_area.set_orientation(Orientation::Vertical);
+
+        self.view = NonNull::new(&mut scroll_area);
 
         scroll_area
     }

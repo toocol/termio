@@ -4,8 +4,6 @@ use derivative::Derivative;
 use std::rc::Rc;
 use tmui::{prelude::*, tlib::object::ObjectSubclass};
 
-
-
 /// TerminalPanel was built to manage the terminal view, it holds all the terminal session,
 /// and each session has a binded TerminalView.
 ///
@@ -21,9 +19,7 @@ impl ObjectSubclass for TerminalPanel {
     const NAME: &'static str = "TerminalPanel";
 }
 impl ObjectImpl for TerminalPanel {
-    fn initialize(&mut self) {
-        
-    }
+    fn initialize(&mut self) {}
 }
 impl WidgetImpl for TerminalPanel {}
 
