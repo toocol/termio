@@ -1,13 +1,17 @@
 #![allow(dead_code)]
-use std::{ptr::NonNull, rc::Rc};
-
 use super::terminal_view::{BellMode, TerminalView, TripleClickMode};
+#[cfg(target_os = "windows")]
+use crate::pty::con_pty::ConPty;
+#[cfg(not(target_os = "windows"))]
+use crate::pty::posix_pty::PosixPty;
+
 use crate::{
     emulation::{Emulation, VT102Emulation},
-    pty::ProtocolType,
+    pty::{ProtocolType, Pty},
     tools::history::HistoryType,
 };
 use derivative::Derivative;
+use std::{ptr::NonNull, rc::Rc};
 use tmui::{
     prelude::*,
     scroll_area::ScrollArea,
@@ -16,6 +20,7 @@ use tmui::{
         connect,
         figure::Color,
         namespace::Orientation,
+        nonnull_mut, nonnull_ref,
         object::{ObjectImpl, ObjectSubclass},
         signals, Object,
     },
@@ -27,6 +32,14 @@ use tmui::{
 #[derivative(Default)]
 pub struct Session {
     enviroment: Vec<String>,
+
+    #[cfg(target_os = "windows")]
+    #[derivative(Default(value = "Box::new(ConPty::new())"))]
+    shell_process: Box<dyn Pty>,
+
+    #[cfg(not(target_os = "windows"))]
+    #[derivative(Default(value = "Box::new(PosixPty::new())"))]
+    shell_process: Box<dyn Pty>,
 
     auto_close: bool,
     wanted_close: bool,
@@ -60,7 +73,8 @@ pub struct Session {
     zmodem_busy: bool,
     // zmodem_proc: Process
     emultaion: Option<Box<dyn Emulation>>,
-    view: Option<NonNull<ScrollArea>>,
+    scrolled_view: Option<NonNull<ScrollArea>>,
+    view: Option<NonNull<TerminalView>>,
 }
 impl ObjectSubclass for Session {
     const NAME: &'static str = "Session";
@@ -170,10 +184,13 @@ impl Session {
     }
 
     pub fn create_terminal_view(&mut self) -> ScrollArea {
-        if self.view.is_some() {
-            panic!("Session has already create the `TerminalView`, session id {}", self.session_id)
+        if self.scrolled_view.is_some() {
+            panic!(
+                "Session has already create the `TerminalView`, session id {}",
+                self.session_id
+            )
         }
-        
+
         let mut view = TerminalView::new(self.id());
         view.set_bell_mode(BellMode::NotifyBell);
         view.set_terminal_size_hint(true);
@@ -182,16 +199,40 @@ impl Session {
         view.set_random_seed(view.id() as u32);
 
         let mut scroll_area: ScrollArea = Object::new(&[]);
-        scroll_area.set_area(view);
         scroll_area.set_scroll_bar_position(ScrollBarPosition::End);
         scroll_area.set_orientation(Orientation::Vertical);
 
-        self.view = NonNull::new(&mut scroll_area);
+        view.set_scroll_bar(scroll_area.get_scroll_bar_mut());
+        scroll_area.set_area(view);
+
+        self.scrolled_view = NonNull::new(&mut scroll_area);
+        let view = scroll_area.get_area_cast_mut::<TerminalView>().unwrap();
+        self.view = NonNull::new(view);
 
         scroll_area
     }
 
     pub fn init(&mut self) {}
+
+    #[inline]
+    pub fn view(&self) -> &TerminalView {
+        nonnull_ref!(self.view)
+    }
+
+    #[inline]
+    pub fn view_mut(&mut self) -> &mut TerminalView {
+        nonnull_mut!(self.view)
+    }
+
+    #[inline]
+    pub fn scrolled_view(&self) -> &ScrollArea {
+        nonnull_ref!(self.scrolled_view)
+    }
+
+    #[inline]
+    pub fn scrolled_view_mut(&mut self) -> &mut ScrollArea {
+        nonnull_mut!(self.scrolled_view)
+    }
 
     #[inline]
     pub fn emulation(&self) -> &dyn Emulation {
