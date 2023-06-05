@@ -1,7 +1,18 @@
 #![cfg(not(target_os = "windows"))]
-use super::{ProtocolType, Pty};
+use derivative::Derivative;
+use super::{ProtocolType, Pty, PtySignals};
+use tmui::{prelude::*, tlib::object::ObjectSubclass};
 
+#[extends(Object)]
+#[derive(Derivative)]
+#[derivative(Default)]
 pub struct PosixPty {}
+
+impl ObjectSubclass for PosixPty {
+    const NAME: &'static str = "PosixPty";
+}
+
+impl ObjectImpl for PosixPty {}
 
 impl Pty for PosixPty {
     fn start(
@@ -56,5 +67,14 @@ impl Pty for PosixPty {
 
     fn send_data(&mut self, data: &str) {
         todo!()
+    }
+}
+
+impl PtySignals for PosixPty {}
+
+impl PosixPty {
+    #[inline]
+    pub fn new() -> Self {
+        Object::new(&[])
     }
 }
