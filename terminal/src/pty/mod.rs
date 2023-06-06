@@ -4,8 +4,19 @@ pub mod con_pty;
 #[cfg(not(target_os = "windows"))]
 pub mod posix_pty;
 
-use std::path::PathBuf;
-use tmui::{prelude::*, tlib::signals};
+use once_cell::sync::Lazy;
+use std::{
+    collections::HashMap,
+    path::PathBuf,
+    sync::{Arc, Mutex, Once},
+    thread,
+    time::Duration,
+};
+use tmui::{
+    prelude::*,
+    tlib::{emit, signals},
+};
+use winptyrs::PTY;
 
 #[repr(u8)]
 #[derive(Default)]
@@ -16,14 +27,20 @@ pub enum ProtocolType {
     Mosh,
     Telnet,
     Rsh,
-    LocalShell
+    LocalShell,
 }
 
 pub trait Pty: PtySignals {
     /// Start the terminal process.
-    /// 
+    ///
     /// Return true if the process was started successfully or non-zero otherwise.
-    fn start(&mut self, program: &str, arguments: Vec<&str>, enviroments: Vec<&str>, protocol_type: ProtocolType) -> bool;
+    fn start(
+        &mut self,
+        program: &str,
+        arguments: Vec<&str>,
+        enviroments: Vec<&str>,
+        protocol_type: ProtocolType,
+    ) -> bool;
 
     /// Set the terminal process was writeable or not.
     fn set_writeable(&mut self, writeable: bool);
@@ -40,7 +57,7 @@ pub trait Pty: PtySignals {
     fn flow_control_enable(&self) -> bool;
 
     /// Sets the size of the window (in lines and columns of characters) used by the teletype.
-    fn set_window_size(&mut self, lines: i32, cols: i32);
+    fn set_window_size(&mut self, cols: i32, rows: i32);
 
     /// Returns the size of the window used by this teletype.
     fn window_size(&self) -> Size;
@@ -54,33 +71,86 @@ pub trait Pty: PtySignals {
     /// Put the pty into UTF-8 mode on systems which support it.
     fn set_utf8_mode(&mut self, on: bool);
 
-    /// Suspend or resume processing of data from the standard output of the terminal process.
-    /// 
-    /// @param lock: If true, processing of output is suspended, otherwise processing is resumed.
-    fn lock_pty(&mut self, lock: bool);
+    /// Set the timeout of pty.
+    fn set_timeout(&mut self, timeout: u32);
 
     /// Sends data to the process currently controlling the teletype.
-    /// 
+    ///
     /// @param data: the data to send.
     fn send_data(&mut self, data: &str);
-
-    /// Send the heart beat message to the terminal process to maintain connection.
-    fn heart_beat(&mut self) {
-        self.send_data("");
-    }
 }
 
 pub trait PtySignals: ActionExt {
     signals! {
         /// Emitted when a new block of data was received from the teletype.
-        /// 
+        ///
         /// @param data [`String`] the data received.
         receive_data();
 
         /// Emitted when terminal process was finished. <br>
-        /// 
+        ///
         /// @param exit_code [`i32`] <br>
         /// @param exit_status [`ExitStatus`](tmui::tlib::namespace::ExitStatus)
         finished();
     }
+}
+
+#[derive(Default)]
+pub struct PtyReceivePool {
+    #[cfg(target_os = "windows")]
+    ptys: Arc<Mutex<HashMap<u16, (Arc<Mutex<PTY>>, Signal)>>>,
+}
+
+#[inline]
+pub fn pty_receive_pool() -> &'static mut PtyReceivePool {
+    static mut PTY_RECEIVE_POOL: Lazy<PtyReceivePool> = Lazy::new(|| PtyReceivePool::default());
+    unsafe { &mut PTY_RECEIVE_POOL }
+}
+
+/// Make sure PtyReceivePool::start() only execute once.
+static ONCE: Once = Once::new();
+impl PtyReceivePool {
+    pub fn start(&self) {
+        ONCE.call_once(|| {
+            let ptys = self.ptys.clone();
+
+            thread::spawn(move || loop {
+                ptys.lock().unwrap().iter().for_each(|(_, (pty, signal))| {
+
+                    #[cfg(target_os = "windows")]
+                    if let Ok(data) = pty.lock().unwrap().read(u32::MAX, false) {
+                        if data.len() > 0 {
+                            emit!(signal.clone(), data.to_str().unwrap())
+                        }
+                    }
+
+                });
+                std::thread::park_timeout(Duration::from_millis(10));
+            });
+        });
+    }
+
+    #[inline]
+    #[cfg(target_os = "windows")]
+    pub fn add_pty(&mut self, id: u16, pty: Arc<Mutex<PTY>>, signal: Signal) {
+        self.ptys.lock().unwrap().insert(id, (pty, signal));
+    }
+
+    #[inline]
+    pub fn remove_pty(&mut self, id: u16) {
+        self.ptys.lock().unwrap().remove(&id);
+    }
+}
+
+#[macro_export]
+macro_rules! pty_ref {
+    ( $obj:ident ) => {
+        $obj.pty.as_ref().unwrap()
+    };
+}
+#[macro_export]
+macro_rules! pty_mut {
+    ( $obj:ident ) => {
+        $obj.pty.as_mut().unwrap()
+    };
 }

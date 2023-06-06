@@ -1,6 +1,6 @@
 #![cfg(not(target_os = "windows"))]
-use derivative::Derivative;
 use super::{ProtocolType, Pty, PtySignals};
+use derivative::Derivative;
 use tmui::{prelude::*, tlib::object::ObjectSubclass};
 
 #[extends(Object)]
@@ -20,7 +20,7 @@ impl Pty for PosixPty {
         program: &str,
         arguments: Vec<&str>,
         enviroments: Vec<&str>,
-        protocol_type: ProtocolType,
+        _protocol_type: ProtocolType,
     ) -> bool {
         todo!()
     }
@@ -41,7 +41,7 @@ impl Pty for PosixPty {
         todo!()
     }
 
-    fn set_window_size(&mut self, lines: i32, cols: i32) {
+    fn set_window_size(&mut self, cols: i32, rows: i32) {
         todo!()
     }
 
@@ -61,7 +61,7 @@ impl Pty for PosixPty {
         todo!()
     }
 
-    fn lock_pty(&mut self, lock: bool) {
+    fn set_timeout(&mut self, timeout: u32) {
         todo!()
     }
 
