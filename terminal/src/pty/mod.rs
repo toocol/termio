@@ -77,7 +77,7 @@ pub trait Pty: PtySignals {
     /// Sends data to the process currently controlling the teletype.
     ///
     /// @param data: the data to send.
-    fn send_data(&mut self, data: &str);
+    fn send_data(&mut self, data: String);
 }
 
 pub trait PtySignals: ActionExt {

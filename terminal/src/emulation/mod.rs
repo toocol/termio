@@ -90,8 +90,7 @@ pub trait EmulationSignal: ActionExt {
     signals! {
         /// Emitted when a buffer of data is ready to send to the standard input of the terminal.
         ///
-        /// @param data The buffer of data ready to be sent <br>
-        /// @param len The length of @p data in bytes
+        /// @param data The String buffer of data ready to be sent <br>
         send_data();
 
         ///  Requests that sending of input to the emulation from the terminal process be suspended or resumed.

@@ -19,7 +19,7 @@ use tmui::{
     tlib::{
         connect,
         figure::Color,
-        namespace::Orientation,
+        namespace::{Orientation, ExitStatus},
         nonnull_mut, nonnull_ref,
         object::{ObjectImpl, ObjectSubclass},
         signals, Object,
@@ -179,6 +179,14 @@ impl Session {
         );
         connect!(emulation, image_size_changed(), session, on_view_size_change(i32:0, i32:1));
 
+        session.shell_process.set_utf8_mode(true);
+
+        connect!(session.shell_process, receive_data(), session, on_receive_block(String));
+        connect!(emulation, send_data(), session, send_data(String));
+        connect!(emulation, use_utf8_request(), session, set_utf8_mode(bool));
+
+        connect!(session.shell_process, finished(), session, done(i32:0, ExitStatus:1));
+
         session.emultaion = Some(emulation);
         session
     }
@@ -276,4 +284,21 @@ impl Session {
     pub fn on_emulation_size_change(&mut self, size: Size) {}
 
     pub fn on_view_size_change(&mut self, widht: i32, height: i32) {}
+
+    pub fn on_receive_block(&mut self, block: String) {}
+
+    #[inline]
+    pub fn send_data(&mut self, data: String) {
+        self.shell_process.send_data(data)
+    }
+
+    #[inline]
+    pub fn set_utf8_mode(&mut self, on: bool) {
+        self.shell_process.set_utf8_mode(on)
+    }
+
+    #[inline]
+    pub fn done(&mut self, exit_code: i32, exit_status: ExitStatus) {
+
+    }
 }

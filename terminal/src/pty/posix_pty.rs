@@ -65,7 +65,7 @@ impl Pty for PosixPty {
         todo!()
     }
 
-    fn send_data(&mut self, data: &str) {
+    fn send_data(&mut self, data: String) {
         todo!()
     }
 }

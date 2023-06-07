@@ -143,7 +143,7 @@ impl Pty for ConPty {
     }
 
     #[inline]
-    fn send_data(&mut self, data: &str) {
+    fn send_data(&mut self, data: String) {
         if !self.writeable {
             return;
         }
