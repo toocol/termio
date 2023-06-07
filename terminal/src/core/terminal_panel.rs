@@ -32,6 +32,7 @@ impl TerminalPanel {
         session.set_auto_close(true);
         session.set_history_type(Rc::new(HistoryTypeBuffer::new(10000)));
         session.set_key_binding("");
+
         self.sessions.push(session);
         self.sessions.last_mut().unwrap()
     }

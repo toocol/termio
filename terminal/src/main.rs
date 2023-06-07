@@ -1,4 +1,7 @@
-use tmui::{application::Application, application_window::ApplicationWindow};
+use crate::core::terminal_emulator::TerminalEmulator;
+use tmui::{
+    application::Application, application_window::ApplicationWindow, widget::WidgetImplExt,
+};
 
 mod asset;
 mod core;
@@ -20,6 +23,6 @@ fn main() {
     app.run();
 }
 
-fn build_ui(_window: &mut ApplicationWindow) {
-    println!("Hello Terminal");
+fn build_ui(window: &mut ApplicationWindow) {
+    window.child(TerminalEmulator::new());
 }

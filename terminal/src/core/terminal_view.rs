@@ -21,7 +21,7 @@ use log::warn;
 use regex::Regex;
 use std::{
     mem::size_of,
-    ptr::NonNull,
+    ptr::{copy_nonoverlapping, NonNull},
     sync::atomic::{AtomicBool, AtomicU64, Ordering},
     time::Duration,
 };
@@ -37,6 +37,7 @@ use tmui::{
         events::{EventType, KeyEvent, MouseEvent},
         figure::{Color, FRect, FontTypeface, Size, Transform},
         namespace::{KeyCode, KeyboardModifier},
+        nonnull_mut,
         object::{ObjectImpl, ObjectSubclass},
         signals,
         timer::Timer,
@@ -775,9 +776,9 @@ impl TerminalView {
         }
 
         if position == ScrollBarPosition::NoScrollBar {
-            // TODO: Hide scroll bar
+            nonnull_mut!(self.scroll_bar).hide();
         } else {
-            // TODO: Show scroll bar
+            nonnull_mut!(self.scroll_bar).show();
         }
 
         self.top_margin = 1;
@@ -2329,9 +2330,10 @@ performance degradation and display/alignment errors."
             scroll_rect.set_right(self.size().width() - scroll_bar_width - scrollbar_content_gap);
         }
 
-        let first_char_pos = &self.image.as_ref().unwrap()[(region.top() * self.columns) as usize];
+        let first_char_pos = &mut self.image.as_mut().unwrap()
+            [(region.top() * self.columns) as usize] as *mut Character;
         let last_char_pos =
-            &self.image.as_ref().unwrap()[((region.top() + lines.abs()) * self.columns) as usize];
+            &mut self.image.as_mut().unwrap()[((region.top() + lines.abs()) * self.columns) as usize] as *mut Character;
 
         let top = self.top_margin + (region.top() * self.font_height);
         let lines_to_move = region.height() - lines.abs();
@@ -2342,9 +2344,13 @@ performance degradation and display/alignment errors."
 
         // Scroll internal image
         if lines > 0 {
-            // TODO: memmove
+            // memmove
+            unsafe { copy_nonoverlapping(last_char_pos, first_char_pos, bytes_to_move as usize) };
+            scroll_rect.set_top(top);
         } else {
-            // TODO: memmove
+            // memmove
+            unsafe { copy_nonoverlapping(first_char_pos, last_char_pos, bytes_to_move as usize) };
+            scroll_rect.set_top(top + lines.abs() * self.font_height);
         }
         scroll_rect.set_height(lines_to_move * self.font_height);
 
@@ -2402,8 +2408,9 @@ performance degradation and display/alignment errors."
     }
     fn propagate_size(&mut self) {
         if self.is_fixed_size {
+            self.set_size(self.columns, self.lines);
             // TODO:
-            todo!()
+            return;
         }
         if self.image.is_some() {
             self.update_image_size();
