@@ -36,7 +36,6 @@ pub enum RelativeScrollMode {
 /// Whenever the output from the underlying screen is changed, the notify_output_changed() slot should be called.  
 /// This in turn will update the window's position and emit the output_changed() signal if necessary.
 #[extends(Object)]
-#[derive(Default)]
 pub struct ScreenWindow {
     screen: Option<NonNull<Screen>>,
     window_buffer: Option<Box<Vec<Character>>>,

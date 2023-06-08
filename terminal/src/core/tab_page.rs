@@ -16,7 +16,6 @@ lazy_static! {
 
 /// Session group manage all the sessions, and it brige view and emulation.
 #[extends(Widget)]
-#[derive(Default)]
 pub struct TabPage {}
 impl ObjectSubclass for TabPage {
     const NAME: &'static str = "SessionGroup";

@@ -16,11 +16,9 @@ use tmui::{prelude::*, tlib::object::ObjectSubclass};
 /// The terminal's main widget. Responsible for all layouts management of `TerminalView`,
 /// forward the client's input information from the ipc channel.
 #[extends(Widget, Layout(VBox))]
-#[derive(Derivative, Childrenable)]
-#[derivative(Default)]
+#[derive(Childrenable)]
 pub struct TerminalEmulator {
     #[children]
-    #[derivative(Default(value = "Object::new(&[])"))]
     terminal_panel: TerminalPanel,
 }
 

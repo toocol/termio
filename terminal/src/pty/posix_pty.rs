@@ -1,11 +1,8 @@
 #![cfg(not(target_os = "windows"))]
 use super::{ProtocolType, Pty, PtySignals};
-use derivative::Derivative;
 use tmui::{prelude::*, tlib::object::ObjectSubclass};
 
 #[extends(Object)]
-#[derive(Derivative)]
-#[derivative(Default)]
 pub struct PosixPty {}
 
 impl ObjectSubclass for PosixPty {

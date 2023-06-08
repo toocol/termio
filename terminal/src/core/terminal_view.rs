@@ -55,8 +55,6 @@ lazy_static! {
 }
 
 #[extends(Widget)]
-#[derive(Derivative)]
-#[derivative(Default)]
 pub struct TerminalView {
     extended_char_table: ExtendedCharTable,
 
@@ -121,7 +119,7 @@ pub struct TerminalView {
     column_selection_mode: bool,
 
     scroll_bar: Option<NonNull<ScrollBar>>,
-    scroll_bar_location: ScrollBarPosition,
+    scroll_bar_location: ScrollBarState,
     word_characters: String,
     bell_mode: BellMode,
 
@@ -770,12 +768,12 @@ impl TerminalView {
 
     /// Specifies whether the terminal display has a vertical scroll bar, and if so
     /// whether it is shown on the left or right side of the view.
-    pub fn set_scroll_bar_position(&mut self, position: ScrollBarPosition) {
+    pub fn set_scroll_bar_position(&mut self, position: ScrollBarState) {
         if self.scroll_bar_location == position {
             return;
         }
 
-        if position == ScrollBarPosition::NoScrollBar {
+        if position == ScrollBarState::NoScrollBar {
             nonnull_mut!(self.scroll_bar).hide();
         } else {
             nonnull_mut!(self.scroll_bar).show();
@@ -2322,7 +2320,7 @@ performance degradation and display/alignment errors."
         };
         let scrollbar_content_gap = if scroll_bar_width == 0 { 0 } else { 1 };
         let mut scroll_rect = Rect::default();
-        if self.scroll_bar_location == ScrollBarPosition::ScrollBarLeft {
+        if self.scroll_bar_location == ScrollBarState::ScrollBarLeft {
             scroll_rect.set_left(scroll_bar_width + scrollbar_content_gap);
             scroll_rect.set_right(self.size().width());
         } else {
@@ -2375,17 +2373,17 @@ performance degradation and display/alignment errors."
         };
 
         match self.scroll_bar_location {
-            ScrollBarPosition::NoScrollBar => {
+            ScrollBarState::NoScrollBar => {
                 self.left_margin = self.left_base_margin;
                 self.content_width = contents_rect.width() - 2 * self.left_base_margin;
             }
-            ScrollBarPosition::ScrollBarLeft => {
+            ScrollBarState::ScrollBarLeft => {
                 self.left_margin = self.left_base_margin + scrollbar_width;
                 self.content_width =
                     contents_rect.width() - 2 * self.left_base_margin - scrollbar_width;
                 // TODO: ScrollBar move
             }
-            ScrollBarPosition::ScrollBarRight => {
+            ScrollBarState::ScrollBarRight => {
                 self.left_margin = self.left_base_margin;
                 self.content_width =
                     contents_rect.width() - 2 * self.left_base_margin - scrollbar_width;
@@ -2535,7 +2533,7 @@ performance degradation and display/alignment errors."
     fn update_cursor(&mut self) {
         let rect = Rect::from_point_size(self.cursor_position(), Size::new(1, 1));
         let cursor_rect = self.image_to_widget(&rect);
-        // TODO: repaint()?
+        self.update_region(cursor_rect);
     }
 
     fn handle_shortcut_override_event(&mut self, event: KeyEvent) {
@@ -2815,13 +2813,13 @@ fn draw_other_char(painter: &mut Painter, x: i32, y: i32, w: i32, h: i32, code: 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
 #[repr(u8)]
 #[derive(Debug, Default, PartialEq, Eq, Clone, Copy)]
-pub enum ScrollBarPosition {
+pub enum ScrollBarState {
     #[default]
     NoScrollBar = 0,
     ScrollBarLeft,
     ScrollBarRight,
 }
-impl From<u8> for ScrollBarPosition {
+impl From<u8> for ScrollBarState {
     fn from(x: u8) -> Self {
         match x {
             0 => Self::NoScrollBar,

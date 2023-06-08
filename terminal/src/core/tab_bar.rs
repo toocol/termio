@@ -5,7 +5,6 @@ use tmui::{
 };
 
 #[extends(Widget)]
-#[derive(Default)]
 pub struct PageBar {}
 
 impl ObjectSubclass for PageBar {

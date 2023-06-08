@@ -321,7 +321,6 @@ impl Filter for BaseFilter {
 }
 
 #[extends(Object)]
-#[derive(Default)]
 pub struct FilterObject {
     filter: Option<*mut dyn HotSpotImpl>,
 }

@@ -9,8 +9,6 @@ use tmui::{prelude::*, tlib::object::ObjectSubclass};
 ///
 /// Every TerminalPanel has an tab page, it drawed in the main program, not in the terminal program.
 #[extends(Widget, Layout(SplitPane))]
-#[derive(Derivative)]
-#[derivative(Default)]
 pub struct TerminalPanel {
     /// All the terminal sessions.
     sessions: Vec<Box<Session>>,

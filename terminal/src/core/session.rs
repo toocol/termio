@@ -28,8 +28,6 @@ use tmui::{
 
 /// Session represents an open tab used to bridge emulation and pty process.
 #[extends(Object)]
-#[derive(Derivative)]
-#[derivative(Default)]
 pub struct Session {
     enviroment: Vec<String>,
 

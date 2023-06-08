@@ -62,7 +62,6 @@ pub enum EmulationCodec {
 /// Every running [`Session`] has one specified Emulation.
 /// The common abstract to use in dyn trait object was the [`EmulationWrapper`]
 #[extends(Object)]
-#[derive(Default)]
 pub struct BaseEmulation {
     /// The manager of keyboard translator.
     pub translator_manager: Option<NonNull<KeyboardTranslatorManager>>,

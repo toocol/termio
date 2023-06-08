@@ -99,6 +99,7 @@ pub struct Screen {
     line_properties: Box<Vec<LineProperty>>,
 
     ////// History buffer.
+    #[derivative(Default(value = "Rc::new(HistoryScrollNone::new().wrap())"))]
     history: Rc<Box<dyn HistoryScrollWrapper>>,
 
     ////// Cursor location.
@@ -106,7 +107,9 @@ pub struct Screen {
     cursor_y: i32,
 
     ////// Cursor color and rendition info.
+    #[derivative(Default(value = "CharacterColor::empty()"))]
     cursor_foreground: CharacterColor,
+    #[derivative(Default(value = "CharacterColor::empty()"))]
     cursor_background: CharacterColor,
     cursor_rendition: wchar_t,
 
@@ -135,6 +138,7 @@ pub struct Screen {
     effective_background: CharacterColor,
     effective_rendition: wchar_t,
 
+    #[derivative(Default(value = "Box::new(SavedState::new())"))]
     saved_state: Box<SavedState>,
 
     // Last position where we added a character.
@@ -143,49 +147,13 @@ pub struct Screen {
     // Used in repeating char.
     last_drawn_char: wchar_t,
 
+    #[derivative(Default(value = "RefCell::new([Character::default(); MAX_CHARS])"))]
     character_buffer: RefCell<[Character; MAX_CHARS]>,
 }
 impl ObjectSubclass for Screen {
     const NAME: &'static str = "Screen";
 }
 impl ObjectImpl for Screen {}
-
-impl Default for Screen {
-    fn default() -> Self {
-        Self {
-            object: Object::default(),
-            lines: 0,
-            columns: 0,
-            screen_lines: Box::default(),
-            scrolled_lines: 0,
-            last_scolled_region: Rect::new(0, 0, 0, 0),
-            dropped_lines: 0,
-            line_properties: Box::default(),
-            history: Rc::new(HistoryScrollNone::new().wrap()),
-            cursor_x: 0,
-            cursor_y: 0,
-            cursor_foreground: CharacterColor::empty(),
-            cursor_background: CharacterColor::empty(),
-            cursor_rendition: 0,
-            top_margin: 0,
-            bottom_margin: 0,
-            current_modes: [false; 6],
-            saved_modes: [false; 6],
-            tab_stops: BitVec::new(),
-            select_begin: 0,
-            select_top_left: 0,
-            select_bottom_right: 0,
-            block_selection_mode: false,
-            effective_foreground: CharacterColor::empty(),
-            effective_background: CharacterColor::empty(),
-            effective_rendition: 0,
-            saved_state: Box::new(SavedState::new()),
-            last_pos: -1,
-            last_drawn_char: 0,
-            character_buffer: RefCell::new([Character::default(); MAX_CHARS]),
-        }
-    }
-}
 
 impl Screen {
     pub fn new(lines: i32, columns: i32) -> Self {

@@ -18,7 +18,6 @@ pub enum UrlType {
 }
 
 #[extends(Object)]
-#[derive(Default)]
 pub struct UrlFilterHotSpot {
     hotspot: RegexFilterHotSpot,
     url_object: RefCell<FilterObject>,

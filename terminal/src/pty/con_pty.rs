@@ -15,8 +15,6 @@ use tmui::{
 };
 
 #[extends(Object)]
-#[derive(Derivative)]
-#[derivative(Default)]
 pub struct ConPty {
     cols: i32,
     rows: i32,
