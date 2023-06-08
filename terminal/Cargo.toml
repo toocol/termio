@@ -32,6 +32,7 @@ winpty-rs = "0.3.11"
 
 [target.'cfg(not(target_os = "windows"))'.dependencies]
 pty = "0.2.2"
+termios = "0.3.3"
 
 [dev-dependencies]
 criterion = "0.4.0"

@@ -5,8 +5,10 @@ pub mod con_pty;
 pub mod posix_pty;
 
 use once_cell::sync::Lazy;
+use pty::prelude::Fork;
 use std::{
     collections::HashMap,
+    io::Read,
     path::PathBuf,
     sync::{Arc, Mutex, Once},
     thread,
@@ -16,6 +18,7 @@ use tmui::{
     prelude::*,
     tlib::{emit, signals},
 };
+#[cfg(target_os = "windows")]
 use winptyrs::PTY;
 
 #[repr(u8)]
@@ -99,6 +102,9 @@ pub trait PtySignals: ActionExt {
 pub struct PtyReceivePool {
     #[cfg(target_os = "windows")]
     ptys: Arc<Mutex<HashMap<u16, (Arc<Mutex<PTY>>, Signal)>>>,
+
+    #[cfg(not(target_os = "windows"))]
+    ptys: Arc<Mutex<HashMap<u16, (Arc<Mutex<Fork>>, Signal)>>>,
 }
 
 #[inline]
@@ -115,16 +121,34 @@ impl PtyReceivePool {
             let ptys = self.ptys.clone();
 
             thread::spawn(move || loop {
-                ptys.lock().unwrap().iter().for_each(|(_, (pty, signal))| {
 
-                    #[cfg(target_os = "windows")]
+                #[cfg(target_os = "windows")]
+                ptys.lock().unwrap().iter().for_each(|(_, (pty, signal))| {
                     if let Ok(data) = pty.lock().unwrap().read(u32::MAX, false) {
                         if data.len() > 0 {
                             emit!(signal.clone(), data.to_str().unwrap())
                         }
                     }
-
                 });
+
+                #[cfg(not(target_os = "windows"))]
+                {
+                    let ptys = ptys.clone();
+                    tasync!(move {
+                        ptys.lock().unwrap().iter().for_each(|(_, (pty, signal))| {
+                            if let Some(mut master) = pty.lock().unwrap().is_parent().ok() {
+                                let mut data = String::new();
+                                // Is that blocked read?
+                                master.read_to_string(&mut data).unwrap();
+                                if data.len() > 0 {
+                                    emit!(signal.clone(), data);
+                                }
+                            }
+                        });
+                        ()
+                    });
+                }
+
                 std::thread::park_timeout(Duration::from_millis(10));
             });
         });
@@ -133,6 +157,12 @@ impl PtyReceivePool {
     #[inline]
     #[cfg(target_os = "windows")]
     pub fn add_pty(&mut self, id: u16, pty: Arc<Mutex<PTY>>, signal: Signal) {
+        self.ptys.lock().unwrap().insert(id, (pty, signal));
+    }
+
+    #[inline]
+    #[cfg(not(target_os = "windows"))]
+    pub fn add_pty(&mut self, id: u16, pty: Arc<Mutex<Fork>>, signal: Signal) {
         self.ptys.lock().unwrap().insert(id, (pty, signal));
     }
 

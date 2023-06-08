@@ -86,11 +86,9 @@ pub fn string_width(wstr: &[wchar_t]) -> c_int {
 #[cfg(test)]
 mod tests {
     use std::ptr::null;
-
     use libc::{close, dup, fileno, tmpfile};
     use wchar::{wch, wchz};
-    use widestring::U16String;
-
+    use widestring::WideString;
     use super::*;
 
     #[test]
@@ -115,8 +113,9 @@ mod tests {
         println!("{}", string_width(wcstring));
 
         let string = "Hello World\0";
-        let u16string = U16String::from_str(string);
+        let u16string = WideString::from_str(string);
         let wc_string = u16string.as_slice();
+        let wc_string: &[wchar_t] = unsafe { std::mem::transmute(wc_string) };
         println!("{}", string_width(wc_string));
     }
 }

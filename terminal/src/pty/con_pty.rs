@@ -8,11 +8,8 @@ use std::{
 };
 use winptyrs::{AgentConfig, MouseMode, PTYArgs, PTYBackend, PTY};
 
-use super::{ProtocolType, Pty, PtySignals, pty_receive_pool};
-use tmui::{
-    prelude::*,
-    tlib::object::ObjectSubclass,
-};
+use super::{pty_receive_pool, ProtocolType, Pty, PtySignals};
+use tmui::{prelude::*, tlib::object::ObjectSubclass};
 
 #[extends(Object)]
 pub struct ConPty {
