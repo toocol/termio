@@ -5,10 +5,8 @@ pub mod con_pty;
 pub mod posix_pty;
 
 use once_cell::sync::Lazy;
-use pty::prelude::Fork;
 use std::{
     collections::HashMap,
-    io::Read,
     path::PathBuf,
     sync::{Arc, Mutex, Once},
     thread,
@@ -20,6 +18,10 @@ use tmui::{
 };
 #[cfg(target_os = "windows")]
 use winptyrs::PTY;
+#[cfg(not(target_os = "windows"))]
+use pty::prelude::Fork;
+#[cfg(not(target_os = "windows"))]
+use std::io::Read;
 
 #[repr(u8)]
 #[derive(Default)]
