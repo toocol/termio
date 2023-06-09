@@ -212,11 +212,17 @@ impl WidgetImpl for TerminalView {
             self.cal_draw_text_addition_height(&mut painter);
         }
 
-        // TODO: Specified the region to redraw
-        let rect = self.contents_rect(Some(Coordinate::Widget));
-        // TODO: Multiple rect
-        self.draw_background(&mut painter, rect, self.background(), true);
-        self.draw_contents(&mut painter, rect);
+        let region = self.redraw_region().clone();
+        if region.is_empty() {
+            let rect = self.contents_rect(Some(Coordinate::Widget));
+            self.draw_background(&mut painter, rect, self.background(), true);
+            self.draw_contents(&mut painter, rect);
+        } else {
+            for rect in region.into_iter() {
+                self.draw_background(&mut painter, rect, self.background(), true);
+                self.draw_contents(&mut painter, rect);
+            }
+        }
 
         // self.draw_input_method_preedit_string(&mut painter, &self.preddit_rect());
         self.paint_filters(&mut painter);
@@ -2330,8 +2336,9 @@ performance degradation and display/alignment errors."
 
         let first_char_pos = &mut self.image.as_mut().unwrap()
             [(region.top() * self.columns) as usize] as *mut Character;
-        let last_char_pos =
-            &mut self.image.as_mut().unwrap()[((region.top() + lines.abs()) * self.columns) as usize] as *mut Character;
+        let last_char_pos = &mut self.image.as_mut().unwrap()
+            [((region.top() + lines.abs()) * self.columns) as usize]
+            as *mut Character;
 
         let top = self.top_margin + (region.top() * self.font_height);
         let lines_to_move = region.height() - lines.abs();
