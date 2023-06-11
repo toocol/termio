@@ -1,6 +1,6 @@
 use crate::core::terminal_emulator::TerminalEmulator;
 use tmui::{
-    application::Application, application_window::ApplicationWindow, widget::WidgetImplExt,
+    application::Application, application_window::ApplicationWindow, widget::{WidgetImplExt, WidgetExt},
 };
 
 mod asset;
@@ -24,5 +24,10 @@ fn main() {
 }
 
 fn build_ui(window: &mut ApplicationWindow) {
-    window.child(TerminalEmulator::new());
+    let size = window.size();
+
+    let mut terminal_emulator = TerminalEmulator::new();
+    terminal_emulator.width_request(size.width());
+    terminal_emulator.height_request(size.height());
+    window.child(terminal_emulator);
 }

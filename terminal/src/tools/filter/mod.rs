@@ -17,7 +17,7 @@ use regex::Regex;
 use std::ptr::NonNull;
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 use tmui::prelude::*;
-use widestring::{WideString};
+use widestring::WideString;
 
 lazy_static! {
     pub static ref FULL_URL_REGEX: Regex = Regex::new(r"[a-zA-z]+://[^\s]*").unwrap();
@@ -260,12 +260,12 @@ impl BaseFilterImpl for BaseFilter {
             {
                 line_col.0 = i as i32;
                 let line_position = *self.line_positions.deref().borrow().get(i).unwrap() as usize;
-                let mut u16string = WideString::from_str(
+                let mut wstring = WideString::from_str(
                     &self.buffer.deref().borrow()[line_position..position as usize],
                 );
-                u16string.push_char('\0');
+                wstring.push_char('\0');
                 line_col.1 =
-                    string_width(unsafe { std::mem::transmute(u16string.as_slice()) }) as i32;
+                    string_width(&wstring) as i32;
                 return line_col;
             }
         }

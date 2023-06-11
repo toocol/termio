@@ -30,19 +30,19 @@ use tmui::{
     graphics::painter::Painter,
     label::Label,
     prelude::*,
-    scroll_bar::ScrollBar,
+    scroll_bar::{ScrollBar, ScrollBarPosition},
     system::System,
     tlib::{
         connect, disconnect, emit,
-        events::{EventType, KeyEvent, MouseEvent},
-        figure::{Color, FRect, FontTypeface, Size, Transform},
+        events::{EventType, KeyEvent, MouseEvent, DeltaType},
+        figure::{Color, FRect, FontTypeface, Size},
         namespace::{KeyCode, KeyboardModifier},
         nonnull_mut,
         object::{ObjectImpl, ObjectSubclass},
         signals,
         timer::Timer,
     },
-    widget::WidgetImpl,
+    widget::WidgetImpl, skia_safe::Matrix,
 };
 use wchar::{wch, wchar_t};
 #[cfg(not(windows))]
@@ -428,14 +428,14 @@ impl TerminalView {
                 unistr.resize(p as usize, 0);
 
                 // Create a text scaling matrix for double width and double height lines.
-                let mut text_scale = Transform::new();
+                let mut text_scale = Matrix::new_identity();
 
                 if y < self.line_properties.len() as i32 {
                     if self.line_properties[y as usize] & LINE_DOUBLE_WIDTH != 0 {
-                        text_scale.scale(2., 1.);
+                        text_scale.set_scale_x(2.);
                     }
                     if self.line_properties[y as usize] & LINE_DOUBLE_HEIGHT != 0 {
-                        text_scale.scale(1., 2.);
+                        text_scale.set_scale_y(2.);
                     }
                 }
 
@@ -448,7 +448,7 @@ impl TerminalView {
                 // painter. this ensures that painting does actually start from
                 // textArea.topLeft()
                 //(instead of textArea.topLeft() * painter-scale)
-                text_area.move_top_left(&text_scale.inverted().map_point(&text_area.top_left()));
+                text_area.move_top_left(&text_scale.invert().unwrap().map_point(text_area.top_left()).into());
 
                 // Apply text scaling matrix.
                 painter.set_transform(text_scale, true);
@@ -461,7 +461,7 @@ impl TerminalView {
                 self.fixed_font = save_fixed_font;
 
                 // reset back to single-width, single-height lines.
-                painter.set_transform(text_scale.inverted(), true);
+                painter.set_transform(text_scale.invert().unwrap(), true);
 
                 if y < self.line_properties.len() as i32 - 1 {
                     // double-height lines are represented by two adjacent lines
@@ -1105,6 +1105,8 @@ impl TerminalView {
 
         if new_size != self.size() {
             self.size = new_size;
+            self.width_request(self.size.width());
+            self.height_request(self.size.height());
             // TODO: updateGeometry()
         }
     }
@@ -1121,7 +1123,6 @@ impl TerminalView {
             self.make_image();
         }
         self.set_size(cols, lins);
-        // TODO: Set the fixed size to widget?
     }
 
     /// Sets which characters, in addition to letters and numbers,
@@ -1224,7 +1225,7 @@ performance degradation and display/alignment errors."
         self.terminal_size_hint
     }
 
-    ///  Sets whether the terminal size display is shown briefly
+    /// Sets whether the terminal size display is shown briefly
     /// after the widget is first shown.
     ///
     /// See [`set_terminal_size_hint()`] , [`is_terminal_size_hint()`]
@@ -1672,8 +1673,7 @@ performance degradation and display/alignment errors."
 
             match self.bell_mode {
                 BellMode::SystemBeepBell => {
-                    // TODO: system beep
-                    todo!()
+                    System::beep();
                 }
                 BellMode::NotifyBell => {
                     emit!(self.notify_bell(), message)
@@ -2259,9 +2259,7 @@ performance degradation and display/alignment errors."
 
     /// the area where the preedit string for input methods will be draw.
     fn preedit_rect(&mut self) -> Rect {
-        let slice =
-            unsafe { std::mem::transmute(self.input_method_data.preedit_string.as_slice()) };
-        let preedit_length = string_width(slice);
+        let preedit_length = string_width(&self.input_method_data.preedit_string);
 
         if preedit_length == 0 {
             return Rect::default();
@@ -2359,7 +2357,8 @@ performance degradation and display/alignment errors."
         }
         scroll_rect.set_height(lines_to_move * self.font_height);
 
-        // TODO: Scroll the widget.
+        nonnull_mut!(self.scroll_bar).scroll(self.font_height * lines, DeltaType::Pixel);
+        self.update_region(scroll_rect);
     }
 
     /// shows the multiline prompt
@@ -2388,13 +2387,13 @@ performance degradation and display/alignment errors."
                 self.left_margin = self.left_base_margin + scrollbar_width;
                 self.content_width =
                     contents_rect.width() - 2 * self.left_base_margin - scrollbar_width;
-                // TODO: ScrollBar move
+                nonnull_mut!(self.scroll_bar).set_scroll_bar_position(ScrollBarPosition::Start);
             }
             ScrollBarState::ScrollBarRight => {
                 self.left_margin = self.left_base_margin;
                 self.content_width =
                     contents_rect.width() - 2 * self.left_base_margin - scrollbar_width;
-                // TODO: ScrollBar move
+                nonnull_mut!(self.scroll_bar).set_scroll_bar_position(ScrollBarPosition::End);
             }
         }
 
@@ -2414,7 +2413,7 @@ performance degradation and display/alignment errors."
     fn propagate_size(&mut self) {
         if self.is_fixed_size {
             self.set_size(self.columns, self.lines);
-            // TODO:
+            // TODO: Maybe should adjust parent size?
             return;
         }
         if self.image.is_some() {

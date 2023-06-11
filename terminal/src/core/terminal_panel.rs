@@ -19,7 +19,12 @@ impl ObjectSubclass for TerminalPanel {
 }
 
 impl ObjectImpl for TerminalPanel {
-    fn initialize(&mut self) {}
+    fn initialize(&mut self) {
+        let session = self.create_session();
+        let scrolled_view = session.create_terminal_view();
+
+        self.add_child(scrolled_view);
+    }
 }
 
 impl WidgetImpl for TerminalPanel {}

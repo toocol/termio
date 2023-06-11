@@ -146,6 +146,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9e1b586273c5702936fe7b7d6896644d8be71e6314cfe09d3167c95f712589e8"
 
 [[package]]
+name = "beep"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "add99ab8e6fa29e525696f04be01c6e18815f5d799e026a06c8b09af8301bd5a"
+dependencies = [
+ "lazy_static",
+ "nix 0.20.0",
+]
+
+[[package]]
 name = "bindgen"
 version = "0.63.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -659,6 +669,17 @@ checksum = "9ed9a281f7bc9b7576e61468ba615a66a5c8cfdff42420a70aa82701a3b1e292"
 dependencies = [
  "block-buffer",
  "crypto-common",
+]
+
+[[package]]
+name = "dimensioned"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a0b0a86c5d31c93238ff4b694fa31f3acdf67440770dc314c57d90e433914397"
+dependencies = [
+ "generic-array",
+ "num-traits",
+ "typenum",
 ]
 
 [[package]]
@@ -1288,9 +1309,9 @@ dependencies = [
 
 [[package]]
 name = "log"
-version = "0.4.18"
+version = "0.4.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "518ef76f2f87365916b142844c16d8fefd85039bc5699050210a7778ee1cd1de"
+checksum = "b06a4cde4c0f271a446782e3eff8de789548ce57dbc8eca9292c27f4a42004b4"
 dependencies = [
  "serde",
 ]
@@ -1330,7 +1351,7 @@ dependencies = [
 [[package]]
 name = "macros"
 version = "0.1.0"
-source = "git+https://github.com/toocol/tmui#c32fa2c4d5855a0412270e9c5845578de7694961"
+source = "git+https://github.com/toocol/tmui#065105ef15683d101ef7844e9f624831f099c588"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1463,6 +1484,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3cf2aae958bd232cac5069850591667ad422d263686d75b52a065f9badeee5a3"
 dependencies = [
  "jni-sys",
+]
+
+[[package]]
+name = "nix"
+version = "0.20.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fa9b4819da1bc61c0ea48b63b7bc8604064dd43013e7cc325df098d49cd7c18a"
+dependencies = [
+ "bitflags",
+ "cc",
+ "cfg-if 1.0.0",
+ "libc",
 ]
 
 [[package]]
@@ -1654,9 +1687,9 @@ dependencies = [
 
 [[package]]
 name = "os_str_bytes"
-version = "6.5.0"
+version = "6.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ceedf44fb00f2d1984b0bc98102627ce622e083e49a5bacdb3e514fa4238e267"
+checksum = "4d5d9eb14b174ee9aa2ef96dc2b94637a2d4b6e7cb873c7e171f0c20c6cf3eac"
 
 [[package]]
 name = "owned_ttf_parser"
@@ -2075,9 +2108,9 @@ dependencies = [
 
 [[package]]
 name = "rust-embed"
-version = "6.6.1"
+version = "6.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1b68543d5527e158213414a92832d2aab11a84d2571a5eb021ebe22c43aab066"
+checksum = "b73e721f488c353141288f223b599b4ae9303ecf3e62923f40a492f0634a4dc3"
 dependencies = [
  "rust-embed-impl",
  "rust-embed-utils",
@@ -2086,14 +2119,14 @@ dependencies = [
 
 [[package]]
 name = "rust-embed-impl"
-version = "6.5.0"
+version = "6.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4d4e0f0ced47ded9a68374ac145edd65a6c1fa13a96447b873660b2a568a0fd7"
+checksum = "e22ce362f5561923889196595504317a4372b84210e6e335da529a65ea5452b5"
 dependencies = [
  "proc-macro2",
  "quote",
  "rust-embed-utils",
- "syn 1.0.109",
+ "syn 2.0.18",
  "walkdir",
 ]
 
@@ -2487,6 +2520,7 @@ dependencies = [
  "rust-embed",
  "termios",
  "tmui",
+ "unicode-width",
  "wchar",
  "widestring",
  "winpty-rs",
@@ -2615,7 +2649,7 @@ checksum = "1f3ccbac311fea05f86f61904b462b55fb3df8837a366dfc601a0161d0532f20"
 [[package]]
 name = "tipc"
 version = "0.1.0"
-source = "git+https://github.com/toocol/tmui#c32fa2c4d5855a0412270e9c5845578de7694961"
+source = "git+https://github.com/toocol/tmui#065105ef15683d101ef7844e9f624831f099c588"
 dependencies = [
  "log",
  "parking_lot 0.12.1",
@@ -2628,7 +2662,7 @@ dependencies = [
 [[package]]
 name = "tlib"
 version = "0.1.0"
-source = "git+https://github.com/toocol/tmui#c32fa2c4d5855a0412270e9c5845578de7694961"
+source = "git+https://github.com/toocol/tmui#065105ef15683d101ef7844e9f624831f099c588"
 dependencies = [
  "derivative",
  "hex_color",
@@ -2650,13 +2684,15 @@ dependencies = [
 [[package]]
 name = "tmui"
 version = "0.1.0"
-source = "git+https://github.com/toocol/tmui#c32fa2c4d5855a0412270e9c5845578de7694961"
+source = "git+https://github.com/toocol/tmui#065105ef15683d101ef7844e9f624831f099c588"
 dependencies = [
+ "beep",
  "clipboard",
  "cocoa",
  "core-foundation",
  "core-graphics",
  "derivative",
+ "dimensioned",
  "glutin",
  "lazy_static",
  "log",
@@ -2665,6 +2701,7 @@ dependencies = [
  "tipc",
  "tlib",
  "widestring",
+ "winapi 0.3.9",
  "windows 0.43.0",
 ]
 
@@ -2765,6 +2802,12 @@ checksum = "5c5713f0fc4b5db668a2ac63cdb7bb4469d8c9fed047b1d0292cc7b0ce2ba921"
 dependencies = [
  "tinyvec",
 ]
+
+[[package]]
+name = "unicode-width"
+version = "0.1.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c0edd1e5b14653f783770bce4a4dabb4a5108a5370a5f5d8cfe8710c361f6c8b"
 
 [[package]]
 name = "unsafe-any-ors"

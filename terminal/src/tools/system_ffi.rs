@@ -1,8 +1,9 @@
 #![allow(dead_code)]
 use std::ffi::c_int;
-
 use libc::c_void;
+use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 use wchar::wchar_t;
+use widestring::WideString;
 
 pub const SEEK_CUR: i32 = 1;
 pub const SEEK_END: i32 = 2;
@@ -23,7 +24,6 @@ pub const MAP_ANON: i32 = MAP_ANONYMOUS;
 
 pub const MAP_FAILED: *const c_void = &-1 as *const i32 as *const c_void;
 
-#[cfg(Windows)]
 #[link(name = "native-system", kind = "static")]
 extern "C" {
     fn mmap_ffi(
@@ -36,26 +36,9 @@ extern "C" {
     ) -> *const u8;
     fn munmap_ffi(addr: *const u8, len: usize) -> c_int;
     fn chsize_ffi(file_handle: c_int, size: c_int) -> c_int;
-    fn wcwidth_ffi(ucs: wchar_t) -> c_int;
-    fn string_width_ffi(wstr: *const wchar_t) -> c_int;
-}
-#[cfg(not(Windows))]
-#[link(name = "native-system", kind = "static")]
-extern "C" {
-    fn mmap_ffi(
-        addr: *const u8,
-        len: usize,
-        prot: c_int,
-        flags: c_int,
-        fildes: c_int,
-        offset_type: i64,
-    ) -> *const u8;
-    fn munmap_ffi(addr: *const u8, len: usize) -> c_int;
-    fn chsize_ffi(file_handle: c_int, size: c_int) -> c_int;
-    fn wcwidth_ffi(ucs: wchar_t) -> c_int;
-    fn string_width_ffi(wstr: *const wchar_t) -> c_int;
 }
 
+#[inline]
 pub fn mmap(
     addr: *const u8,
     len: usize,
@@ -67,27 +50,33 @@ pub fn mmap(
     unsafe { mmap_ffi(addr, len, prot, flags, fildes, offset_type) }
 }
 
+#[inline]
 pub fn munmap(addr: *const u8, len: usize) -> i32 {
     unsafe { munmap_ffi(addr, len) }
 }
 
+#[inline]
 pub fn chsize(file_handle: i32, size: i32) -> i32 {
     unsafe { chsize_ffi(file_handle, size) }
 }
 
+#[inline]
 pub fn wcwidth(ucs: wchar_t) -> c_int {
-    unsafe { wcwidth_ffi(wchar_t::from(ucs)) }
+    let char = char::from_u32(ucs as u32).unwrap();
+    char.width().unwrap() as c_int
 }
 
-pub fn string_width(wstr: &[wchar_t]) -> c_int {
-    unsafe { string_width_ffi(wstr.as_ptr()) }
+#[inline]
+pub fn string_width(wstr: &WideString) -> c_int {
+    let str = wstr.to_string().unwrap();
+    str.width() as c_int
 }
 
 #[cfg(test)]
 mod tests {
     use std::ptr::null;
     use libc::{close, dup, fileno, tmpfile};
-    use wchar::{wch, wchz};
+    use wchar::wch;
     use widestring::WideString;
     use super::*;
 
@@ -109,13 +98,11 @@ mod tests {
         let wc = wch!('你');
         println!("{}", wcwidth(wc));
 
-        let wcstring = wchz!("你好RUST");
-        println!("{}", string_width(wcstring));
+        let wcstring = WideString::from_str("你好RUST");
+        println!("{}", string_width(&wcstring));
 
         let string = "Hello World\0";
         let u16string = WideString::from_str(string);
-        let wc_string = u16string.as_slice();
-        let wc_string: &[wchar_t] = unsafe { std::mem::transmute(wc_string) };
-        println!("{}", string_width(wc_string));
+        println!("{}", string_width(&u16string));
     }
 }
