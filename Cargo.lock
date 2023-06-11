@@ -178,6 +178,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "bindgen"
+version = "0.64.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c4243e6031260db77ede97ad86c27e501d646a27ab57b59a574f725d98ab1fb4"
+dependencies = [
+ "bitflags",
+ "cexpr",
+ "clang-sys",
+ "lazy_static",
+ "lazycell",
+ "peeking_take_while",
+ "proc-macro2",
+ "quote",
+ "regex",
+ "rustc-hash",
+ "shlex",
+ "syn 1.0.109",
+]
+
+[[package]]
 name = "bitflags"
 version = "1.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -529,6 +549,15 @@ dependencies = [
  "core-foundation",
  "foreign-types",
  "libc",
+]
+
+[[package]]
+name = "coreaudio-sys"
+version = "0.2.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f034b2258e6c4ade2f73bf87b21047567fb913ee9550837c2316d139b0262b24"
+dependencies = [
+ "bindgen 0.64.0",
 ]
 
 [[package]]
@@ -1351,7 +1380,7 @@ dependencies = [
 [[package]]
 name = "macros"
 version = "0.1.0"
-source = "git+https://github.com/toocol/tmui#065105ef15683d101ef7844e9f624831f099c588"
+source = "git+https://github.com/toocol/tmui#457feb660e770b5dae47c328910d1d775fec27ca"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2149,9 +2178,9 @@ checksum = "08d43f7aa6b08d49f382cde6a7982047c3426db949b1424bc4b7ec9ae12c6ce2"
 
 [[package]]
 name = "rustix"
-version = "0.37.19"
+version = "0.37.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "acf8729d8542766f1b2cf77eb034d52f40d375bb8b615d0b147089946e16613d"
+checksum = "b96e891d04aa506a6d1f318d2771bcb1c7dfda84e126660ace067c9b474bb2c0"
 dependencies = [
  "bitflags",
  "errno 0.3.1",
@@ -2327,7 +2356,7 @@ version = "0.57.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "06eade095c427b059cebaf220a2bd78d8136129183e6ca92603ed2d689300709"
 dependencies = [
- "bindgen",
+ "bindgen 0.63.0",
  "cc",
  "flate2",
  "heck",
@@ -2649,7 +2678,7 @@ checksum = "1f3ccbac311fea05f86f61904b462b55fb3df8837a366dfc601a0161d0532f20"
 [[package]]
 name = "tipc"
 version = "0.1.0"
-source = "git+https://github.com/toocol/tmui#065105ef15683d101ef7844e9f624831f099c588"
+source = "git+https://github.com/toocol/tmui#457feb660e770b5dae47c328910d1d775fec27ca"
 dependencies = [
  "log",
  "parking_lot 0.12.1",
@@ -2662,7 +2691,7 @@ dependencies = [
 [[package]]
 name = "tlib"
 version = "0.1.0"
-source = "git+https://github.com/toocol/tmui#065105ef15683d101ef7844e9f624831f099c588"
+source = "git+https://github.com/toocol/tmui#457feb660e770b5dae47c328910d1d775fec27ca"
 dependencies = [
  "derivative",
  "hex_color",
@@ -2684,13 +2713,14 @@ dependencies = [
 [[package]]
 name = "tmui"
 version = "0.1.0"
-source = "git+https://github.com/toocol/tmui#065105ef15683d101ef7844e9f624831f099c588"
+source = "git+https://github.com/toocol/tmui#457feb660e770b5dae47c328910d1d775fec27ca"
 dependencies = [
  "beep",
  "clipboard",
  "cocoa",
  "core-foundation",
  "core-graphics",
+ "coreaudio-sys",
  "derivative",
  "dimensioned",
  "glutin",
