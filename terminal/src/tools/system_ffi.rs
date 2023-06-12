@@ -1,5 +1,5 @@
 #![allow(dead_code)]
-use std::ffi::c_int;
+use std::{ffi::c_int, ptr::null};
 use libc::c_void;
 use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 use wchar::wchar_t;

@@ -2568,6 +2568,10 @@ dependencies = [
 [[package]]
 name = "termio"
 version = "0.1.0"
+dependencies = [
+ "cli",
+ "libs",
+]
 
 [[package]]
 name = "termios"
