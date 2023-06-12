@@ -1,18 +1,17 @@
-use std::{path::PathBuf, env};
+use std::{env, path::PathBuf};
 
 fn main() {
-    let library_system = "native-system";
-    println!("cargo:rustc-link-lib=static={}", library_system);
+    #[cfg(target_os = "windows")]
+    {
+        let library_system = "native-system";
+        println!("cargo:rustc-link-lib=static={}", library_system);
 
-    #[cfg(target_os = "windows")]
-    let library_winpty = "winpty";
-    #[cfg(target_os = "windows")]
-    println!("cargo:rustc-link-lib=static={}", library_winpty);
+        let library_winpty = "winpty";
+        println!("cargo:rustc-link-lib=static={}", library_winpty);
 
-    #[cfg(target_os = "windows")]
-    let library_mman = "mman";
-    #[cfg(target_os = "windows")]
-    println!("cargo:rustc-link-lib=static={}", library_mman);
+        let library_mman = "mman";
+        println!("cargo:rustc-link-lib=static={}", library_mman);
+    }
 
     let library_dir = PathBuf::from(env::var_os("CARGO_MANIFEST_DIR").unwrap());
     println!(

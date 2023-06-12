@@ -1,5 +1,5 @@
 #![allow(dead_code)]
-use std::{ffi::c_int, ptr::null};
+use std::ffi::c_int;
 use libc::c_void;
 use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 use wchar::wchar_t;
@@ -24,6 +24,7 @@ pub const MAP_ANON: i32 = MAP_ANONYMOUS;
 
 pub const MAP_FAILED: *const c_void = &-1 as *const i32 as *const c_void;
 
+#[cfg(target_os = "windows")]
 #[link(name = "native-system", kind = "static")]
 extern "C" {
     fn mmap_ffi(
@@ -47,16 +48,25 @@ pub fn mmap(
     fildes: i32,
     offset_type: i64,
 ) -> *const u8 {
+    #[cfg(not(target_os = "windows"))]
+    unsafe { libc::mmap(addr as *mut c_void, len, prot, flags, fildes, offset_type) as *const u8 }
+    #[cfg(target_os = "windows")]
     unsafe { mmap_ffi(addr, len, prot, flags, fildes, offset_type) }
 }
 
 #[inline]
 pub fn munmap(addr: *const u8, len: usize) -> i32 {
+    #[cfg(not(target_os = "windows"))]
+    unsafe { libc::munmap(addr as *mut c_void, len) }
+    #[cfg(target_os = "windows")]
     unsafe { munmap_ffi(addr, len) }
 }
 
 #[inline]
 pub fn chsize(file_handle: i32, size: i32) -> i32 {
+    #[cfg(not(target_os = "windows"))]
+    unsafe { libc::ftruncate(file_handle, size as i64) }
+    #[cfg(target_os = "windows")]
     unsafe { chsize_ffi(file_handle, size) }
 }
 
