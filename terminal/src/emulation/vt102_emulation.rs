@@ -8,7 +8,7 @@ use crate::{
         },
         screen_window::ScreenWindow,
         terminal_view::KeyboardCursorShape,
-        u_wchar_t,
+        uwchar_t,
     },
     emulation::{EmulationSignal, EmulationState},
     tools::{
@@ -1271,7 +1271,7 @@ impl VT102Emulation {
         // 0x07 or 0x92. Note that as control characters in OSC text parts are
         // ignored, only the second char in ST ("\e\\") is appended to tokenBuffer.
         let mut new_value = WideString::new();
-        let slice: &[u_wchar_t] = unsafe {
+        let slice: &[uwchar_t] = unsafe {
             std::mem::transmute(
                 &self.token_buffer[i as usize + 1..(self.token_buffer_pos - i - 2) as usize],
             )
