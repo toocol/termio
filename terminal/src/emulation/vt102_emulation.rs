@@ -32,7 +32,7 @@ use tmui::{
         emit,
         events::KeyEvent,
         figure::Size,
-        namespace::{KeyCode, KeyboardModifier},
+        namespace::{KeyCode, KeyboardModifier}, impl_as_any,
     },
 };
 use wchar::{wch, wchar_t};
@@ -244,6 +244,7 @@ pub struct VT102Emulation {
     report_focus_event: bool,
     // TODO: Add timer: title_update_timer
 }
+impl_as_any!(VT102Emulation);
 impl ObjectOperation for VT102Emulation {
     fn id(&self) -> u16 {
         self.emulation.as_ref().unwrap().id()
@@ -255,6 +256,10 @@ impl ObjectOperation for VT102Emulation {
 
     fn get_property(&self, name: &str) -> Option<&Value> {
         self.emulation.as_ref().unwrap().get_property(name)
+    }
+
+    fn constructed(&self) -> bool {
+        self.emulation.as_ref().unwrap().constructed()
     }
 }
 impl Default for VT102Emulation {
@@ -278,22 +283,13 @@ impl Default for VT102Emulation {
 }
 impl ActionExt for VT102Emulation {}
 impl Reflect for VT102Emulation {
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-    fn as_mut_any(&mut self) -> &mut dyn Any {
-        self
-    }
-    fn as_boxed_any(self: Box<Self>) -> Box<dyn Any> {
-        self
-    }
     fn as_reflect(&self) -> &dyn Reflect {
         self
     }
-    fn as_mut_reflect(&mut self) -> &mut dyn Reflect {
+    fn as_reflect_mut(&mut self) -> &mut dyn Reflect {
         self
     }
-    fn as_boxed_reflect(self: Box<Self>) -> Box<dyn Reflect> {
+    fn as_reflect_boxed(self: Box<Self>) -> Box<dyn Reflect> {
         self
     }
 }

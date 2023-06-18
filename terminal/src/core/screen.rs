@@ -1460,8 +1460,8 @@ impl Screen {
         }
 
         if self.last_pos != -1 {
-            let diff = dest - source_begin;
-            self.last_pos += diff as i32;
+            let diff = dest as i32 - source_begin as i32;
+            self.last_pos += diff;
             if self.last_pos < 0 || self.last_pos >= (lines as i32 * self.columns) {
                 self.last_pos = -1;
             }

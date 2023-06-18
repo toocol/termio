@@ -1786,9 +1786,7 @@ performance degradation and display/alignment errors."
         // "Base character width on widest ASCII character. This prevents too wide
         // characters in the presence of double wide (e.g. Japanese) characters."
         // Get the width from representative normal width characters
-        let wstring = WideString::from_str(REPCHAR);
-        let str = wstring.to_string().unwrap();
-        let wstring = U16String::from_str(&str);
+        let wstring = U16String::from_str(REPCHAR);
         let wchar_t_repchar = wstring.as_slice();
         let mut widths = vec![0f32; wchar_t_repchar.len()];
         font.get_widths(wchar_t_repchar, &mut widths);

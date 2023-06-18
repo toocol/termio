@@ -4,6 +4,7 @@ use tmui::{
 };
 
 mod asset;
+mod config;
 mod core;
 mod emulation;
 mod pty;

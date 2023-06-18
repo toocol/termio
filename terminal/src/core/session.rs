@@ -23,7 +23,7 @@ use tmui::{
         nonnull_mut, nonnull_ref,
         object::{ObjectImpl, ObjectSubclass},
         signals, Object,
-    },
+    }, application_window::ApplicationWindow,
 };
 
 /// Session represents an open tab used to bridge emulation and pty process.

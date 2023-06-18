@@ -2,7 +2,10 @@ use super::session::Session;
 use crate::tools::history::HistoryTypeBuffer;
 use derivative::Derivative;
 use std::rc::Rc;
-use tmui::{prelude::*, tlib::object::ObjectSubclass};
+use tmui::{
+    application_window::ApplicationWindow, prelude::*, scroll_area::ScrollArea,
+    tlib::object::ObjectSubclass,
+};
 
 /// TerminalPanel was built to manage the terminal view, it holds all the terminal session,
 /// and each session has a binded TerminalView.
@@ -24,6 +27,24 @@ impl ObjectImpl for TerminalPanel {
         let scrolled_view = session.create_terminal_view();
 
         self.add_child(scrolled_view);
+
+        let parent = unsafe { self.get_raw_parent().as_ref().unwrap().as_ref().unwrap() };
+        let size = parent.size();
+        self.width_request(size.width());
+        self.height_request(size.height());
+
+        // That's fucking weird, need find a way to fix it:
+        let mut children = self.children_mut();
+        let view = children
+            .last_mut()
+            .unwrap()
+            .as_any_mut()
+            .downcast_mut::<ScrollArea>()
+            .unwrap();
+        let view_ptr = view as *mut ScrollArea;
+        ApplicationWindow::initialize_dynamic_component(view, unsafe {
+            view_ptr.as_mut().unwrap().get_area_mut().unwrap()
+        });
     }
 }
 
