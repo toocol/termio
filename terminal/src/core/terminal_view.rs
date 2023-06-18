@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 use super::{
     screen_window::{ScreenWindow, ScreenWindowSignals},
-    u_wchar_t,
+    uwchar_t,
 };
 use crate::tools::{
     character::{
@@ -31,10 +31,11 @@ use tmui::{
     label::Label,
     prelude::*,
     scroll_bar::{ScrollBar, ScrollBarPosition},
+    skia_safe::Matrix,
     system::System,
     tlib::{
         connect, disconnect, emit,
-        events::{EventType, KeyEvent, MouseEvent, DeltaType},
+        events::{DeltaType, EventType, KeyEvent, MouseEvent},
         figure::{Color, FRect, FontTypeface, Size},
         namespace::{KeyCode, KeyboardModifier},
         nonnull_mut,
@@ -42,7 +43,7 @@ use tmui::{
         signals,
         timer::Timer,
     },
-    widget::WidgetImpl, skia_safe::Matrix,
+    widget::WidgetImpl,
 };
 use wchar::{wch, wchar_t};
 #[cfg(not(windows))]
@@ -448,14 +449,20 @@ impl TerminalView {
                 // painter. this ensures that painting does actually start from
                 // textArea.topLeft()
                 //(instead of textArea.topLeft() * painter-scale)
-                text_area.move_top_left(&text_scale.invert().unwrap().map_point(text_area.top_left()).into());
+                text_area.move_top_left(
+                    &text_scale
+                        .invert()
+                        .unwrap()
+                        .map_point(text_area.top_left())
+                        .into(),
+                );
 
                 // Apply text scaling matrix.
                 painter.set_transform(text_scale, true);
 
                 // paint text fragment
                 let style = self.image.as_ref().unwrap()[self.loc(x, y) as usize];
-                let slice: Vec<u_wchar_t> = unsafe { std::mem::transmute(unistr.clone()) };
+                let slice: Vec<uwchar_t> = unsafe { std::mem::transmute(unistr.clone()) };
                 self.draw_text_fragment(painter, text_area, WideString::from_vec(slice), &style);
 
                 self.fixed_font = save_fixed_font;
@@ -2191,7 +2198,7 @@ performance degradation and display/alignment errors."
         let mut result = 0;
         let mut widths = vec![];
         for column in 0..length {
-            let c: &[u_wchar_t; 1] = unsafe {
+            let c: &[uwchar_t; 1] = unsafe {
                 std::mem::transmute(&[image[self.loc(start_column + column, line) as usize]
                     .character_union
                     .data()])

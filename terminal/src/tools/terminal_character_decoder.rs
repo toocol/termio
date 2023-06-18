@@ -4,11 +4,14 @@ use super::{
     character_color::{CharacterColor, ColorEntry, BASE_COLOR_TABLE},
     text_stream::TextStream,
 };
-use crate::{tools::{
-    character::{RE_BOLD, RE_UNDERLINE},
-    character_color::FontWeight,
-    system_ffi::wcwidth,
-}, core::u_wchar_t};
+use crate::{
+    core::uwchar_t,
+    tools::{
+        character::{RE_BOLD, RE_UNDERLINE},
+        character_color::FontWeight,
+        system_ffi::wcwidth,
+    },
+};
 use libc::wchar_t;
 use wchar::wch;
 use widestring::WideString;
@@ -290,7 +293,7 @@ impl<'a> TerminalCharacterDecoder<'a> for HtmlDecoder<'a> {
                 } else if ch == wch!('>') {
                     text.push_str("&gt;")
                 } else {
-                    text.push_slice([ch as u_wchar_t])
+                    text.push_slice([ch as uwchar_t])
                 }
             } else {
                 text.push_str("&nbsp;")
