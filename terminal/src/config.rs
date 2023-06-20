@@ -1,7 +1,8 @@
 use once_cell::sync::Lazy;
+use tmui::prelude::Font;
 
 pub struct Config {
-
+    font: Font,
 }
 
 #[inline]
@@ -13,6 +14,17 @@ fn instance() -> &'static mut Config {
 impl Config {
     #[inline]
     fn new() -> Self {
-        Config {  }
+        Config { 
+            font: Font::with_family("Courier New"),
+        }
+    }
+
+    #[inline]
+    pub fn font() -> Font {
+        instance().font
+    }
+    #[inline]
+    pub fn set_font(font: Font) {
+        instance().font = font
     }
 }
