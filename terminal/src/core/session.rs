@@ -32,11 +32,11 @@ pub struct Session {
     enviroment: Vec<String>,
 
     #[cfg(target_os = "windows")]
-    #[derivative(Default(value = "Box::new(ConPty::new())"))]
+    #[derivative(Default(value = "ConPty::new()"))]
     shell_process: Box<dyn Pty>,
 
     #[cfg(not(target_os = "windows"))]
-    #[derivative(Default(value = "Box::new(PosixPty::new())"))]
+    #[derivative(Default(value = "PosixPty::new()"))]
     shell_process: Box<dyn Pty>,
 
     auto_close: bool,
@@ -165,7 +165,7 @@ impl SessionSignal for Session {}
 
 impl Session {
     pub fn new() -> Box<Self> {
-        let mut session: Box<Session> = Box::new(Object::new(&[]));
+        let mut session: Box<Session> = Object::new(&[]);
         let emulation = VT102Emulation::new(None).wrap();
         connect!(emulation, title_changed(), session, set_user_title());
         connect!(emulation, state_set(), session, activate_state_set(i32));
@@ -189,7 +189,7 @@ impl Session {
         session
     }
 
-    pub fn create_terminal_view(&mut self) -> ScrollArea {
+    pub fn create_terminal_view(&mut self) -> Box<ScrollArea> {
         if self.scrolled_view.is_some() {
             panic!(
                 "Session has already create the `TerminalView`, session id {}",
@@ -204,14 +204,14 @@ impl Session {
         view.set_terminal_size_startup(true);
         view.set_random_seed(view.id() as u32);
 
-        let mut scroll_area: ScrollArea = Object::new(&[]);
+        let mut scroll_area: Box<ScrollArea> = Object::new(&[]);
         scroll_area.set_scroll_bar_position(ScrollBarPosition::End);
         scroll_area.set_orientation(Orientation::Vertical);
 
         view.set_scroll_bar(scroll_area.get_scroll_bar_mut());
         scroll_area.set_area(view);
 
-        self.scrolled_view = NonNull::new(&mut scroll_area);
+        self.scrolled_view = NonNull::new(scroll_area.as_mut());
         let view = scroll_area.get_area_cast_mut::<TerminalView>().unwrap();
         self.view = NonNull::new(view);
 

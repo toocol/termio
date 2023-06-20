@@ -156,8 +156,8 @@ impl ObjectSubclass for Screen {
 impl ObjectImpl for Screen {}
 
 impl Screen {
-    pub fn new(lines: i32, columns: i32) -> Self {
-        let mut screen: Screen = Object::new(&[]);
+    pub fn new(lines: i32, columns: i32) -> Box<Self> {
+        let mut screen: Box<Screen> = Object::new(&[]);
         screen.lines = lines;
         screen.columns = columns;
         screen.screen_lines = Box::new(vec![vec![]; lines as usize + 1]);

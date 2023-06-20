@@ -31,7 +31,7 @@ use tmui::{
     label::Label,
     prelude::*,
     scroll_bar::{ScrollBar, ScrollBarPosition},
-    skia_safe::Matrix,
+    skia_safe::{Matrix, self},
     system::System,
     tlib::{
         connect, disconnect, emit,
@@ -231,8 +231,8 @@ impl WidgetImpl for TerminalView {
 }
 
 impl TerminalView {
-    pub fn new(session_id: u16) -> Self {
-        let mut view: Self = Object::new(&[]);
+    pub fn new(session_id: u16) -> Box<Self> {
+        let mut view: Box<Self> = Object::new(&[]);
         view.bind_session = session_id;
         view
     }
@@ -619,13 +619,12 @@ impl TerminalView {
         let use_strike_out = style.rendition & RE_STRIKEOUT != 0;
         let use_overline = style.rendition & RE_OVERLINE != 0;
 
-        let mut font = self.font();
+        let mut font = self.font_mut();
         let typeface = FontTypeface::builder()
             .bold(use_bold)
             .italic(use_italic)
             .build();
         font.set_typeface(typeface);
-        painter.set_font(font);
 
         let text_color = if invert_character_color {
             style.background_color
@@ -929,7 +928,7 @@ impl TerminalView {
     #[inline]
     pub fn set_line_spacing(&mut self, spacing: u32) {
         self.line_spacing = spacing;
-        self.set_vt_font(self.font())
+        self.set_vt_font(self.font().to_skia_font())
     }
     #[inline]
     pub fn line_spacing(&self) -> u32 {
@@ -1174,11 +1173,11 @@ impl TerminalView {
 
     /// Returns the font used to draw characters in the view.
     pub fn get_vt_font(&self) -> Font {
-        self.font()
+        *self.font()
     }
     /// Sets the font used to draw the display.  Has no effect if @p [`font`]
     /// is larger than the size of the display itself.
-    pub fn set_vt_font(&mut self, mut font: Font) {
+    pub fn set_vt_font(&mut self, mut font: skia_safe::Font) {
         if let Some(typeface) = font.typeface() {
             if !typeface.is_fixed_pitch() {
                 warn!(
@@ -1196,7 +1195,7 @@ performance degradation and display/alignment errors."
             font.set_edging(tmui::skia_safe::font::Edging::Alias);
         }
 
-        self.set_font(font);
+        self.set_font(font.into());
         self.font_change();
     }
 
@@ -1786,7 +1785,7 @@ performance degradation and display/alignment errors."
 
     ////////////////////////////////////// Private functions. //////////////////////////////////////
     fn font_change(&mut self) {
-        let font = self.font();
+        let font = self.font().to_skia_font();
         let (_, fm) = font.metrics();
         self.font_height = fm.cap_height as i32 + self.line_spacing as i32;
 
@@ -2194,7 +2193,7 @@ performance degradation and display/alignment errors."
             return 0;
         }
         let image = self.image.as_ref().unwrap();
-        let font = self.font();
+        let font = self.font().to_skia_font();
         let mut result = 0;
         let mut widths = vec![];
         for column in 0..length {

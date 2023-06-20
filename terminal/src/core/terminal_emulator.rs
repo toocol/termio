@@ -19,7 +19,7 @@ use tmui::{prelude::*, tlib::object::ObjectSubclass};
 #[derive(Childrenable)]
 pub struct TerminalEmulator {
     #[children]
-    terminal_panel: TerminalPanel,
+    terminal_panel: Box<TerminalPanel>,
 }
 
 impl ObjectSubclass for TerminalEmulator {
@@ -36,7 +36,7 @@ impl WidgetImpl for TerminalEmulator {}
 
 impl TerminalEmulator {
     #[inline]
-    pub fn new() -> Self {
+    pub fn new() -> Box<Self> {
         Object::new(&[])
     }
 }

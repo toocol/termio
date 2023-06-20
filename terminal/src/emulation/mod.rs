@@ -325,11 +325,11 @@ pub trait Emulation: 'static + EmulationSignal + ActionExt {
 
 impl BaseEmulation {
     /// Constructer to create a new Emulation.
-    fn new(translator_manager: Option<NonNull<KeyboardTranslatorManager>>) -> Self {
-        let mut screen_0 = Box::new(Screen::new(40, 80));
-        let screen_1 = Box::new(Screen::new(40, 80));
+    fn new(translator_manager: Option<NonNull<KeyboardTranslatorManager>>) -> Box<Self> {
+        let mut screen_0 = Screen::new(40, 80);
+        let screen_1 = Screen::new(40, 80);
 
-        let mut emulation: Self = Object::new(&[]);
+        let mut emulation: Box<Self> = Object::new(&[]);
         emulation.translator_manager = translator_manager;
         emulation.key_translator = None;
         emulation.current_screen = NonNull::new(screen_0.as_mut() as *mut Screen);

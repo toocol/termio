@@ -63,7 +63,7 @@ pub struct HotSpot {
 pub trait HotSpotConstructer {
     /// Constructs a new hotspot which covers the area from (@p startLine, @p startColumn)
     /// to (@p endLine,@p endColumn) in a block of text.
-    fn new(start_line: i32, start_column: i32, end_line: i32, end_column: i32) -> Self;
+    fn new(start_line: i32, start_column: i32, end_line: i32, end_column: i32) -> Box<Self>;
 }
 pub trait HotSpotImpl {
     fn initialize(&self) {}
@@ -141,14 +141,14 @@ impl HotSpotImpl for HotSpot {
     }
 }
 impl HotSpotConstructer for HotSpot {
-    fn new(start_line: i32, start_column: i32, end_line: i32, end_column: i32) -> Self {
-        Self {
+    fn new(start_line: i32, start_column: i32, end_line: i32, end_column: i32) -> Box<Self> {
+        Box::new(Self {
             start_line,
             start_column,
             end_line,
             end_column,
             type_: HotSpotType::NotSpecified,
-        }
+        })
     }
 }
 
@@ -264,8 +264,7 @@ impl BaseFilterImpl for BaseFilter {
                     &self.buffer.deref().borrow()[line_position..position as usize],
                 );
                 wstring.push_char('\0');
-                line_col.1 =
-                    string_width(&wstring) as i32;
+                line_col.1 = string_width(&wstring) as i32;
                 return line_col;
             }
         }
@@ -349,7 +348,7 @@ impl FilterObject {
         action_click();
     }
 
-    pub fn new() -> Self {
+    pub fn new() -> Box<Self> {
         Object::new(&[])
     }
 

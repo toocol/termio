@@ -84,7 +84,7 @@ impl ScreenWindow {
     /// on the emulation which you wish to view.  This allows the emulation to notify the window when the
     /// associated screen has changed and synchronize selection updates between all views on a session.
     pub fn new() -> Box<Self> {
-        let mut object: Self = Object::new(&[]);
+        let mut object: Box<Self> = Object::new(&[]);
         object.screen = None;
         object.window_buffer = None;
         object.window_buffer_size = 0;
@@ -94,7 +94,7 @@ impl ScreenWindow {
         object.track_output = true;
         object.scroll_count = 0;
 
-        Box::new(object)
+        object
     }
 
     /// Sets the screen which this window looks onto

@@ -227,7 +227,7 @@ struct TerminalState {
 /// provide features such as mouse input handling. See
 /// http://rtfm.etla.org/xterm/ctlseq.html for a description of xterm's escape sequences.
 pub struct VT102Emulation {
-    emulation: Option<BaseEmulation>,
+    emulation: Option<Box<BaseEmulation>>,
     token_buffer: [wchar_t; MAX_TOKEN_LENGTH],
     token_buffer_pos: usize,
     argv: [i32; MAXARGS],

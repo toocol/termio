@@ -154,7 +154,7 @@ impl PtySignals for ConPty {}
 
 impl ConPty {
     #[inline]
-    pub fn new() -> Self {
+    pub fn new() -> Box<Self> {
         Object::new(&[])
     }
 }

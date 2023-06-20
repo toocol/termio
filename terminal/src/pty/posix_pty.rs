@@ -130,7 +130,7 @@ impl PtySignals for PosixPty {}
 
 impl PosixPty {
     #[inline]
-    pub fn new() -> Self {
+    pub fn new() -> Box<Self> {
         Object::new(&[])
     }
 }

@@ -19,7 +19,7 @@ pub enum UrlType {
 
 #[extends(Object)]
 pub struct UrlFilterHotSpot {
-    hotspot: RegexFilterHotSpot,
+    hotspot: Box<RegexFilterHotSpot>,
     url_object: RefCell<FilterObject>,
 }
 impl ObjectSubclass for UrlFilterHotSpot {
@@ -54,13 +54,13 @@ impl RegexFilterHotSpotImpl for UrlFilterHotSpot {
     }
 }
 impl HotSpotConstructer for UrlFilterHotSpot {
-    fn new(start_line: i32, start_column: i32, end_line: i32, end_column: i32) -> Self {
-        let mut hotspot: UrlFilterHotSpot = Object::new(&[]);
+    fn new(start_line: i32, start_column: i32, end_line: i32, end_column: i32) -> Box<Self> {
+        let mut hotspot: Box<UrlFilterHotSpot> = Object::new(&[]);
 
         hotspot.hotspot = RegexFilterHotSpot::new(start_line, start_column, end_line, end_column);
         hotspot.set_type(HotSpotType::Link);
 
-        let ptr = &mut hotspot as *mut UrlFilterHotSpot as *mut dyn HotSpotImpl;
+        let ptr = hotspot.as_mut() as *mut UrlFilterHotSpot as *mut dyn HotSpotImpl;
         hotspot.url_object.borrow_mut().set_filter(ptr);
 
         hotspot
@@ -213,7 +213,6 @@ impl Filter for UrlFilter {
                 }
                 spot.set_captured_texts(captured_texts);
 
-                let spot = Box::new(spot);
                 let spot_ref = self.add_hotspot(spot);
                 spot_ref.initialize();
             }

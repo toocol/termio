@@ -1,5 +1,5 @@
 use super::session::Session;
-use crate::tools::history::HistoryTypeBuffer;
+use crate::{tools::history::HistoryTypeBuffer, config::Config};
 use derivative::Derivative;
 use std::rc::Rc;
 use tmui::{
@@ -25,6 +25,7 @@ impl ObjectImpl for TerminalPanel {
     fn initialize(&mut self) {
         let session = self.create_session();
         let scrolled_view = session.create_terminal_view();
+        session.view_mut().set_vt_font(Config::font().into());
 
         self.add_child(scrolled_view);
 
@@ -59,5 +60,11 @@ impl TerminalPanel {
 
         self.sessions.push(session);
         self.sessions.last_mut().unwrap()
+    }
+
+    pub fn set_terminal_font(&mut self, font: Font) {
+        self.sessions.iter_mut().for_each(|session| {
+            session.view_mut().set_vt_font(font.into())
+        })
     }
 }

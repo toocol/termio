@@ -9,7 +9,7 @@ use tmui::prelude::*;
 /// used to find the text matched by the filter's regular expression.
 #[derive(Debug, Default)]
 pub struct RegexFilterHotSpot {
-    hotspot: HotSpot,
+    hotspot: Box<HotSpot>,
     captured_texts: Vec<String>,
 }
 pub trait RegexFilterHotSpotImpl {
@@ -31,11 +31,11 @@ impl RegexFilterHotSpotImpl for RegexFilterHotSpot {
     }
 }
 impl HotSpotConstructer for RegexFilterHotSpot {
-    fn new(start_line: i32, start_column: i32, end_line: i32, end_column: i32) -> Self {
-        Self {
+    fn new(start_line: i32, start_column: i32, end_line: i32, end_column: i32) -> Box<Self> {
+        Box::new(Self {
             hotspot: HotSpot::new(start_line, start_column, end_line, end_column),
             captured_texts: vec![],
-        }
+        })
     }
 }
 impl HotSpotImpl for RegexFilterHotSpot {
@@ -136,7 +136,7 @@ impl Filter for RegexFilter {
                 }
                 spot.set_captured_texts(captured_texts);
 
-                self.add_hotspot(Box::new(spot));
+                self.add_hotspot(spot);
             }
         }
     }
