@@ -10,7 +10,7 @@ use crate::tools::{
         RE_ITALIC, RE_OVERLINE, RE_STRIKEOUT, RE_UNDERLINE,
     },
     character_color::{
-        CharacterColor, ColorEntry, DEFAULT_BACK_COLOR, DEFAULT_FORE_COLOR, TABLE_COLORS,
+        CharacterColor, ColorEntry, DEFAULT_BACK_COLOR, DEFAULT_FORE_COLOR, TABLE_COLORS, BASE_COLOR_TABLE,
     },
     filter::{FilterChainImpl, TerminalImageFilterChain},
     system_ffi::string_width,
@@ -55,39 +55,56 @@ lazy_static! {
     pub static ref REGULAR_EXPRESSION: Regex = Regex::new("\\r+$").unwrap();
 }
 
-#[extends(Widget)]
+#[extends(Widget, Layout(Stack))]
+#[derive(Childrenable)]
 pub struct TerminalView {
     extended_char_table: ExtendedCharTable,
 
     screen_window: Option<NonNull<ScreenWindow>>,
 
+    #[derivative(Default(value = "true"))]
     allow_bell: bool,
     // Whether intense colors should be bold.
+    #[derivative(Default(value = "true"))]
     bold_intense: bool,
     // Whether is test mode.
     draw_text_test_flag: bool,
 
     // whether has fixed pitch.
+    #[derivative(Default(value = "true"))]
     fixed_font: bool,
+    #[derivative(Default(value = "1"))]
     font_height: i32,
+    #[derivative(Default(value = "1"))]
     font_width: i32,
+    #[derivative(Default(value = "1"))]
     font_ascend: i32,
     draw_text_addition_height: i32,
 
+    #[derivative(Default(value = "5"))]
     left_margin: i32,
+    #[derivative(Default(value = "5"))]
     top_margin: i32,
+    #[derivative(Default(value = "5"))]
     left_base_margin: i32,
+    #[derivative(Default(value = "5"))]
     top_base_margin: i32,
 
     // The total number of lines that can be displayed in the view.
+    #[derivative(Default(value = "1"))]
     lines: i32,
     // The total number of columns that can be displayed in the view.
+    #[derivative(Default(value = "1"))]
     columns: i32,
 
+    #[derivative(Default(value = "1"))]
     used_lines: i32,
+    #[derivative(Default(value = "1"))]
     used_columns: i32,
 
+    #[derivative(Default(value = "1"))]
     content_height: i32,
+    #[derivative(Default(value = "1"))]
     content_width: i32,
 
     image: Option<Vec<Character>>,
@@ -100,8 +117,10 @@ pub struct TerminalView {
 
     resizing: bool,
     terminal_size_hint: bool,
+    #[derivative(Default(value = "true"))]
     terminal_size_start_up: bool,
     bidi_enable: bool,
+    #[derivative(Default(value = "true"))]
     mouse_marks: bool,
     bracketed_paste_mode: bool,
     disable_bracketed_paste_mode: bool,
@@ -121,6 +140,7 @@ pub struct TerminalView {
 
     scroll_bar: Option<NonNull<ScrollBar>>,
     scroll_bar_location: ScrollBarState,
+    #[derivative(Default(value = "\":@-./_~\".to_string()"))]
     word_characters: String,
     bell_mode: BellMode,
 
@@ -133,6 +153,7 @@ pub struct TerminalView {
     // has bliking cursor enable.
     has_blinking_cursor: bool,
     // allow text to blink.
+    #[derivative(Default(value = "true"))]
     allow_blinking_text: bool,
     // require Ctrl key for drag.
     ctrl_drag: bool,
@@ -147,18 +168,22 @@ pub struct TerminalView {
     // true during visual bell.
     colors_inverted: bool,
 
-    resize_widget: Label,
+    #[children]
+    output_suspend_label: Box<Label>,
+
+    #[children]
+    resize_widget: Box<Label>,
     resize_timer: Timer,
 
-    output_suspend_label: Label,
-
     line_spacing: u32,
+    #[derivative(Default(value = "1."))]
     opacity: f64,
     size: Size,
 
     // Add background_image Pixmap
     background_mode: BackgroundMode,
 
+    #[derivative(Default(value = "TerminalImageFilterChain::new()"))]
     filter_chain: Box<TerminalImageFilterChain>,
     mouse_over_hotspot_area: Rect,
 
@@ -171,9 +196,12 @@ pub struct TerminalView {
 
     input_method_data: InputMethodData,
 
+    #[derivative(Default(value = "true"))]
     draw_line_chars: bool,
 
     bind_session: u16,
+    /// `true` when the session this terminal view binded was finised.
+    terminate: bool,
 }
 
 #[derive(Default)]
@@ -199,6 +227,9 @@ impl ObjectSubclass for TerminalView {
 impl ObjectImpl for TerminalView {
     fn initialize(&mut self) {
         self.extended_char_table.initialize();
+
+        self.set_color_table(&BASE_COLOR_TABLE);
+        self.set_mouse_tracking(true);
     }
 }
 
@@ -243,14 +274,17 @@ impl TerminalView {
 pub trait TerminalViewSingals: ActionExt {
     signals!(
        /// Emitted when the user presses a key whilst the terminal widget has focus.
+       /// 
+       /// @param [`KeyEvent`] key event.
+       /// @param [`bool`] from paste.
        key_pressed_signal();
 
        /// A mouse event occurred.
-       /// @param [`button`] The mouse button (0 for left button, 1 for middle button, 2
+       /// @param [`i32`] button: The mouse button (0 for left button, 1 for middle button, 2
        /// for right button, 3 for release) <br>
-       /// @param [`column`] The character column where the event occurred <br>
-       /// @param [`line`] The character row where the event occurred <br>
-       /// @param [`event_type`] The type of event.  0 for a mouse press / release or 1 for
+       /// @param [`i32`] column: The character column where the event occurred <br>
+       /// @param [`i32`] row: The character row where the event occurred <br>
+       /// @param [`u8`] type: The type of event.  0 for a mouse press / release or 1 for
        /// mouse motion
        mouse_signal();
 
@@ -274,7 +308,10 @@ pub trait TerminalViewSingals: ActionExt {
        override_shortcut_check();
 
        is_busy_selecting();
-       send_string_to_emu();
+
+       /// @param [`String`]
+       /// @param [`i32`] length of the string, if there was a empty string, the value was -1/0
+       send_string_to_emulation();
 
        copy_avaliable();
        term_get_focus();
@@ -303,6 +340,16 @@ impl TerminalView {
     #[inline]
     pub fn loc(&self, x: i32, y: i32) -> i32 {
         y * self.columns + x
+    }
+
+    #[inline]
+    pub fn terminate(&mut self) {
+        self.terminate = true
+    }
+
+    #[inline]
+    pub fn is_terminate(&self) -> bool {
+        self.terminate
     }
 
     //////////////////////////////////////////////// Drawing functions start.  ////////////////////////////////////////////////
@@ -726,7 +773,8 @@ impl TerminalView {
     }
 
     fn cal_draw_text_addition_height(&mut self, painter: &mut Painter) {
-        todo!()
+        // let test_rect = Rect::new(1, 1, self.font_width * 4, self.font_height);
+        // painter.draw_text(LTR_OVERRIDE_CHAR, origin)
     }
     //////////////////////////////////////////////// Drawing functions end.  ////////////////////////////////////////////////
 

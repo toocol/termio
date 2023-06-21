@@ -8,7 +8,7 @@ use crate::pty::posix_pty::PosixPty;
 use crate::{
     emulation::{Emulation, VT102Emulation},
     pty::{ProtocolType, Pty},
-    tools::history::HistoryType,
+    tools::history::HistoryType, core::terminal_view::TerminalViewSingals,
 };
 use derivative::Derivative;
 use std::{ptr::NonNull, rc::Rc};
@@ -22,7 +22,7 @@ use tmui::{
         namespace::{Orientation, ExitStatus},
         nonnull_mut, nonnull_ref,
         object::{ObjectImpl, ObjectSubclass},
-        signals, Object,
+        signals, Object, events::KeyEvent, emit,
     },
 };
 
@@ -70,7 +70,7 @@ pub struct Session {
     // Zmodem
     zmodem_busy: bool,
     // zmodem_proc: Process
-    emultaion: Option<Box<dyn Emulation>>,
+    emulation: Option<Box<dyn Emulation>>,
     scrolled_view: Option<NonNull<ScrollArea>>,
     view: Option<NonNull<TerminalView>>,
 }
@@ -177,15 +177,15 @@ impl Session {
         );
         connect!(emulation, image_size_changed(), session, on_view_size_change(i32:0, i32:1));
 
+        // Bind connections between `session` and it's `shell_process`:
         session.shell_process.set_utf8_mode(true);
-
         connect!(session.shell_process, receive_data(), session, on_receive_block(String));
-        connect!(emulation, send_data(), session, send_data(String));
-        connect!(emulation, use_utf8_request(), session, set_utf8_mode(bool));
-
         connect!(session.shell_process, finished(), session, done(i32:0, ExitStatus:1));
 
-        session.emultaion = Some(emulation);
+        connect!(emulation, send_data(), session.shell_process, send_data(String));
+        connect!(emulation, use_utf8_request(), session.shell_process, set_utf8_mode(bool));
+
+        session.emulation = Some(emulation);
         session
     }
 
@@ -215,10 +215,34 @@ impl Session {
         let view = scroll_area.get_area_cast_mut::<TerminalView>().unwrap();
         self.view = NonNull::new(view);
 
+        self.bind_view_to_emulation();
+
         scroll_area
     }
 
-    pub fn init(&mut self) {}
+    pub fn bind_view_to_emulation(&mut self) {
+        let terminal_view = nonnull_mut!(self.view);
+        connect!(self, finished(), terminal_view, terminate());
+
+        let emulation = self.emulation_mut();
+
+        terminal_view.set_uses_mouse(emulation.program_use_mouse());
+        terminal_view.set_bracketed_paste_mode(emulation.program_bracketed_paste_mode());
+
+        // Connect `TerminalView`'s signal to emulation:
+        connect!(terminal_view, key_pressed_signal(), emulation, send_key_event(KeyEvent:0, bool:1));
+        connect!(terminal_view, mouse_signal(), emulation, send_mouse_event(i32:0, i32:1, i32:2, u8:3));
+        connect!(terminal_view, send_string_to_emulation(), emulation, send_string(String:0, i32:1));
+
+        // allow emulation to notify view when the foreground process
+        // indicates whether or not it is interested in mouse signals:
+        connect!(emulation, program_uses_mouse_changed(), terminal_view, set_uses_mouse(bool));
+        connect!(emulation, program_bracketed_paste_mode_changed(), terminal_view, set_bracketed_paste_mode(bool));
+
+        terminal_view.set_screen_window(nonnull_mut!(emulation.create_window()));
+
+        emit!(emulation.output_changed());
+    }
 
     #[inline]
     pub fn view(&self) -> &TerminalView {
@@ -242,12 +266,12 @@ impl Session {
 
     #[inline]
     pub fn emulation(&self) -> &dyn Emulation {
-        self.emultaion.as_ref().unwrap().as_ref()
+        self.emulation.as_ref().unwrap().as_ref()
     }
 
     #[inline]
-    pub fn emultaion_mut(&mut self) -> &mut dyn Emulation {
-        self.emultaion.as_mut().unwrap().as_mut()
+    pub fn emulation_mut(&mut self) -> &mut dyn Emulation {
+        self.emulation.as_mut().unwrap().as_mut()
     }
 
     #[inline]
@@ -262,12 +286,12 @@ impl Session {
 
     #[inline]
     pub fn set_history_type(&mut self, ty: Rc<dyn HistoryType>) {
-        self.emultaion_mut().set_history(ty)
+        self.emulation_mut().set_history(ty)
     }
 
     #[inline]
     pub fn set_key_binding(&mut self, id: &str) {
-        self.emultaion_mut().set_key_binding(id)
+        self.emulation_mut().set_key_binding(id)
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////
@@ -286,17 +310,7 @@ impl Session {
     pub fn on_receive_block(&mut self, block: String) {}
 
     #[inline]
-    pub fn send_data(&mut self, data: String) {
-        self.shell_process.send_data(data)
-    }
-
-    #[inline]
-    pub fn set_utf8_mode(&mut self, on: bool) {
-        self.shell_process.set_utf8_mode(on)
-    }
-
-    #[inline]
     pub fn done(&mut self, exit_code: i32, exit_status: ExitStatus) {
-
+        emit!(self.finished())
     }
 }

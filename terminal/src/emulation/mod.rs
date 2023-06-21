@@ -115,9 +115,12 @@ pub trait EmulationSignal: ActionExt {
 
         /// This is emitted when the program running in the shell indicates whether or not it is interested in mouse events.
         ///
-        /// @param usesMouse This will be true if the program wants to be informed about mouse events or false otherwise.
+        /// @param [`bool`] usesMouse This will be true if the program wants to be informed about mouse events or false otherwise.
         program_uses_mouse_changed();
 
+        /// Emit when program bracketed paste mode changed.
+        ///
+        /// @param [`bool`]
         program_bracketed_paste_mode_changed();
 
         /// Emitted when the contents of the screen image change.
@@ -192,6 +195,7 @@ pub trait EmulationSignal: ActionExt {
 }
 
 impl<T: Emulation> EmulationSignal for T {}
+impl AsMutPtr for dyn Emulation {}
 
 pub trait Emulation: 'static + EmulationSignal + ActionExt {
     /// initialize the emulation.

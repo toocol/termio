@@ -141,12 +141,12 @@ pub struct TerminalImageFilterChain {
     line_positions: Rc<RefCell<Vec<i32>>>,
 }
 impl TerminalImageFilterChain {
-    pub fn new() -> Self {
-        Self {
+    pub fn new() -> Box<Self> {
+        Box::new(Self {
             filter_chain: RefCell::new(vec![]),
             buffer: Rc::new(RefCell::new(String::new())),
             line_positions: Rc::new(RefCell::new(vec![])),
-        }
+        })
     }
     pub fn set_image(
         &mut self,

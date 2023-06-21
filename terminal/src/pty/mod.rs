@@ -35,6 +35,8 @@ pub enum ProtocolType {
     LocalShell,
 }
 
+impl AsMutPtr for dyn Pty {}
+
 pub trait Pty: PtySignals {
     /// Start the terminal process.
     ///

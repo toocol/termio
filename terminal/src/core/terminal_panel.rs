@@ -1,11 +1,8 @@
 use super::session::Session;
-use crate::{tools::history::HistoryTypeBuffer, config::Config};
+use crate::{config::Config, tools::history::HistoryTypeBuffer};
 use derivative::Derivative;
 use std::rc::Rc;
-use tmui::{
-    application_window::ApplicationWindow, prelude::*, scroll_area::ScrollArea,
-    tlib::object::ObjectSubclass,
-};
+use tmui::{prelude::*, tlib::object::ObjectSubclass};
 
 /// TerminalPanel was built to manage the terminal view, it holds all the terminal session,
 /// and each session has a binded TerminalView.
@@ -33,19 +30,6 @@ impl ObjectImpl for TerminalPanel {
         let size = parent.size();
         self.width_request(size.width());
         self.height_request(size.height());
-
-        // That's fucking weird, need find a way to fix it:
-        let mut children = self.children_mut();
-        let view = children
-            .last_mut()
-            .unwrap()
-            .as_any_mut()
-            .downcast_mut::<ScrollArea>()
-            .unwrap();
-        let view_ptr = view as *mut ScrollArea;
-        ApplicationWindow::initialize_dynamic_component(view, unsafe {
-            view_ptr.as_mut().unwrap().get_area_mut().unwrap()
-        });
     }
 }
 
@@ -63,8 +47,8 @@ impl TerminalPanel {
     }
 
     pub fn set_terminal_font(&mut self, font: Font) {
-        self.sessions.iter_mut().for_each(|session| {
-            session.view_mut().set_vt_font(font.into())
-        })
+        self.sessions
+            .iter_mut()
+            .for_each(|session| session.view_mut().set_vt_font(font.into()))
     }
 }
