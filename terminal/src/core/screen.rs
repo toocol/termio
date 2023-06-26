@@ -89,14 +89,14 @@ pub struct Screen {
     columns: i32,
 
     ////// [lines[column]]
-    screen_lines: Box<Vec<ImageLine>>,
+    screen_lines: Vec<ImageLine>,
 
     scrolled_lines: i32,
     last_scolled_region: Rect,
 
     dropped_lines: i32,
 
-    line_properties: Box<Vec<LineProperty>>,
+    line_properties: Vec<LineProperty>,
 
     ////// History buffer.
     #[derivative(Default(value = "Rc::new(HistoryScrollNone::new().wrap())"))]
@@ -160,8 +160,9 @@ impl Screen {
         let mut screen: Box<Screen> = Object::new(&[]);
         screen.lines = lines;
         screen.columns = columns;
-        screen.screen_lines = Box::new(vec![vec![]; lines as usize + 1]);
-        screen.line_properties = Box::new(vec![0u8; lines as usize + 1]);
+        screen.screen_lines =
+            vec![vec![Character::default(); columns as usize + 1]; lines as usize + 1];
+        screen.line_properties = vec![0u8; lines as usize + 1];
 
         for i in 0..screen.lines as usize + 1 {
             screen.line_properties[i] = LINE_DEFAULT;
@@ -897,7 +898,7 @@ impl Screen {
         }
 
         self.clear_selection();
-        self.screen_lines = Box::new(new_screen_lines);
+        self.screen_lines = new_screen_lines;
 
         self.lines = new_lines;
         self.columns = new_columns;

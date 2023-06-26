@@ -2328,7 +2328,7 @@ performance degradation and display/alignment errors."
     /// shows a notification window in the middle of the widget indicating the
     /// terminal's current size in columns and lines
     fn show_resize_notification(&self) {
-        todo!()
+        // TODO: show resize notification.
     }
 
     /// scrolls the image by a number of lines.
@@ -2415,13 +2415,12 @@ performance degradation and display/alignment errors."
 
     /// shows the multiline prompt
     fn multiline_confirmation(&mut self, text: &str) -> bool {
-        todo!()
+        // TODO: shows the multiline prompt.
+        false
     }
 
     fn calc_geometry(&mut self) {
         let scroll_bar = unsafe { self.scroll_bar.as_mut().unwrap().as_mut() };
-        let size_hint = scroll_bar.size_hint().unwrap().1;
-        scroll_bar.resize(size_hint.width(), size_hint.height());
         let contents_rect = self.contents_rect(Some(Coordinate::Widget));
 
         let scrollbar_width = if scroll_bar.visible() {
