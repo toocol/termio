@@ -19,13 +19,17 @@ impl ObjectSubclass for TerminalPanel {
 }
 
 impl ObjectImpl for TerminalPanel {
-    fn initialize(&mut self) {
+    fn construct(&mut self) {
+        self.parent_construct();
+
         let session = self.create_session();
         let scrolled_view = session.create_terminal_view();
         session.view_mut().set_vt_font(Config::font().into());
 
         self.add_child(scrolled_view);
+    }
 
+    fn initialize(&mut self) {
         let parent = unsafe { self.get_raw_parent().as_ref().unwrap().as_ref().unwrap() };
         let size = parent.size();
         self.width_request(size.width());

@@ -41,7 +41,7 @@ use tmui::{
         nonnull_mut,
         object::{ObjectImpl, ObjectSubclass},
         signals,
-        timer::Timer,
+        timer::Timer, run_after,
     },
     widget::WidgetImpl,
 };
@@ -57,6 +57,7 @@ lazy_static! {
 
 #[extends(Widget, Layout(Stack))]
 #[derive(Childrenable)]
+#[run_after]
 pub struct TerminalView {
     extended_char_table: ExtendedCharTable,
 
@@ -258,6 +259,13 @@ impl WidgetImpl for TerminalView {
 
         // self.draw_input_method_preedit_string(&mut painter, &self.preddit_rect());
         self.paint_filters(&mut painter);
+    }
+
+    fn run_after(&mut self) {
+        self.parent_run_after();
+
+        self.update_image_size();
+        self.process_filters();
     }
 }
 
