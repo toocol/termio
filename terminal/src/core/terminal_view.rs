@@ -263,6 +263,7 @@ impl WidgetImpl for TerminalView {
 
     fn run_after(&mut self) {
         self.parent_run_after();
+        println!("`TerminalView` run after. parent rect: {:?}", self.get_parent_ref().unwrap().rect());
 
         self.update_image_size();
         self.process_filters();

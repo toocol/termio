@@ -2,13 +2,17 @@ use super::session::Session;
 use crate::{config::Config, tools::history::HistoryTypeBuffer};
 use derivative::Derivative;
 use std::rc::Rc;
-use tmui::{prelude::*, tlib::object::ObjectSubclass};
+use tmui::{
+    prelude::*,
+    tlib::{object::ObjectSubclass, run_after},
+};
 
 /// TerminalPanel was built to manage the terminal view, it holds all the terminal session,
 /// and each session has a binded TerminalView.
 ///
 /// Every TerminalPanel has an tab page, it drawed in the main program, not in the terminal program.
 #[extends(Widget, Layout(SplitPane))]
+#[run_after]
 pub struct TerminalPanel {
     /// All the terminal sessions.
     sessions: Vec<Box<Session>>,
@@ -30,14 +34,23 @@ impl ObjectImpl for TerminalPanel {
     }
 
     fn initialize(&mut self) {
-        let parent = unsafe { self.get_raw_parent().as_ref().unwrap().as_ref().unwrap() };
-        let size = parent.size();
+        let size = self.get_parent_ref().unwrap().size();
         self.width_request(size.width());
         self.height_request(size.height());
     }
 }
 
-impl WidgetImpl for TerminalPanel {}
+impl WidgetImpl for TerminalPanel {
+    fn run_after(&mut self) {
+        self.parent_construct();
+
+        let size = self.size();
+        if let Some(child) = self.children_mut().get_mut(0) {
+            child.resize(size.width(), size.height());
+        }
+        println!("`TerminalPanel` run after.");
+    }
+}
 
 impl TerminalPanel {
     pub fn create_session(&mut self) -> &mut Box<Session> {
@@ -55,4 +68,6 @@ impl TerminalPanel {
             .iter_mut()
             .for_each(|session| session.view_mut().set_vt_font(font.into()))
     }
+
+    pub fn when_resize(&mut self, size: Size) {}
 }
