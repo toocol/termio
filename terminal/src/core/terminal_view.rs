@@ -17,7 +17,7 @@ use crate::tools::{
 };
 use derivative::Derivative;
 use lazy_static::lazy_static;
-use log::warn;
+use log::{warn, info};
 use regex::Regex;
 use std::{
     mem::size_of,
@@ -231,6 +231,8 @@ impl ObjectImpl for TerminalView {
 
         self.set_color_table(&BASE_COLOR_TABLE);
         self.set_mouse_tracking(true);
+
+        connect!(self, size_changed(), self, when_resized(Size));
     }
 }
 
@@ -263,10 +265,7 @@ impl WidgetImpl for TerminalView {
 
     fn run_after(&mut self) {
         self.parent_run_after();
-        println!("`TerminalView` run after. parent rect: {:?}", self.get_parent_ref().unwrap().rect());
-
-        self.update_image_size();
-        self.process_filters();
+        println!("`TerminalView` run after. parent rect: {:?}, self rect: {:?}", self.get_parent_ref().unwrap().rect(), self.rect());
     }
 }
 
@@ -786,6 +785,14 @@ impl TerminalView {
         // painter.draw_text(LTR_OVERRIDE_CHAR, origin)
     }
     //////////////////////////////////////////////// Drawing functions end.  ////////////////////////////////////////////////
+    
+    #[inline]
+    fn when_resized(&mut self, size: Size) {
+        info!("`TerminalView` resized, size = {:?}", size);
+
+        self.update_image_size();
+        self.process_filters();
+    }
 
     /// Returns the terminal color palette used by the view.
     #[inline]

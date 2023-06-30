@@ -46,9 +46,9 @@ impl WidgetImpl for TerminalPanel {
 
         let size = self.size();
         if let Some(child) = self.children_mut().get_mut(0) {
+            println!("`{}` resized: {:?}.", child.name(), size);
             child.resize(size.width(), size.height());
         }
-        println!("`TerminalPanel` run after.");
     }
 }
 
