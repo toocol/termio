@@ -10,14 +10,15 @@ use crate::tools::{
         RE_ITALIC, RE_OVERLINE, RE_STRIKEOUT, RE_UNDERLINE,
     },
     character_color::{
-        CharacterColor, ColorEntry, DEFAULT_BACK_COLOR, DEFAULT_FORE_COLOR, TABLE_COLORS, BASE_COLOR_TABLE,
+        CharacterColor, ColorEntry, BASE_COLOR_TABLE, DEFAULT_BACK_COLOR, DEFAULT_FORE_COLOR,
+        TABLE_COLORS,
     },
     filter::{FilterChainImpl, TerminalImageFilterChain},
     system_ffi::string_width,
 };
 use derivative::Derivative;
 use lazy_static::lazy_static;
-use log::{warn, info};
+use log::{info, warn};
 use regex::Regex;
 use std::{
     mem::size_of,
@@ -31,7 +32,7 @@ use tmui::{
     label::Label,
     prelude::*,
     scroll_bar::{ScrollBar, ScrollBarPosition},
-    skia_safe::{Matrix, self},
+    skia_safe::{self, Matrix},
     system::System,
     tlib::{
         connect, disconnect, emit,
@@ -40,8 +41,8 @@ use tmui::{
         namespace::{KeyCode, KeyboardModifier},
         nonnull_mut,
         object::{ObjectImpl, ObjectSubclass},
-        signals,
-        timer::Timer, run_after,
+        run_after, signals,
+        timer::Timer,
     },
     widget::WidgetImpl,
 };
@@ -226,6 +227,13 @@ impl ObjectSubclass for TerminalView {
 }
 
 impl ObjectImpl for TerminalView {
+    fn construct(&mut self) {
+        self.parent_construct();
+
+        self.set_hexpand(true);
+        self.set_vexpand(true);
+    }
+
     fn initialize(&mut self) {
         self.extended_char_table.initialize();
 
@@ -265,7 +273,11 @@ impl WidgetImpl for TerminalView {
 
     fn run_after(&mut self) {
         self.parent_run_after();
-        println!("`TerminalView` run after. parent rect: {:?}, self rect: {:?}", self.get_parent_ref().unwrap().rect(), self.rect());
+        println!(
+            "`TerminalView` run after. parent rect: {:?}, self rect: {:?}",
+            self.get_parent_ref().unwrap().rect(),
+            self.rect()
+        );
     }
 }
 
@@ -282,7 +294,7 @@ impl TerminalView {
 pub trait TerminalViewSingals: ActionExt {
     signals!(
        /// Emitted when the user presses a key whilst the terminal widget has focus.
-       /// 
+       ///
        /// @param [`KeyEvent`] key event.
        /// @param [`bool`] from paste.
        key_pressed_signal();
@@ -785,7 +797,7 @@ impl TerminalView {
         // painter.draw_text(LTR_OVERRIDE_CHAR, origin)
     }
     //////////////////////////////////////////////// Drawing functions end.  ////////////////////////////////////////////////
-    
+
     #[inline]
     fn when_resized(&mut self, size: Size) {
         info!("`TerminalView` resized, size = {:?}", size);
@@ -1162,7 +1174,7 @@ impl TerminalView {
         let scroll_bar_width = if !scroll_bar.visible() {
             0
         } else {
-            scroll_bar.size_hint().unwrap().1.width()
+            scroll_bar.size_hint().1.unwrap().width()
         };
 
         let horizontal_margin = 2 * self.left_base_margin;
@@ -1175,9 +1187,7 @@ impl TerminalView {
 
         if new_size != self.size() {
             self.size = new_size;
-            self.width_request(self.size.width());
-            self.height_request(self.size.height());
-            // TODO: updateGeometry()
+            self.resize(Some(self.size.width()), Some(self.size.height()));
         }
     }
     pub fn set_fixed_size(&mut self, cols: i32, lins: i32) {

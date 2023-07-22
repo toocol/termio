@@ -27,6 +27,13 @@ impl ObjectSubclass for TerminalEmulator {
 }
 
 impl ObjectImpl for TerminalEmulator {
+    fn construct(&mut self) {
+        self.parent_construct();
+
+        self.set_vexpand(true);
+        self.set_hexpand(true);
+    }
+
     fn initialize(&mut self) {
         pty_receive_pool().start();
     }

@@ -4,7 +4,7 @@ use derivative::Derivative;
 use std::rc::Rc;
 use tmui::{
     prelude::*,
-    tlib::{object::ObjectSubclass, run_after},
+    tlib::object::ObjectSubclass,
 };
 
 /// TerminalPanel was built to manage the terminal view, it holds all the terminal session,
@@ -12,7 +12,6 @@ use tmui::{
 ///
 /// Every TerminalPanel has an tab page, it drawed in the main program, not in the terminal program.
 #[extends(Widget, Layout(SplitPane))]
-#[run_after]
 pub struct TerminalPanel {
     /// All the terminal sessions.
     sessions: Vec<Box<Session>>,
@@ -26,31 +25,18 @@ impl ObjectImpl for TerminalPanel {
     fn construct(&mut self) {
         self.parent_construct();
 
+        self.set_hexpand(true);
+        self.set_vexpand(true);
+
         let session = self.create_session();
         let scrolled_view = session.create_terminal_view();
         session.view_mut().set_vt_font(Config::font().into());
 
         self.add_child(scrolled_view);
     }
-
-    fn initialize(&mut self) {
-        let size = self.get_parent_ref().unwrap().size();
-        self.width_request(size.width());
-        self.height_request(size.height());
-    }
 }
 
-impl WidgetImpl for TerminalPanel {
-    fn run_after(&mut self) {
-        self.parent_construct();
-
-        let size = self.size();
-        if let Some(child) = self.children_mut().get_mut(0) {
-            println!("`{}` resized: {:?}.", child.name(), size);
-            child.resize(size.width(), size.height());
-        }
-    }
-}
+impl WidgetImpl for TerminalPanel {}
 
 impl TerminalPanel {
     pub fn create_session(&mut self) -> &mut Box<Session> {

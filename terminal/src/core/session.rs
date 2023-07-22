@@ -207,6 +207,8 @@ impl Session {
         let mut scroll_area: Box<ScrollArea> = Object::new(&[]);
         scroll_area.set_scroll_bar_position(ScrollBarPosition::End);
         scroll_area.set_orientation(Orientation::Vertical);
+        scroll_area.set_hexpand(true);
+        scroll_area.set_vexpand(true);
 
         view.set_scroll_bar(scroll_area.get_scroll_bar_mut());
         scroll_area.set_area(view);
