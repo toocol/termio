@@ -2446,36 +2446,21 @@ performance degradation and display/alignment errors."
     }
 
     fn calc_geometry(&mut self) {
-        let scroll_bar = unsafe { self.scroll_bar.as_mut().unwrap().as_mut() };
         let contents_rect = self.contents_rect(Some(Coordinate::Widget));
 
-        let scrollbar_width = if scroll_bar.visible() {
-            scroll_bar.size().width()
-        } else {
-            0
-        };
-
         match self.scroll_bar_location {
-            ScrollBarState::NoScrollBar => {
-                self.left_margin = self.left_base_margin;
-                self.content_width = contents_rect.width() - 2 * self.left_base_margin;
-            }
+            ScrollBarState::NoScrollBar => {}
             ScrollBarState::ScrollBarLeft => {
-                self.left_margin = self.left_base_margin + scrollbar_width;
-                self.content_width =
-                    contents_rect.width() - 2 * self.left_base_margin - scrollbar_width;
                 nonnull_mut!(self.scroll_bar).set_scroll_bar_position(ScrollBarPosition::Start);
             }
             ScrollBarState::ScrollBarRight => {
-                self.left_margin = self.left_base_margin;
-                self.content_width =
-                    contents_rect.width() - 2 * self.left_base_margin - scrollbar_width;
                 nonnull_mut!(self.scroll_bar).set_scroll_bar_position(ScrollBarPosition::End);
             }
         }
 
         self.top_margin = self.top_base_margin;
-        self.content_height = contents_rect.height() - 2 * self.top_base_margin + 1;
+        self.content_width = contents_rect.width() + 1;
+        self.content_height = contents_rect.height() + 1;
 
         if !self.is_fixed_size {
             // ensure that display is always at least one column wide
@@ -2487,6 +2472,7 @@ performance degradation and display/alignment errors."
             self.used_lines = self.used_lines.min(self.lines);
         }
     }
+
     fn propagate_size(&mut self) {
         if self.is_fixed_size {
             self.set_size(self.columns, self.lines);
@@ -2497,6 +2483,7 @@ performance degradation and display/alignment errors."
             self.update_image_size();
         }
     }
+
     fn update_image_size(&mut self) {
         let old_line = self.lines;
         let old_col = self.columns;
