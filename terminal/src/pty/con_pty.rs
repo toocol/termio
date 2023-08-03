@@ -109,7 +109,9 @@ impl Pty for ConPty {
     fn set_window_size(&mut self, cols: i32, rows: i32) {
         self.cols = cols;
         self.rows = rows;
-        pty_ref!(self).lock().unwrap().set_size(cols, rows).unwrap()
+        if let Some(ref pty) = self.pty {
+            pty.lock().unwrap().set_size(cols, rows).unwrap()
+        }
     }
 
     #[inline]

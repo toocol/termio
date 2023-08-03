@@ -261,6 +261,9 @@ impl ScreenWindow {
 
     /// Returns the total number of lines in the screen.
     pub fn line_count(&self) -> i32 {
+        let history_lines = self.screen().get_history_lines();
+        let lines = self.screen().get_lines();
+        println!("history_lines: {}, lines: {}", history_lines, lines);
         self.screen().get_history_lines() + self.screen().get_lines()
     }
 

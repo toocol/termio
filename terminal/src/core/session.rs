@@ -6,23 +6,26 @@ use crate::pty::con_pty::ConPty;
 use crate::pty::posix_pty::PosixPty;
 
 use crate::{
+    core::terminal_view::TerminalViewSingals,
     emulation::{Emulation, VT102Emulation},
     pty::{ProtocolType, Pty},
-    tools::history::HistoryType, core::terminal_view::TerminalViewSingals,
+    tools::history::HistoryType,
 };
 use derivative::Derivative;
+use log::debug;
 use std::{ptr::NonNull, rc::Rc};
 use tmui::{
     prelude::*,
-    scroll_area::ScrollArea,
+    scroll_area::{ScrollArea, ScrollAreaExt},
     scroll_bar::ScrollBarPosition,
     tlib::{
-        connect,
+        connect, emit,
+        events::KeyEvent,
         figure::Color,
-        namespace::{Orientation, ExitStatus},
+        namespace::{ExitStatus, Orientation},
         nonnull_mut, nonnull_ref,
         object::{ObjectImpl, ObjectSubclass},
-        signals, Object, events::KeyEvent, emit,
+        signals, Object,
     },
 };
 
@@ -179,11 +182,26 @@ impl Session {
 
         // Bind connections between `session` and it's `shell_process`:
         session.shell_process.set_utf8_mode(true);
-        connect!(session.shell_process, receive_data(), session, on_receive_block(String));
+        connect!(
+            session.shell_process,
+            receive_data(),
+            session,
+            on_receive_block(String)
+        );
         connect!(session.shell_process, finished(), session, done(i32:0, ExitStatus:1));
 
-        connect!(emulation, send_data(), session.shell_process, send_data(String));
-        connect!(emulation, use_utf8_request(), session.shell_process, set_utf8_mode(bool));
+        connect!(
+            emulation,
+            send_data(),
+            session.shell_process,
+            send_data(String)
+        );
+        connect!(
+            emulation,
+            use_utf8_request(),
+            session.shell_process,
+            set_utf8_mode(bool)
+        );
 
         session.emulation = Some(emulation);
         session
@@ -218,6 +236,7 @@ impl Session {
         self.view = NonNull::new(view);
 
         self.bind_view_to_emulation();
+        connect!(view, changed_content_size_signal(), self, on_view_size_change(i32:0, i32:1));
 
         scroll_area
     }
@@ -238,8 +257,18 @@ impl Session {
 
         // allow emulation to notify view when the foreground process
         // indicates whether or not it is interested in mouse signals:
-        connect!(emulation, program_uses_mouse_changed(), terminal_view, set_uses_mouse(bool));
-        connect!(emulation, program_bracketed_paste_mode_changed(), terminal_view, set_bracketed_paste_mode(bool));
+        connect!(
+            emulation,
+            program_uses_mouse_changed(),
+            terminal_view,
+            set_uses_mouse(bool)
+        );
+        connect!(
+            emulation,
+            program_bracketed_paste_mode_changed(),
+            terminal_view,
+            set_bracketed_paste_mode(bool)
+        );
 
         terminal_view.set_screen_window(nonnull_mut!(emulation.create_window()));
 
@@ -297,6 +326,40 @@ impl Session {
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////
+    // private
+    ///////////////////////////////////////////////////////////////////////////////////////////
+    fn update_terminal_size(&mut self) {
+        debug!("TerminalView's size has changed, update the terminal size.");
+        let mut min_lines = -1;
+        let mut min_columns = -1;
+
+        // minimum number of lines and columns that views require for
+        // their size to be taken into consideration ( to avoid problems
+        // with new view widgets which haven't yet been set to their correct size )
+        const VIEW_LINES_THRESHOLD: i32 = 2;
+        const VIEW_COLUMNS_THRESHOLD: i32 = 2;
+
+        let view = self.view();
+        if view.visible() && view.lines() >= VIEW_LINES_THRESHOLD && view.columns() >= VIEW_COLUMNS_THRESHOLD {
+            min_lines = view.lines();
+            min_columns = view.columns();
+        }
+
+        if min_lines > 0 && min_columns > 0 {
+            self.emulation_mut().set_image_size(min_lines, min_columns);
+            self.shell_process.set_window_size(min_columns, min_lines);
+        }
+    }
+
+    fn update_view_size(&mut self, size: Size) {
+        if size.width() <= 1 || size.height() <= 1 {
+            return
+        }
+
+        self.view_mut().set_size(size.width(), size.height());
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////
     // Slots
     ///////////////////////////////////////////////////////////////////////////////////////////
     pub fn set_user_title(&mut self) {
@@ -305,9 +368,15 @@ impl Session {
 
     pub fn activate_state_set(&mut self, state: i32) {}
 
-    pub fn on_emulation_size_change(&mut self, size: Size) {}
+    #[inline]
+    pub fn on_emulation_size_change(&mut self, size: Size) {
+        self.update_view_size(size)
+    }
 
-    pub fn on_view_size_change(&mut self, widht: i32, height: i32) {}
+    #[inline]
+    pub fn on_view_size_change(&mut self, widht: i32, height: i32) {
+        self.update_terminal_size()
+    }
 
     pub fn on_receive_block(&mut self, block: String) {}
 

@@ -10,6 +10,7 @@ pub use scroll_buffer::*;
 pub use scroll_compact::*;
 pub use scroll_file::*;
 pub use scroll_none::*;
+use tmui::tlib::global::SemanticExt;
 
 use super::character::Character;
 use std::{cell::RefCell, rc::Rc};
@@ -22,10 +23,12 @@ pub trait HistoryScroll: Sized + 'static {
     /// The type of history scroll
     type HistoryType: HistoryType;
 
+    #[inline]
     fn wrap(self) -> Box<dyn HistoryScrollWrapper> {
         Box::new(RefCell::new(self))
     }
 
+    #[inline]
     fn dynamic_cast_type<T: HistoryType>(&self) -> &mut T {
         unsafe { &mut *(self.get_type().as_ref() as *const Self::HistoryType as *mut T) }
     }
@@ -57,6 +60,7 @@ pub trait HistoryScroll: Sized + 'static {
     fn set_max_nb_lines(&mut self, _: usize) {}
 }
 pub trait HistoryScrollWrapper {
+    fn type_(&self) -> HistoryTypeEnum;
     fn has_scroll(&self) -> bool;
     fn get_lines(&self) -> i32;
     fn get_line_len(&self, lineno: i32) -> i32;
@@ -113,15 +117,33 @@ impl<T: HistoryScroll> HistoryScrollWrapper for RefCell<T> {
     fn set_max_nb_lines(&self, nb_lines: usize) {
         self.borrow_mut().set_max_nb_lines(nb_lines)
     }
+
+    fn type_(&self) -> HistoryTypeEnum {
+        self.borrow().get_type().type_()
+    }
 }
 
 ///////////////////////// History Type
+#[repr(C)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub enum HistoryTypeEnum {
+    None,
+    BlockArray,
+    File,
+    Buffer,
+    Compact,
+}
 pub trait HistoryType {
+    fn type_(&self) -> HistoryTypeEnum;
+
     fn is_enabled(&self) -> bool;
 
     fn maximum_line_count(&self) -> i32;
 
-    fn scroll(&self, old: Option<Rc<Box<dyn HistoryScrollWrapper>>>) -> Rc<Box<dyn HistoryScrollWrapper>>;
+    fn scroll(
+        &self,
+        old: Option<Rc<Box<dyn HistoryScrollWrapper>>>,
+    ) -> Rc<Box<dyn HistoryScrollWrapper>>;
 
     fn is_unlimited(&self) -> bool {
         self.maximum_line_count() == 0
@@ -130,20 +152,32 @@ pub trait HistoryType {
 
 pub struct HistoryTypeNone;
 impl HistoryTypeNone {
+    #[inline]
     pub fn new() -> Self {
         Self {}
     }
 }
 impl HistoryType for HistoryTypeNone {
+    #[inline]
+    fn type_(&self) -> HistoryTypeEnum {
+        HistoryTypeEnum::None
+    }
+
+    #[inline]
     fn is_enabled(&self) -> bool {
         false
     }
 
+    #[inline]
     fn maximum_line_count(&self) -> i32 {
         0
     }
 
-    fn scroll(&self, _: Option<Rc<Box<dyn HistoryScrollWrapper>>>) -> Rc<Box<dyn HistoryScrollWrapper>> {
+    #[inline]
+    fn scroll(
+        &self,
+        _: Option<Rc<Box<dyn HistoryScrollWrapper>>>,
+    ) -> Rc<Box<dyn HistoryScrollWrapper>> {
         Rc::new(HistoryScrollNone::new().wrap())
     }
 }
@@ -152,20 +186,32 @@ pub struct HistoryTypeBlockArray {
     size: usize,
 }
 impl HistoryTypeBlockArray {
+    #[inline]
     pub fn new(size: usize) -> Self {
         Self { size }
     }
 }
 impl HistoryType for HistoryTypeBlockArray {
+    #[inline]
+    fn type_(&self) -> HistoryTypeEnum {
+        HistoryTypeEnum::BlockArray
+    }
+
+    #[inline]
     fn is_enabled(&self) -> bool {
         true
     }
 
+    #[inline]
     fn maximum_line_count(&self) -> i32 {
         self.size as i32
     }
 
-    fn scroll(&self, _: Option<Rc<Box<dyn HistoryScrollWrapper>>>) -> Rc<Box<dyn HistoryScrollWrapper>> {
+    #[inline]
+    fn scroll(
+        &self,
+        _: Option<Rc<Box<dyn HistoryScrollWrapper>>>,
+    ) -> Rc<Box<dyn HistoryScrollWrapper>> {
         Rc::new(HistoryScrollBlockArray::new(self.size).wrap())
     }
 }
@@ -174,25 +220,37 @@ pub struct HistoryTypeFile {
     file_name: String,
 }
 impl HistoryTypeFile {
+    #[inline]
     pub fn new(file_name: String) -> Self {
         Self { file_name }
     }
 }
 impl HistoryTypeFile {
+    #[inline]
     pub fn get_file_name(&self) -> &str {
         &self.file_name
     }
 }
 impl HistoryType for HistoryTypeFile {
+    #[inline]
+    fn type_(&self) -> HistoryTypeEnum {
+        HistoryTypeEnum::File
+    }
+
+    #[inline]
     fn is_enabled(&self) -> bool {
         true
     }
 
+    #[inline]
     fn maximum_line_count(&self) -> i32 {
         0
     }
 
-    fn scroll(&self, old: Option<Rc<Box<dyn HistoryScrollWrapper>>>) -> Rc<Box<dyn HistoryScrollWrapper>> {
+    fn scroll(
+        &self,
+        old: Option<Rc<Box<dyn HistoryScrollWrapper>>>,
+    ) -> Rc<Box<dyn HistoryScrollWrapper>> {
         let mut scroll = HistoryScrollFile::new(self.file_name.clone());
         let mut line = [Character::default(); LINE_SIZE];
         let lines = if old.is_some() {
@@ -225,23 +283,60 @@ pub struct HistoryTypeBuffer {
     nb_lines: usize,
 }
 impl HistoryTypeBuffer {
+    #[inline]
     pub fn new(nb_lines: usize) -> Self {
         Self { nb_lines }
     }
 }
 impl HistoryType for HistoryTypeBuffer {
+    #[inline]
+    fn type_(&self) -> HistoryTypeEnum {
+        HistoryTypeEnum::Buffer
+    }
+
+    #[inline]
     fn is_enabled(&self) -> bool {
         true
     }
 
+    #[inline]
     fn maximum_line_count(&self) -> i32 {
         self.nb_lines as i32
     }
 
-    fn scroll(&self, old: Option<Rc<Box<dyn HistoryScrollWrapper>>>) -> Rc<Box<dyn HistoryScrollWrapper>> {
+    fn scroll(
+        &self,
+        old: Option<Rc<Box<dyn HistoryScrollWrapper>>>,
+    ) -> Rc<Box<dyn HistoryScrollWrapper>> {
         if let Some(old) = old {
-            old.set_max_nb_lines(self.nb_lines);
-            old
+            if self.type_() == old.type_() {
+                old.set_max_nb_lines(self.nb_lines);
+                old
+            } else {
+                let new_scroll = HistoryScrollBuffer::new(Some(self.nb_lines)).wrap().rc();
+                let lines = old.get_lines();
+                let mut start_line = 0;
+                if lines > self.nb_lines as i32 {
+                    start_line = lines - self.nb_lines as i32;
+                }
+
+                let mut line = [Character::default(); LINE_SIZE];
+                for i in start_line..lines {
+                    let size = old.get_line_len(i);
+                    if size > LINE_SIZE as i32 {
+                        let mut tmp_line = vec![Character::default(); size as usize];
+                        old.get_cells(i, 0, size, &mut tmp_line);
+                        new_scroll.add_cells(&tmp_line, size);
+                        new_scroll.add_line(old.is_wrapped_line(i));
+                    } else {
+                        old.get_cells(i, 0, size, &mut line);
+                        new_scroll.add_cells(&line, size);
+                        new_scroll.add_line(old.is_wrapped_line(i));
+                    }
+                }
+
+                new_scroll
+            }
         } else {
             Rc::new(HistoryScrollBuffer::new(Some(self.nb_lines)).wrap())
         }
@@ -252,20 +347,31 @@ pub struct CompactHistoryType {
     nb_lines: usize,
 }
 impl CompactHistoryType {
+    #[inline]
     pub fn new(size: usize) -> Self {
         Self { nb_lines: size }
     }
 }
 impl HistoryType for CompactHistoryType {
+    #[inline]
+    fn type_(&self) -> HistoryTypeEnum {
+        HistoryTypeEnum::Compact
+    }
+
+    #[inline]
     fn is_enabled(&self) -> bool {
         true
     }
 
+    #[inline]
     fn maximum_line_count(&self) -> i32 {
         self.nb_lines as i32
     }
 
-    fn scroll(&self, old: Option<Rc<Box<dyn HistoryScrollWrapper>>>) -> Rc<Box<dyn HistoryScrollWrapper>> {
+    fn scroll(
+        &self,
+        old: Option<Rc<Box<dyn HistoryScrollWrapper>>>,
+    ) -> Rc<Box<dyn HistoryScrollWrapper>> {
         if let Some(old) = old {
             old.set_max_nb_lines(self.nb_lines);
             old

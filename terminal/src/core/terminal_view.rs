@@ -273,9 +273,11 @@ impl WidgetImpl for TerminalView {
 
     fn run_after(&mut self) {
         self.parent_run_after();
+        let parent_rect = self.get_parent_ref().unwrap().rect();
+        self.resize(Some(parent_rect.width()), Some(parent_rect.height()));
         println!(
             "`TerminalView` run after. parent rect: {:?}, self rect: {:?}",
-            self.get_parent_ref().unwrap().rect(),
+            parent_rect,
             self.rect()
         );
     }
@@ -785,11 +787,11 @@ impl TerminalView {
     }
     /// draws the preedit string for input methods.
     fn draw_input_method_preedit_string(&mut self, painter: &mut Painter, rect: &Rect) {
-        todo!()
+        // TODO
     }
 
     fn paint_filters(&mut self, painter: &mut Painter) {
-        todo!()
+        // TODO
     }
 
     fn cal_draw_text_addition_height(&mut self, painter: &mut Painter) {
