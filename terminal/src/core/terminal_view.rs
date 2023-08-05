@@ -13,7 +13,7 @@ use crate::tools::{
         CharacterColor, ColorEntry, BASE_COLOR_TABLE, DEFAULT_BACK_COLOR, DEFAULT_FORE_COLOR,
         TABLE_COLORS,
     },
-    filter::{FilterChainImpl, TerminalImageFilterChain},
+    filter::{FilterChainImpl, HotSpotImpl, HotSpotType, TerminalImageFilterChain},
     system_ffi::string_width,
 };
 use derivative::Derivative;
@@ -23,11 +23,13 @@ use regex::Regex;
 use std::{
     mem::size_of,
     ptr::{copy_nonoverlapping, NonNull},
+    rc::Rc,
     sync::atomic::{AtomicBool, AtomicU64, Ordering},
     time::Duration,
 };
 use tmui::{
     clipboard::ClipboardLevel,
+    cursor::Cursor,
     graphics::painter::Painter,
     label::Label,
     prelude::*,
@@ -398,7 +400,7 @@ impl TerminalView {
 
         let mut y = luy;
         while y <= rly {
-            let mut c = self.image.as_ref().unwrap()[self.loc(lux, y) as usize]
+            let mut c = self.image()[self.loc(lux, y) as usize]
                 .character_union
                 .data();
             let mut x = lux;
@@ -416,16 +418,12 @@ impl TerminalView {
                 unistr.resize(buffer_size, 0);
 
                 // is this a single character or a sequence of characters ?
-                if self.image.as_ref().unwrap()[self.loc(x, y) as usize].rendition & RE_EXTEND_CHAR
-                    != 0
-                {
+                if self.image()[self.loc(x, y) as usize].rendition & RE_EXTEND_CHAR != 0 {
                     // sequence of characters
                     let mut extended_char_length = 0 as wchar_t;
                     let chars = ExtendedCharTable::instance()
                         .lookup_extended_char(
-                            self.image.as_ref().unwrap()[self.loc(x, y) as usize]
-                                .character_union
-                                .data(),
+                            self.image()[self.loc(x, y) as usize].character_union.data(),
                             &mut extended_char_length,
                         )
                         .unwrap();
@@ -434,9 +432,7 @@ impl TerminalView {
                         unistr[p] = chars[index];
                     }
                 } else {
-                    c = self.image.as_ref().unwrap()[self.loc(x, y) as usize]
-                        .character_union
-                        .data();
+                    c = self.image()[self.loc(x, y) as usize].character_union.data();
                     if c != 0 {
                         assert!(p < buffer_size);
                         unistr[p] = c;
@@ -444,24 +440,22 @@ impl TerminalView {
                 }
 
                 let line_draw = self.is_line_char(c);
-                let double_width = self.image.as_ref().unwrap()
-                    [self.image_size.min(self.loc(x, y) + 1) as usize]
+                let double_width = self.image()[self.image_size.min(self.loc(x, y) + 1) as usize]
                     .character_union
                     .data()
                     == 0;
 
-                let img = &self.image.as_ref().unwrap()[self.loc(x, y) as usize];
+                let img = &self.image()[self.loc(x, y) as usize];
                 let current_foreground = img.foreground_color;
                 let current_background = img.background_color;
                 let current_rendition = img.rendition;
 
-                let mut img = &self.image.as_ref().unwrap()[self.loc(x + len, y) as usize];
+                let mut img = &self.image()[self.loc(x + len, y) as usize];
                 while x + len <= rlx
                     && img.foreground_color == current_foreground
                     && img.background_color == current_background
                     && img.rendition == current_rendition
-                    && (self.image.as_ref().unwrap()
-                        [self.image_size.min(self.loc(x + len, y) + 1) as usize]
+                    && (self.image()[self.image_size.min(self.loc(x + len, y) + 1) as usize]
                         .character_union
                         .data()
                         == 0)
@@ -479,11 +473,11 @@ impl TerminalView {
                     }
                     len += 1;
 
-                    img = &self.image.as_ref().unwrap()[self.loc(x + len, y) as usize];
+                    img = &self.image()[self.loc(x + len, y) as usize];
                 }
 
                 if x + len < self.used_columns
-                    && !self.image.as_ref().unwrap()[self.loc(x + len, y) as usize]
+                    && !self.image()[self.loc(x + len, y) as usize]
                         .character_union
                         .data()
                         != 0
@@ -530,7 +524,7 @@ impl TerminalView {
                 painter.set_transform(text_scale, true);
 
                 // paint text fragment
-                let style = self.image.as_ref().unwrap()[self.loc(x, y) as usize];
+                let style = self.image()[self.loc(x, y) as usize];
                 let slice: Vec<uwchar_t> = unsafe { std::mem::transmute(unistr.clone()) };
                 self.draw_text_fragment(painter, text_area, WideString::from_vec(slice), &style);
 
@@ -791,7 +785,127 @@ impl TerminalView {
     }
 
     fn paint_filters(&mut self, painter: &mut Painter) {
-        // TODO
+        let cursor_pos = self.map_to_widget(&Cursor::position());
+
+        let (cursor_line, cursor_column) = self.get_character_position(cursor_pos);
+        let cursor_character = self.image()[self.loc(cursor_column, cursor_line) as usize];
+
+        painter.set_color(
+            cursor_character
+                .foreground_color
+                .color(self.get_color_table()),
+        );
+
+        let spots = self.filter_chain.hotspots();
+        for spot in spots.iter() {
+            let mut region = Region::default();
+
+            if spot.type_() == HotSpotType::Link {
+                self.calc_hotspot_link_region(spot, &mut region)
+            }
+
+            for line in spot.start_line()..=spot.end_line() {
+                self.paint_hotspot_each_line(line, spot, &region, painter)
+            }
+        }
+    }
+
+    fn calc_hotspot_link_region(&self, spot: &Rc<Box<dyn HotSpotImpl>>, region: &mut Region) {
+        let mut r = Rect::default();
+        if spot.start_line() == spot.end_line() {
+            r.set_coords(
+                spot.start_column() * self.font_width + 1 + self.left_base_margin,
+                spot.start_line() * self.font_height + 1 + self.top_base_margin,
+                spot.end_column() * self.font_width - 1 + self.left_base_margin,
+                (spot.end_line() + 1) * self.font_height - 1 + self.top_base_margin,
+            );
+            region.add_rect(r);
+        } else {
+            r.set_coords(
+                spot.start_column() * self.font_width + 1 + self.left_base_margin,
+                spot.start_line() * self.font_height + 1 + self.top_base_margin,
+                self.columns * self.font_width - 1 + self.left_base_margin,
+                (spot.start_line() + 1) * self.font_height - 1 + self.top_base_margin,
+            );
+            region.add_rect(r);
+
+            for line in spot.start_line() + 1..spot.end_line() {
+                r.set_coords(
+                    0 * self.font_width + 1 + self.left_base_margin,
+                    line * self.font_height + 1 + self.top_base_margin,
+                    self.columns * self.font_width - 1 + self.left_base_margin,
+                    (line + 1) * self.font_height - 1 + self.top_base_margin,
+                );
+                region.add_rect(r);
+            }
+            r.set_coords(
+                0 * self.font_width + 1 + self.left_base_margin,
+                spot.end_line() * self.font_height + 1 + self.top_base_margin,
+                spot.end_column() * self.font_width - 1 + self.left_base_margin,
+                (spot.end_line() + 1) * self.font_height - 1 + self.top_base_margin,
+            );
+            region.add_rect(r);
+        }
+    }
+
+    fn paint_hotspot_each_line(
+        &self,
+        line: i32,
+        spot: &Rc<Box<dyn HotSpotImpl>>,
+        region: &Region,
+        painter: &mut Painter,
+    ) {
+        let mut start_column = 0;
+        let mut end_column = self.columns - 1;
+
+        // ignore whitespace at the end of the lines:
+        while self.image()[self.loc(end_column, line) as usize]
+            .character_union
+            .equals(wch!(' '))
+            && end_column > 0
+        {
+            end_column -= 1;
+        }
+
+        // increment here because the column which we want to set 'endColumn' to
+        // is the first whitespace character at the end of the line:
+        end_column += 1;
+
+        if line == spot.start_line() {
+            start_column = spot.start_column();
+        }
+        if line == spot.end_line() {
+            end_column = spot.end_column();
+        }
+
+        // subtract one pixel from the right and bottom so that
+        // we do not overdraw adjacent hotspots.
+        //
+        // subtracting one pixel from all sides also prevents an edge case where
+        // moving the mouse outside a link could still leave it underlined
+        // because the check below for the position of the cursor finds it on the border of the target area.
+        let mut r = Rect::default();
+        r.set_coords(
+            start_column * self.font_width + 1 + self.left_base_margin,
+            line * self.font_height + 1 + self.top_base_margin,
+            end_column * self.font_width - 1 + self.left_base_margin,
+            (line + 1) * self.font_height - 1 + self.top_base_margin,
+        );
+
+        match spot.type_() {
+            HotSpotType::Link => {
+                let (_, metrics) = self.font().to_skia_font().metrics();
+                let base_line = r.bottom() - metrics.descent as i32;
+                let under_line_pos = base_line + metrics.underline_position().unwrap() as i32;
+                if region.contains_point(&self.map_to_widget(&Cursor::position())) {
+                    painter.draw_line(r.left(), under_line_pos, r.right(), under_line_pos);
+                }
+            }
+            HotSpotType::Marker => {
+                painter.fill_rect(r, Color::from_rgba(255, 0, 0, 120))
+            }
+            _ => {}
+        }
     }
 
     fn cal_draw_text_addition_height(&mut self, painter: &mut Painter) {
@@ -1976,20 +2090,13 @@ performance degradation and display/alignment errors."
             let mut left = if left_not_right { here } else { i_pnt_sel_corr };
             i = self.loc(left.x(), left.y());
             if i >= 0 && i <= self.image_size {
-                sel_class = self.char_class(
-                    self.image.as_ref().unwrap()[i as usize]
-                        .character_union
-                        .data(),
-                );
+                sel_class = self.char_class(self.image()[i as usize].character_union.data());
 
                 while (left.x() > 0
                     || (left.y() > 0
                         && self.line_properties[left.y() as usize - 1] & LINE_WRAPPED != 0))
-                    && self.char_class(
-                        self.image.as_ref().unwrap()[i as usize - 1]
-                            .character_union
-                            .data(),
-                    ) == sel_class
+                    && self.char_class(self.image()[i as usize - 1].character_union.data())
+                        == sel_class
                 {
                     i -= 1;
                     if left.x() > 0 {
@@ -2005,19 +2112,12 @@ performance degradation and display/alignment errors."
             let mut right = if left_not_right { i_pnt_sel_corr } else { here };
             i = self.loc(right.x(), right.y());
             if i >= 0 && i <= self.image_size {
-                sel_class = self.char_class(
-                    self.image.as_ref().unwrap()[i as usize]
-                        .character_union
-                        .data(),
-                );
+                sel_class = self.char_class(self.image()[i as usize].character_union.data());
                 while (right.x() < self.used_columns - 1
                     || (right.y() < self.used_lines - 1
                         && self.line_properties[right.y() as usize] & LINE_WRAPPED != 0))
-                    && self.char_class(
-                        self.image.as_ref().unwrap()[i as usize + 1]
-                            .character_union
-                            .data(),
-                    ) == sel_class
+                    && self.char_class(self.image()[i as usize + 1].character_union.data())
+                        == sel_class
                 {
                     i += 1;
                     if right.x() < self.used_columns - 1 {
@@ -2098,11 +2198,8 @@ performance degradation and display/alignment errors."
             if right.x() > 0 && !self.column_selection_mode {
                 i = self.loc(right.x(), right.y());
                 if i >= 0 && i <= self.image_size {
-                    _sel_class = self.char_class(
-                        self.image.as_ref().unwrap()[i as usize - 1]
-                            .character_union
-                            .data(),
-                    );
+                    _sel_class =
+                        self.char_class(self.image()[i as usize - 1].character_union.data());
                 }
             }
 
@@ -2181,7 +2278,7 @@ performance degradation and display/alignment errors."
         }
         // We initialize image[image_size] too. See make_image()
         for i in 0..self.image_size as usize {
-            let image = self.image.as_mut().unwrap();
+            let image = self.image_mut();
             image[i].character_union.set_data(wch!(' '));
             image[i].foreground_color = CharacterColor::default_foreground();
             image[i].background_color = CharacterColor::default_background();
@@ -2216,22 +2313,14 @@ performance degradation and display/alignment errors."
         if self.triple_click_mode == TripleClickMode::SelectForwardsFromCursor {
             // find word boundary start
             let mut i = self.loc(self.pnt_sel.x(), self.pnt_sel.y());
-            let sel_class = self.char_class(
-                self.image.as_ref().unwrap()[i as usize]
-                    .character_union
-                    .data(),
-            );
+            let sel_class = self.char_class(self.image()[i as usize].character_union.data());
 
             let mut x = self.pnt_sel.x();
 
             while (x > 0
                 || (self.pnt_sel.y() > 0
                     && self.line_properties[self.pnt_sel.y() as usize - 1] & LINE_WRAPPED != 0))
-                && self.char_class(
-                    self.image.as_ref().unwrap()[i as usize - 1]
-                        .character_union
-                        .data(),
-                ) == sel_class
+                && self.char_class(self.image()[i as usize - 1].character_union.data()) == sel_class
             {
                 i -= 1;
                 if x > 0 {
@@ -2268,7 +2357,7 @@ performance degradation and display/alignment errors."
         if self.image.is_none() {
             return 0;
         }
-        let image = self.image.as_ref().unwrap();
+        let image = self.image();
         let font = self.font().to_skia_font();
         let mut result = 0;
         let mut widths = vec![];
@@ -2502,7 +2591,7 @@ performance degradation and display/alignment errors."
                 let dist_end = dist_start + mcolumns as usize;
                 let src_start = (old_col * line) as usize;
                 let src_end = src_start + mcolumns as usize;
-                self.image.as_mut().unwrap()[dist_start..dist_end]
+                self.image_mut()[dist_start..dist_end]
                     .copy_from_slice(&old_image.as_ref().unwrap()[src_start..src_end]);
             }
         }
@@ -2612,11 +2701,24 @@ performance degradation and display/alignment errors."
         todo!()
     }
 
+    #[inline]
     fn is_line_char(&self, c: wchar_t) -> bool {
         self.draw_line_chars && ((c & 0xFF80) == 0x2500)
     }
+    #[inline]
     fn is_line_char_string(&self, string: &WideString) -> bool {
         string.len() > 0 && self.is_line_char(string.as_slice()[0] as wchar_t)
+    }
+
+    #[inline]
+    /// Get reference of image without option check, may cause panic.
+    fn image(&self) -> &[Character] {
+        self.image.as_ref().unwrap()
+    }
+    #[inline]
+    /// Get mutable reference of image without option check, may cause panic.
+    fn image_mut(&mut self) -> &mut [Character] {
+        self.image.as_mut().unwrap()
     }
 }
 
