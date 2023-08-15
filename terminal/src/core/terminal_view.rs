@@ -46,7 +46,7 @@ use tmui::{
         run_after, signals,
         timer::Timer,
     },
-    widget::WidgetImpl,
+    widget::WidgetImpl, application,
 };
 use wchar::{wch, wchar_t};
 #[cfg(not(windows))]
@@ -243,6 +243,7 @@ impl ObjectImpl for TerminalView {
         self.set_mouse_tracking(true);
 
         connect!(self, size_changed(), self, when_resized(Size));
+        connect!(self.blink_cursor_timer, timeout(), self, blink_cursor_event());
     }
 }
 
@@ -276,7 +277,7 @@ impl WidgetImpl for TerminalView {
     fn run_after(&mut self) {
         self.parent_run_after();
         let parent_rect = self.get_parent_ref().unwrap().rect();
-        self.resize(Some(parent_rect.width()), Some(parent_rect.height()));
+
         println!(
             "`TerminalView` run after. parent rect: {:?}, self rect: {:?}",
             parent_rect,
@@ -412,8 +413,6 @@ impl TerminalView {
                 let mut len = 1;
                 let mut p = 0;
 
-                x += 1;
-
                 // reset buffer to the maximal size
                 unistr.resize(buffer_size, 0);
 
@@ -543,6 +542,7 @@ impl TerminalView {
                 }
 
                 x += len - 1;
+                x += 1;
             }
             y += 1;
         }
@@ -1090,6 +1090,17 @@ impl TerminalView {
     #[inline]
     pub fn set_blinking_cursor(&mut self, blink: bool) {
         self.has_blinking_cursor = blink;
+
+        if blink && !self.blink_cursor_timer.is_active() {
+            self.blink_cursor_timer.start(Duration::from_millis(application::cursor_blinking_time() as u64))
+        }
+
+        if !blink && self.blink_cursor_timer.is_active() {
+            self.blink_cursor_timer.stop();
+            if self.cursor_blinking {
+                self.blink_cursor_event()
+            }
+        }
     }
 
     /// Specifies whether or not text can blink.
@@ -1310,10 +1321,10 @@ impl TerminalView {
         self.is_fixed_size = true;
 
         // ensure that display is at least one line by one column in size.
-        self.columns = 1.max(cols);
-        self.lines = 1.max(lins);
-        self.used_columns = self.used_columns.min(self.columns);
-        self.used_lines = self.used_lines.min(self.lines);
+        self.set_columns(1.max(cols));
+        self.set_lines(1.max(lins));
+        self.set_used_columns(self.used_columns.min(self.columns));
+        self.set_used_lines(self.used_lines.min(self.lines));
 
         if self.image.is_some() {
             self.make_image();
@@ -1731,7 +1742,7 @@ performance degradation and display/alignment errors."
             );
             dirty_region.or(&rect);
         }
-        self.used_lines = lines_to_update;
+        self.set_used_lines(lines_to_update);
 
         if columns_to_update < self.used_columns {
             let rect = Rect::new(
@@ -1742,7 +1753,7 @@ performance degradation and display/alignment errors."
             );
             dirty_region.or(&rect);
         }
-        self.used_columns = columns_to_update;
+        self.set_used_columns(columns_to_update);
 
         dirty_region.or(&self.input_method_data.previous_preedit_rect);
 
@@ -1974,6 +1985,26 @@ performance degradation and display/alignment errors."
     }
 
     ////////////////////////////////////// Private functions. //////////////////////////////////////
+    #[inline]
+    fn set_used_columns(&mut self, used_columns: i32) {
+        self.used_columns = used_columns;
+    }
+
+    #[inline]
+    fn set_used_lines(&mut self, used_lines: i32) {
+        self.used_lines = used_lines;
+    }
+
+    #[inline]
+    fn set_columns(&mut self, columns: i32) {
+        self.columns = columns;
+    }
+
+    #[inline]
+    fn set_lines(&mut self, lines: i32) {
+        self.lines = lines;
+    }
+    
     fn font_change(&mut self) {
         let font = self.font().to_skia_font();
         let (_, fm) = font.metrics();
@@ -2555,12 +2586,12 @@ performance degradation and display/alignment errors."
 
         if !self.is_fixed_size {
             // ensure that display is always at least one column wide
-            self.columns = (self.content_width / self.font_width).max(1);
-            self.used_columns = self.used_columns.min(self.columns);
+            self.set_columns((self.content_width / self.font_width).max(1));
+            self.set_used_columns(self.used_columns.min(self.columns));
 
             // ensure that display is always at least one line high
-            self.lines = (self.content_height / self.font_height).max(1);
-            self.used_lines = self.used_lines.min(self.lines);
+            self.set_lines((self.content_height / self.font_height).max(1));
+            self.set_used_lines(self.used_lines.min(self.lines));
         }
     }
 
