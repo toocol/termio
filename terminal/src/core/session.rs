@@ -220,6 +220,7 @@ impl Session {
         view.set_terminal_size_hint(true);
         view.set_triple_click_mode(TripleClickMode::SelectWholeLine);
         view.set_terminal_size_startup(true);
+        view.set_blinking_cursor(true);
         view.set_random_seed(view.id() as u32);
 
         let mut scroll_area: Box<ScrollArea> = Object::new(&[]);
@@ -323,6 +324,11 @@ impl Session {
     #[inline]
     pub fn set_key_binding(&mut self, id: &str) {
         self.emulation_mut().set_key_binding(id)
+    }
+
+    #[inline]
+    pub fn set_blinking_cursor(&mut self, blink: bool) {
+        self.view_mut().set_blinking_cursor(blink)
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////
