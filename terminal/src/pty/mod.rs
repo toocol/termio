@@ -89,6 +89,8 @@ pub trait Pty: PtySignals {
 
 pub trait PtySignals: ActionExt {
     signals! {
+        PtySignals: 
+
         /// Emitted when a new block of data was received from the teletype.
         ///
         /// @param data [`String`] the data received.

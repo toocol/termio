@@ -6,7 +6,7 @@ use crate::pty::con_pty::ConPty;
 use crate::pty::posix_pty::PosixPty;
 
 use crate::{
-    core::terminal_view::TerminalViewSingals,
+    core::terminal_view::TerminalViewSignals,
     emulation::{Emulation, VT102Emulation},
     pty::{ProtocolType, Pty},
     tools::history::HistoryType,
@@ -86,6 +86,8 @@ impl ObjectImpl for Session {
 
 pub trait SessionSignal: ActionExt {
     signals! {
+        Session:
+
         /// Emitted when the terminal process starts.
         started();
 
@@ -346,7 +348,10 @@ impl Session {
         const VIEW_COLUMNS_THRESHOLD: i32 = 2;
 
         let view = self.view();
-        if view.visible() && view.lines() >= VIEW_LINES_THRESHOLD && view.columns() >= VIEW_COLUMNS_THRESHOLD {
+        if view.visible()
+            && view.lines() >= VIEW_LINES_THRESHOLD
+            && view.columns() >= VIEW_COLUMNS_THRESHOLD
+        {
             min_lines = view.lines();
             min_columns = view.columns();
         }
@@ -359,7 +364,7 @@ impl Session {
 
     fn update_view_size(&mut self, size: Size) {
         if size.width() <= 1 || size.height() <= 1 {
-            return
+            return;
         }
 
         self.view_mut().set_size(size.width(), size.height());

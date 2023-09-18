@@ -87,6 +87,8 @@ impl ObjectImpl for BaseEmulation {}
 pub trait EmulationSignal: ActionExt {
     ////////////////////////////////////////////////// Signals //////////////////////////////////////////////////
     signals! {
+        EmulationSignal:
+
         /// Emitted when a buffer of data is ready to send to the standard input of the terminal.
         ///
         /// @param data The String buffer of data ready to be sent <br>

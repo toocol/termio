@@ -58,6 +58,8 @@ impl ObjectImpl for ScreenWindow {}
 ////////////////////////////////////////////////// Signals //////////////////////////////////////////////////
 pub trait ScreenWindowSignals: ActionExt {
     signals! {
+        ScreenWindow:
+
         /// Emitted when the contents of the associated terminal screen (see screen()) changes.
         output_changed();
 

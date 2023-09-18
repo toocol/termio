@@ -28,6 +28,7 @@ use std::{
     time::Duration,
 };
 use tmui::{
+    application,
     clipboard::ClipboardLevel,
     cursor::Cursor,
     graphics::painter::Painter,
@@ -46,7 +47,7 @@ use tmui::{
         run_after, signals,
         timer::Timer,
     },
-    widget::WidgetImpl, application,
+    widget::WidgetImpl,
 };
 use wchar::{wch, wchar_t};
 #[cfg(not(windows))]
@@ -243,7 +244,12 @@ impl ObjectImpl for TerminalView {
         self.set_mouse_tracking(true);
 
         connect!(self, size_changed(), self, when_resized(Size));
-        connect!(self.blink_cursor_timer, timeout(), self, blink_cursor_event());
+        connect!(
+            self.blink_cursor_timer,
+            timeout(),
+            self,
+            blink_cursor_event()
+        );
     }
 }
 
@@ -296,8 +302,10 @@ impl TerminalView {
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
 /// TerminalView Singals
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
-pub trait TerminalViewSingals: ActionExt {
+pub trait TerminalViewSignals: ActionExt {
     signals!(
+        TerminalViewSignals:
+
        /// Emitted when the user presses a key whilst the terminal widget has focus.
        ///
        /// @param [`KeyEvent`] key event.
@@ -346,7 +354,7 @@ pub trait TerminalViewSingals: ActionExt {
        uses_mouse_changed();
     );
 }
-impl TerminalViewSingals for TerminalView {}
+impl TerminalViewSignals for TerminalView {}
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
 /// TerminalView Implements
@@ -901,9 +909,7 @@ impl TerminalView {
                     painter.draw_line(r.left(), under_line_pos, r.right(), under_line_pos);
                 }
             }
-            HotSpotType::Marker => {
-                painter.fill_rect(r, Color::from_rgba(255, 0, 0, 120))
-            }
+            HotSpotType::Marker => painter.fill_rect(r, Color::from_rgba(255, 0, 0, 120)),
             _ => {}
         }
     }
@@ -1092,7 +1098,9 @@ impl TerminalView {
         self.has_blinking_cursor = blink;
 
         if blink && !self.blink_cursor_timer.is_active() {
-            self.blink_cursor_timer.start(Duration::from_millis(application::cursor_blinking_time() as u64))
+            self.blink_cursor_timer.start(Duration::from_millis(
+                application::cursor_blinking_time() as u64,
+            ))
         }
 
         if !blink && self.blink_cursor_timer.is_active() {
@@ -2004,7 +2012,7 @@ performance degradation and display/alignment errors."
     fn set_lines(&mut self, lines: i32) {
         self.lines = lines;
     }
-    
+
     fn font_change(&mut self) {
         let font = self.font().to_skia_font();
         let (_, fm) = font.metrics();

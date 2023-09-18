@@ -335,6 +335,8 @@ impl FilterObject {
     pub const ACTION_CLICK: &'static str = "action-click";
 
     signals! {
+        FilterObject:
+
         /// Signal to activate ation `filter activated`.
         action_filter_activated();
 
