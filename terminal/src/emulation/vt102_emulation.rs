@@ -2104,6 +2104,8 @@ impl Emulation for VT102Emulation {
 
     #[inline]
     fn send_key_event(&self, event: KeyEvent, from_paste: bool) {
+        println!("Emulation receive key event: {:?}", event);
+
         self.emulation
             .as_ref()
             .unwrap()
@@ -2128,12 +2130,12 @@ impl Emulation for VT102Emulation {
         }
     }
 
-    fn receive_data(&mut self, buffer: Vec<u8>, len: i32) {
-        emit!(self.state_set(), EmulationState::NotifyActivity as u8);
+    fn receive_data(&mut self, buffer: &[u8], len: i32) {
+        emit!(self.state_set(), EmulationState::NotifyActivity as i32);
 
         self.buffered_update();
 
-        let utf8_text = String::from_utf8(buffer.clone())
+        let utf8_text = String::from_utf8(buffer.to_vec())
             .expect("`Emulation` receive_data() parse utf-8 string failed.");
         let utf16_text = WideString::from_str(&utf8_text);
 

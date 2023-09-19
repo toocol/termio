@@ -310,7 +310,7 @@ pub trait Emulation: 'static + EmulationSignal + ActionExt {
     ///
     /// @param buffer A string of characters received from the terminal program. <br>
     /// @param len The length of @p buffer
-    fn receive_data(&mut self, buffer: Vec<u8>, len: i32);
+    fn receive_data(&mut self, buffer: &[u8], len: i32);
 
     /// triggered by timer, causes the emulation to send an updated screen image to each view.
     fn show_bulk(&mut self);
@@ -585,7 +585,7 @@ impl Emulation for BaseEmulation {
     }
 
     fn send_key_event(&self, event: KeyEvent, _from_paste: bool) {
-        emit!(self.state_set(), EmulationState::NotifyNormal as u8);
+        emit!(self.state_set(), EmulationState::NotifyNormal as i32);
 
         if !event.text().is_empty() {
             emit!(self.send_data(), event.text())
@@ -600,12 +600,12 @@ impl Emulation for BaseEmulation {
         // Default implementation does nothing.
     }
 
-    fn receive_data(&mut self, buffer: Vec<u8>, len: i32) {
+    fn receive_data(&mut self, buffer: &[u8], len: i32) {
         emit!(self.state_set(), EmulationState::NotifyActivity as u8);
 
         self.buffered_update();
 
-        let utf8_text = String::from_utf8(buffer.clone())
+        let utf8_text = String::from_utf8(buffer.to_vec())
             .expect("`Emulation` receive_data() parse utf-8 string failed.");
         let utf16_text = WideString::from_str(&utf8_text);
 

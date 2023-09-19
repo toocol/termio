@@ -112,7 +112,7 @@ impl ScreenWindow {
 
     /// Returns the image of characters which are currently visible through this
     /// window onto the screen.
-    pub fn get_image(&mut self) -> &mut Vec<Character> {
+    pub fn get_image(&mut self) -> &Vec<Character> {
         // reallocate internal buffer if the window size has changed
         let size = self.window_lines() * self.window_columns();
         if self.window_buffer.is_none() || self.window_buffer_size != size {

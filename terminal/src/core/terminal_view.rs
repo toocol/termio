@@ -18,7 +18,7 @@ use crate::tools::{
 };
 use derivative::Derivative;
 use lazy_static::lazy_static;
-use log::{info, warn};
+use log::{debug, info, warn};
 use regex::Regex;
 use std::{
     mem::size_of,
@@ -28,7 +28,7 @@ use std::{
     time::Duration,
 };
 use tmui::{
-    application,
+    application::{self, cursor_blinking_time},
     clipboard::ClipboardLevel,
     cursor::Cursor,
     graphics::painter::Painter,
@@ -44,7 +44,7 @@ use tmui::{
         namespace::{KeyCode, KeyboardModifier},
         nonnull_mut,
         object::{ObjectImpl, ObjectSubclass},
-        run_after, signals,
+        ptr_mut, run_after, signals,
         timer::Timer,
     },
     widget::WidgetImpl,
@@ -235,6 +235,7 @@ impl ObjectImpl for TerminalView {
 
         self.set_hexpand(true);
         self.set_vexpand(true);
+        // self.set_focus(true);
     }
 
     fn initialize(&mut self) {
@@ -289,6 +290,22 @@ impl WidgetImpl for TerminalView {
             parent_rect,
             self.rect()
         );
+    }
+
+    fn on_key_pressed(&mut self, event: &KeyEvent) {
+        self.act_sel = 0;
+
+        if self.has_blinking_cursor {
+            self.blink_cursor_timer
+                .start(Duration::from_millis(cursor_blinking_time() as u64));
+            if self.cursor_blinking {
+                self.blink_cursor_event()
+            }
+        }
+
+        self.get_screen_window_mut().unwrap().clear_selection();
+
+        emit!(self.key_pressed_signal(), (event.clone(), false));
     }
 }
 
@@ -623,13 +640,16 @@ impl TerminalView {
                 // draw the cursor outline, adjusting the area so that
                 // it is draw entirely inside 'rect'
                 let line_width = painter.line_width().max(1.);
+                let adjusted_cursor_rect = cursor_rect.adjusted(
+                    line_width / 2.,
+                    line_width / 2.,
+                    -line_width / 2.,
+                    -line_width / 2.,
+                );
 
-                painter.draw_rect(cursor_rect.adjusted(
-                    line_width / 2.,
-                    line_width / 2.,
-                    -line_width / 2.,
-                    -line_width / 2.,
-                ));
+                debug!("Draw cursor, foreground_color: {:?}, cursor_rect: {:?}", foreground_color, adjusted_cursor_rect);
+
+                painter.draw_rect(adjusted_cursor_rect);
 
                 if self.is_focus() {
                     painter.fill_rect(
@@ -1491,6 +1511,14 @@ performance degradation and display/alignment errors."
     }
 
     #[inline]
+    pub fn get_screen_window_mut(&mut self) -> Option<&mut ScreenWindow> {
+        match self.screen_window.as_mut() {
+            Some(window) => unsafe { Some(window.as_mut()) },
+            None => None,
+        }
+    }
+
+    #[inline]
     pub fn set_motion_after_pasting(&mut self, action: MotionAfterPasting) {
         self.motion_after_pasting = action
     }
@@ -1590,6 +1618,9 @@ performance degradation and display/alignment errors."
 
         self.set_scroll(screen_window.current_line(), screen_window.line_count());
 
+        let image = ptr_mut!(self.image.as_mut().unwrap() as *mut Vec<Character>);
+        let new_img = screen_window.get_image();
+
         assert!(self.used_lines <= self.lines);
         assert!(self.used_columns <= self.columns);
 
@@ -1597,9 +1628,6 @@ performance degradation and display/alignment errors."
         let tlx = tl.x();
         let tly = tl.y();
         self.has_blinker = false;
-
-        let image = self.image.as_ref().unwrap();
-        let new_img = screen_window.get_image();
 
         let mut len;
 
@@ -1623,8 +1651,8 @@ performance degradation and display/alignment errors."
         let mut _dirty_line_count = 0;
 
         for y in 0..lines_to_update {
-            let current_line = &image[(y * self.columns) as usize..];
-            let new_line = &mut new_img[(y * columns) as usize..];
+            let current_line = &mut image[(y * self.columns) as usize..];
+            let new_line = &new_img[(y * columns) as usize..];
 
             let mut update_line = false;
 
@@ -1735,8 +1763,8 @@ performance degradation and display/alignment errors."
                 dirty_region.or(&dirty_rect);
             }
 
-            new_line[0..columns_to_update as usize]
-                .copy_from_slice(&current_line[0..columns_to_update as usize]);
+            current_line[0..columns_to_update as usize]
+                .copy_from_slice(&new_line[0..columns_to_update as usize]);
         }
 
         // if the new _image is smaller than the previous _image, then ensure that the
@@ -1765,9 +1793,8 @@ performance degradation and display/alignment errors."
 
         dirty_region.or(&self.input_method_data.previous_preedit_rect);
 
-        // update the parts of the display which have changed
-        // TODO: Just update the dirty region
-        self.update();
+        // update the parts of the view which have changed
+        self.update_region(dirty_region);
 
         if self.has_blinker && !self.blink_timer.is_active() {
             self.blink_timer.start(Duration::from_millis(
@@ -2315,7 +2342,7 @@ performance degradation and display/alignment errors."
         if self.image.is_none() {
             return;
         }
-        // We initialize image[image_size] too. See make_image()
+        // Initialize image[image_size] too. See make_image()
         for i in 0..self.image_size as usize {
             let image = self.image_mut();
             image[i].character_union.set_data(wch!(' '));
@@ -2658,7 +2685,7 @@ performance degradation and display/alignment errors."
 
         self.resizing = false
     }
-    /// Make new image and return the new one.
+    /// Make new image and return the old one.
     fn make_image(&mut self) -> Option<Vec<Character>> {
         self.calc_geometry();
 
@@ -2671,8 +2698,13 @@ performance degradation and display/alignment errors."
 
         // We over-commit one character so that we can be more relaxed in dealing with
         // certain boundary conditions: _image[_imageSize] is a valid but unused position.
-        self.image
-            .replace(vec![Character::default(); (self.image_size + 1) as usize])
+        let old_img = self
+            .image
+            .replace(vec![Character::default(); (self.image_size + 1) as usize]);
+
+        self.clear_image();
+
+        old_img
     }
 
     /// returns a region covering all of the areas of the widget which contain a hotspot.

@@ -4,7 +4,7 @@ use derivative::Derivative;
 use std::rc::Rc;
 use tmui::{
     prelude::*,
-    tlib::object::ObjectSubclass,
+    tlib::{object::ObjectSubclass, events::KeyEvent},
 };
 
 /// TerminalPanel was built to manage the terminal view, it holds all the terminal session,
@@ -27,6 +27,7 @@ impl ObjectImpl for TerminalPanel {
 
         self.set_hexpand(true);
         self.set_vexpand(true);
+        self.set_focus(true);
 
         let session = self.create_session();
         let scrolled_view = session.create_terminal_view();
@@ -36,7 +37,11 @@ impl ObjectImpl for TerminalPanel {
     }
 }
 
-impl WidgetImpl for TerminalPanel {}
+impl WidgetImpl for TerminalPanel {
+    fn on_key_pressed(&mut self, event: &KeyEvent) {
+        self.sessions.first_mut().unwrap().on_receive_block(event.text().to_string());
+    }
+}
 
 impl TerminalPanel {
     pub fn create_session(&mut self) -> &mut Box<Session> {
@@ -56,4 +61,12 @@ impl TerminalPanel {
     }
 
     pub fn when_resize(&mut self, size: Size) {}
+
+    pub fn send_key_event(&mut self, event: KeyEvent) {
+        self.sessions.first_mut().unwrap().emulation_mut().send_key_event(event, false);
+    }
+
+    pub fn send_text(&mut self, text: String) {
+        self.sessions.first_mut().unwrap().emulation_mut().send_text(text);
+    }
 }

@@ -389,7 +389,13 @@ impl Session {
         self.update_terminal_size()
     }
 
-    pub fn on_receive_block(&mut self, block: String) {}
+    pub fn on_receive_block(&mut self, block: String) {
+        let block_bytes = block.as_bytes();
+        self.emulation_mut()
+            .receive_data(block_bytes, block_bytes.len() as i32);
+
+        emit!(self.receive_data(), block);
+    }
 
     #[inline]
     pub fn done(&mut self, exit_code: i32, exit_status: ExitStatus) {
