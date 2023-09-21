@@ -107,9 +107,9 @@ pub struct Screen {
     cursor_y: i32,
 
     ////// Cursor color and rendition info.
-    #[derivative(Default(value = "CharacterColor::empty()"))]
+    #[derivative(Default(value = "CharacterColor::default_foreground()"))]
     cursor_foreground: CharacterColor,
-    #[derivative(Default(value = "CharacterColor::empty()"))]
+    #[derivative(Default(value = "CharacterColor::default_background()"))]
     cursor_background: CharacterColor,
     cursor_rendition: wchar_t,
 
@@ -134,7 +134,9 @@ pub struct Screen {
     block_selection_mode: bool,
 
     ////// Effective colors and rendition
+    #[derivative(Default(value = "CharacterColor::default_foreground()"))]
     effective_foreground: CharacterColor,
+    #[derivative(Default(value = "CharacterColor::default_background()"))]
     effective_background: CharacterColor,
     effective_rendition: wchar_t,
 
@@ -892,7 +894,7 @@ impl Screen {
             new_screen_lines[i].resize(new_columns as usize, Character::default());
         }
 
-        self.line_properties.resize(new_lines as usize + 1, 0);
+        self.line_properties.resize(new_lines as usize + 1, LINE_DEFAULT);
         for i in 0..(new_lines + 1) as usize {
             self.line_properties[i] = LINE_DEFAULT;
         }

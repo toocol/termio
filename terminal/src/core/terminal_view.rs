@@ -235,7 +235,7 @@ impl ObjectImpl for TerminalView {
 
         self.set_hexpand(true);
         self.set_vexpand(true);
-        // self.set_focus(true);
+        self.set_focus(true);
     }
 
     fn initialize(&mut self) {
@@ -1612,6 +1612,7 @@ performance degradation and display/alignment errors."
             // recreated, so do this first.
             self.update_image_size()
         }
+        // info!("[1] image color space: {} {}", self.image()[0].background_color.color_space, self.image()[0].foreground_color.color_space);
 
         let lines = screen_window.window_lines();
         let columns = screen_window.window_columns();

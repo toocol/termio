@@ -22,9 +22,10 @@ use crate::{
         },
         history::HistoryType,
         terminal_character_decoder::TerminalCharacterDecoder,
-        translators::{KeyboardTranslatorManager, State},
+        translators::{Command, KeyboardTranslatorManager, State, CTRL_MODIFIER},
     },
 };
+use log::warn;
 use std::{collections::HashMap, ptr::NonNull, rc::Rc};
 use tmui::{
     prelude::*,
@@ -32,7 +33,9 @@ use tmui::{
         emit,
         events::KeyEvent,
         figure::Size,
-        namespace::{KeyCode, KeyboardModifier}, impl_as_any,
+        impl_as_any,
+        namespace::{AsNumeric, KeyCode, KeyboardModifier},
+        nonnull_ref,
     },
 };
 use wchar::{wch, wchar_t};
@@ -247,19 +250,19 @@ pub struct VT102Emulation {
 impl_as_any!(VT102Emulation);
 impl ObjectOperation for VT102Emulation {
     fn id(&self) -> u16 {
-        self.emulation.as_ref().unwrap().id()
+        self.emulation().id()
     }
 
     fn set_property(&mut self, name: &str, value: Value) {
-        self.emulation.as_mut().unwrap().set_property(name, value)
+        self.emulation_mut().set_property(name, value)
     }
 
     fn get_property(&self, name: &str) -> Option<&Value> {
-        self.emulation.as_ref().unwrap().get_property(name)
+        self.emulation().get_property(name)
     }
 
     fn constructed(&self) -> bool {
-        self.emulation.as_ref().unwrap().constructed()
+        self.emulation().constructed()
     }
 }
 impl Default for VT102Emulation {
@@ -327,6 +330,15 @@ impl VT102Emulation {
     }
 
     //////////////////////////////////////////////////////// Private function
+    #[inline]
+    fn emulation(&self) -> &BaseEmulation {
+        self.emulation.as_deref().unwrap()
+    }
+    #[inline]
+    fn emulation_mut(&mut self) -> &mut BaseEmulation {
+        self.emulation.as_deref_mut().unwrap()
+    }
+
     fn init_tokenizer(&mut self) {
         for i in 0..256 {
             self.char_class[i] = 0;
@@ -1133,7 +1145,7 @@ impl VT102Emulation {
             self.set_mode(MODE_APP_SCREEN);
         } else if token == ty_csi_pr!('l', 1047) {
             // XTerm
-            self.emulation.as_mut().unwrap().screen[1].clear_entire_screen();
+            self.emulation_mut().screen[1].clear_entire_screen();
             self.reset_mode(MODE_APP_SCREEN);
         } else if token == ty_csi_pr!('s', 1047) {
             // XTerm
@@ -1160,7 +1172,7 @@ impl VT102Emulation {
         } else if token == ty_csi_pr!('h', 1049) {
             // XTerm
             self.save_cursor();
-            self.emulation.as_mut().unwrap().screen[1].clear_entire_screen();
+            self.emulation_mut().screen[1].clear_entire_screen();
             self.set_mode(MODE_APP_SCREEN);
         } else if token == ty_csi_pr!('l', 1049) {
             // XTerm
@@ -1424,14 +1436,14 @@ impl VT102Emulation {
     }
 
     fn set_margins(&mut self, top: i32, bottom: i32) {
-        self.emulation.as_mut().unwrap().screen[0].set_margins(top, bottom);
-        self.emulation.as_mut().unwrap().screen[1].set_margins(top, bottom);
+        self.emulation_mut().screen[0].set_margins(top, bottom);
+        self.emulation_mut().screen[1].set_margins(top, bottom);
     }
 
     /// Set margins for all screens back to their defaults.
     fn set_default_margins(&mut self) {
-        self.emulation.as_mut().unwrap().screen[0].set_default_margins();
-        self.emulation.as_mut().unwrap().screen[1].set_default_margins();
+        self.emulation_mut().screen[0].set_default_margins();
+        self.emulation_mut().screen[1].set_default_margins();
     }
 
     //////////////////////////////////////// Modes operations ////////////////////////////////////////
@@ -1729,31 +1741,31 @@ impl VT102Emulation {
 }
 impl Emulation for VT102Emulation {
     fn init(&mut self) {
-        self.emulation.as_mut().unwrap().init()
+        self.emulation_mut().init()
     }
 
     fn create_window(&mut self) -> Option<NonNull<ScreenWindow>> {
-        self.emulation.as_mut().unwrap().create_window()
+        self.emulation_mut().create_window()
     }
 
     fn image_size(&self) -> Size {
-        self.emulation.as_ref().unwrap().image_size()
+        self.emulation().image_size()
     }
 
     fn line_count(&self) -> i32 {
-        self.emulation.as_ref().unwrap().line_count()
+        self.emulation().line_count()
     }
 
     fn set_history(&mut self, history_type: Rc<dyn HistoryType>) {
-        self.emulation.as_mut().unwrap().set_history(history_type)
+        self.emulation_mut().set_history(history_type)
     }
 
     fn history(&self) -> Rc<dyn HistoryType> {
-        self.emulation.as_ref().unwrap().history()
+        self.emulation().history()
     }
 
     fn clear_history(&mut self) {
-        self.emulation.as_mut().unwrap().clear_history()
+        self.emulation_mut().clear_history()
     }
 
     fn write_to_stream(
@@ -1762,17 +1774,13 @@ impl Emulation for VT102Emulation {
         start_line: i32,
         end_line: i32,
     ) {
-        self.emulation
-            .as_mut()
-            .unwrap()
+        self.emulation_mut()
             .write_to_stream(decoder, start_line, end_line)
     }
 
     fn erase_char(&self) -> char {
         let entry = unsafe {
-            self.emulation
-                .as_ref()
-                .unwrap()
+            self.emulation()
                 .key_translator
                 .as_ref()
                 .unwrap()
@@ -1796,41 +1804,35 @@ impl Emulation for VT102Emulation {
     }
 
     fn set_keyboard_layout(&mut self, name: &str) {
-        self.emulation.as_mut().unwrap().set_keyboard_layout(name)
+        self.emulation_mut().set_keyboard_layout(name)
     }
 
     fn keyboard_layout(&self) -> String {
-        self.emulation.as_ref().unwrap().keyboard_layout()
+        self.emulation().keyboard_layout()
     }
 
     fn clear_entire_screen(&mut self) {
-        self.emulation.as_mut().unwrap().clear_entire_screen()
+        self.emulation_mut().clear_entire_screen()
     }
 
     fn reset(&self) {
-        self.emulation.as_ref().unwrap().reset()
+        self.emulation().reset()
     }
 
     fn program_use_mouse(&self) -> bool {
-        self.emulation.as_ref().unwrap().program_use_mouse()
+        self.emulation().program_use_mouse()
     }
 
     fn set_use_mouse(&mut self, on: bool) {
-        self.emulation.as_mut().unwrap().set_use_mouse(on)
+        self.emulation_mut().set_use_mouse(on)
     }
 
     fn program_bracketed_paste_mode(&self) -> bool {
-        self.emulation
-            .as_ref()
-            .unwrap()
-            .program_bracketed_paste_mode()
+        self.emulation().program_bracketed_paste_mode()
     }
 
     fn set_bracketed_paste_mode(&mut self, on: bool) {
-        self.emulation
-            .as_mut()
-            .unwrap()
-            .set_bracketed_paste_mode(on)
+        self.emulation_mut().set_bracketed_paste_mode(on)
     }
 
     fn set_mode(&mut self, mode: usize) {
@@ -1848,15 +1850,15 @@ impl Emulation for VT102Emulation {
             MODE_MOUSE_1003 => emit!(self.program_uses_mouse_changed(), false),
             MODE_BRACKETD_PASTE => emit!(self.program_bracketed_paste_mode_changed(), true),
             MODE_APP_SCREEN => {
-                self.emulation.as_mut().unwrap().screen[1].clear_selection();
+                self.emulation_mut().screen[1].clear_selection();
                 self.set_screen(1);
             }
             _ => {}
         }
 
         if mode < MODES_SCREEN || mode == MODE_NEWLINE {
-            self.emulation.as_mut().unwrap().screen[0].set_mode(mode);
-            self.emulation.as_mut().unwrap().screen[1].set_mode(mode);
+            self.emulation_mut().screen[0].set_mode(mode);
+            self.emulation_mut().screen[1].set_mode(mode);
         }
     }
 
@@ -1875,15 +1877,15 @@ impl Emulation for VT102Emulation {
             MODE_MOUSE_1003 => emit!(self.program_uses_mouse_changed(), true),
             MODE_BRACKETD_PASTE => emit!(self.program_bracketed_paste_mode_changed(), false),
             MODE_APP_SCREEN => {
-                self.emulation.as_mut().unwrap().screen[0].clear_selection();
+                self.emulation_mut().screen[0].clear_selection();
                 self.set_screen(0);
             }
             _ => {}
         }
 
         if mode < MODES_SCREEN || mode == MODE_NEWLINE {
-            self.emulation.as_mut().unwrap().screen[0].reset_mode(mode);
-            self.emulation.as_mut().unwrap().screen[1].reset_mode(mode);
+            self.emulation_mut().screen[0].reset_mode(mode);
+            self.emulation_mut().screen[1].reset_mode(mode);
         }
     }
 
@@ -2085,7 +2087,7 @@ impl Emulation for VT102Emulation {
 
     #[inline]
     fn set_screen(&mut self, index: i32) {
-        self.emulation.as_mut().unwrap().set_screen(index)
+        self.emulation_mut().set_screen(index)
     }
 
     ////////////////////////////////////////////////// Slots //////////////////////////////////////////////////
@@ -2099,17 +2101,127 @@ impl Emulation for VT102Emulation {
 
     #[inline]
     fn send_text(&self, text: String) {
-        self.emulation.as_ref().unwrap().send_text(text)
+        self.emulation().send_text(text)
     }
 
     #[inline]
-    fn send_key_event(&self, event: KeyEvent, from_paste: bool) {
+    fn send_key_event(&mut self, event: KeyEvent, from_paste: bool) {
         println!("Emulation receive key event: {:?}", event);
+        let modifiers = event.modifier();
+        let mut states = State::NoState;
 
-        self.emulation
-            .as_ref()
-            .unwrap()
-            .send_key_event(event, from_paste)
+        if self.get_mode(MODE_NEWLINE) {
+            states = states.or(State::NewLineState)
+        }
+        if self.get_mode(MODE_ANSI) {
+            states = states.or(State::AnsiState)
+        }
+        if self.get_mode(MODE_APP_CURSOR_KEY) {
+            states = states.or(State::CursorKeysState)
+        }
+        if self.get_mode(MODE_APP_SCREEN) {
+            states = states.or(State::AlternateScreenState)
+        }
+        if self.get_mode(MODE_APP_KEY_PAD) && modifiers.has(KeyboardModifier::KeypadModifier) {
+            states = states.or(State::ApplicationKeypadState)
+        }
+
+        if modifiers.has(KeyboardModifier::ControlModifier) {
+            match event.key_code() {
+                KeyCode::KeyS => emit!(self.flow_control_key_pressed(), true),
+                KeyCode::KeyQ | KeyCode::KeyC => emit!(self.flow_control_key_pressed(), false),
+                _ => {}
+            }
+        }
+
+        if self.emulation().key_translator.is_some() {
+            let mut entry = nonnull_ref!(self.emulation().key_translator).find_entry(
+                event.key_code().as_numeric(),
+                modifiers,
+                Some(states),
+            );
+            if entry.is_none() {
+                warn!("Key translator find entry failed, key_code: {:?}, modifier: {:?}, states: {:?}", event.key_code(), modifiers, states);
+                return;
+            }
+            let entry = entry.take().unwrap();
+
+            let mut text_to_send: Vec<u8> = vec![];
+
+            // special handling for the Alt (aka. Meta) modifier.  pressing
+            // Alt+[Character] results in Esc+[Character] being sent
+            // (unless there is an entry defined for this particular combination
+            // in the keyboard modifier)
+            let wants_alt_modifier = entry
+                .modifiers()
+                .and(entry.modifier_mask())
+                .has(KeyboardModifier::AltModifier);
+            let wants_meta_modifer = entry
+                .modifiers()
+                .and(entry.modifier_mask())
+                .has(KeyboardModifier::MetaModifier);
+            let wants_any_modifier = (entry.state().as_u8() as u32
+                & entry.modifier_mask().as_u32()
+                & State::AnyModifierState.as_u8() as u32)
+                != 0;
+
+            if modifiers.has(KeyboardModifier::AltModifier)
+                && !(wants_alt_modifier || wants_any_modifier)
+                && !event.text().is_empty()
+            {
+                text_to_send.splice(0..0, b"\x1B".to_owned());
+            }
+            if modifiers.has(KeyboardModifier::MetaModifier)
+                && !(wants_meta_modifer || wants_any_modifier)
+                && !event.text().is_empty()
+            {
+                text_to_send.splice(0..0, b"\x1B@s".to_owned());
+            }
+
+            if entry.command() != Command::NoCommand {
+                if entry.command().has(Command::EraseCommand) {
+                    text_to_send.push(self.erase_char() as u8);
+                } else {
+                    emit!(self.handle_command_from_keyboard(), entry.command());
+                }
+            } else if entry.text(None, None).len() > 0 {
+                text_to_send.extend_from_slice(
+                    String::from_utf8(entry.text(Some(true), Some(modifiers)))
+                        .unwrap()
+                        .as_bytes(),
+                );
+            } else if modifiers.has(CTRL_MODIFIER)
+                && event.key_code() >= KeyCode::KeyAt
+                && event.key_code() <= KeyCode::KeyUnderscore
+            {
+                let key = (event.key_code().as_numeric() - KeyCode::KeyAt.as_numeric()) as u8 + 64;
+                text_to_send.push(key & 0x1f);
+            } else if event.key_code() == KeyCode::KeyTab {
+                text_to_send.push(0x09);
+            } else if event.key_code() == KeyCode::KeyPageUp {
+                text_to_send.extend_from_slice(&b"\x1B[5~".to_owned());
+            } else if event.key_code() == KeyCode::KeyPageDown {
+                text_to_send.extend_from_slice(&b"\x1B[6~".to_owned());
+            } else {
+                text_to_send.extend_from_slice(event.text().as_bytes());
+            }
+
+            if !from_paste && text_to_send.len() > 0 {
+                emit!(self.output_from_keypress_event())
+            }
+
+            emit!(self.send_data(), String::from_utf8(text_to_send).unwrap())
+
+        } else {
+            let translator_error = r#"No keyboard translator available.  
+The information needed to convert key presses 
+into characters to send to the terminal 
+is missing."#;
+
+            self.reset();
+            let buffer = translator_error.as_bytes();
+            self.receive_data(buffer, buffer.len() as i32)
+        }
     }
 
     #[inline]
@@ -2159,40 +2271,33 @@ impl Emulation for VT102Emulation {
 
     #[inline]
     fn show_bulk(&mut self) {
-        self.emulation.as_mut().unwrap().show_bulk()
+        self.emulation_mut().show_bulk()
     }
 
     #[inline]
     fn buffered_update(&mut self) {
-        self.emulation.as_mut().unwrap().buffered_update()
+        self.emulation_mut().buffered_update()
     }
 
     #[inline]
     fn uses_mouse_changed(&mut self, uses_mouse: bool) {
-        self.emulation
-            .as_mut()
-            .unwrap()
-            .uses_mouse_changed(uses_mouse)
+        self.emulation_mut().uses_mouse_changed(uses_mouse)
     }
 
     #[inline]
     fn bracketed_paste_mode_changed(&mut self, bracketed_paste_mode: bool) {
-        self.emulation
-            .as_mut()
-            .unwrap()
+        self.emulation_mut()
             .bracketed_paste_mode_changed(bracketed_paste_mode)
     }
 
     #[inline]
     fn emit_cursor_change(&mut self, cursor_shape: u8, enable_blinking_cursor: bool) {
-        self.emulation
-            .as_mut()
-            .unwrap()
+        self.emulation_mut()
             .emit_cursor_change(cursor_shape, enable_blinking_cursor)
     }
 
     #[inline]
     fn set_key_binding(&mut self, id: &str) {
-        self.emulation.as_mut().unwrap().set_key_binding(id)
+        self.emulation_mut().set_key_binding(id)
     }
 }

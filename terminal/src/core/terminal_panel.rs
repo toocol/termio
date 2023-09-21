@@ -27,7 +27,6 @@ impl ObjectImpl for TerminalPanel {
 
         self.set_hexpand(true);
         self.set_vexpand(true);
-        self.set_focus(true);
 
         let session = self.create_session();
         let scrolled_view = session.create_terminal_view();
@@ -37,11 +36,7 @@ impl ObjectImpl for TerminalPanel {
     }
 }
 
-impl WidgetImpl for TerminalPanel {
-    fn on_key_pressed(&mut self, event: &KeyEvent) {
-        self.sessions.first_mut().unwrap().on_receive_block(event.text().to_string());
-    }
-}
+impl WidgetImpl for TerminalPanel {}
 
 impl TerminalPanel {
     pub fn create_session(&mut self) -> &mut Box<Session> {

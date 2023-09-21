@@ -2,13 +2,21 @@
 pub mod translator_manager;
 pub mod translator_reader;
 
-use tmui::tlib::namespace::{KeyboardModifier, KeyCode};
+use tmui::{
+    prelude::{StaticType, ToValue},
+    tlib::{
+        implements_enum_value,
+        namespace::{AsNumeric, KeyCode, KeyboardModifier},
+        values::{FromBytes, FromValue, ToBytes},
+        Type, Value,
+    },
+};
 pub use translator_manager::*;
 pub use translator_reader::*;
 
 use lazy_static::lazy_static;
 use regex::Regex;
-use std::{collections::HashMap, rc::Rc};
+use std::{collections::HashMap, rc::Rc, mem::size_of};
 
 lazy_static! {
     pub static ref TITLE_REGEX: Regex = Regex::new("keyboard\\s+\"(.*)\"").unwrap();
@@ -17,11 +25,11 @@ lazy_static! {
 }
 
 #[cfg(target_os = "windows")]
-static CTRL_MODIFIER: KeyboardModifier = KeyboardModifier::ControlModifier;
+pub const CTRL_MODIFIER: KeyboardModifier = KeyboardModifier::ControlModifier;
 #[cfg(target_os = "linux")]
-static CTRL_MODIFIER: KeyboardModifier = KeyboardModifier::ControlModifier;
+pub const CTRL_MODIFIER: KeyboardModifier = KeyboardModifier::ControlModifier;
 #[cfg(target_os = "macos")]
-static CTRL_MODIFIER: KeyboardModifier = KeyboardModifier::MetaModifier;
+pub const CTRL_MODIFIER: KeyboardModifier = KeyboardModifier::MetaModifier;
 
 lazy_static::lazy_static! {
     static ref DEFAULT_TRANSLATOR_TEXT: &'static [u8] = {
@@ -166,7 +174,7 @@ pub enum Command {
     ScrollDownToBottomCommand,
     /// Echos the operating system specific erase character.
     EraseCommand,
-    Combination(u16)
+    Combination(u16),
 }
 impl Command {
     pub fn or(&self, other: Self) -> Self {
@@ -232,6 +240,13 @@ impl From<u16> for Command {
         }
     }
 }
+impl AsNumeric<u16> for Command {
+    #[inline]
+    fn as_numeric(&self) -> u16 {
+        self.as_u16()
+    }
+}
+implements_enum_value!(Command, u16);
 
 /// Represents an association between a key sequence pressed by the user
 /// and the character sequence and commands associated with it for a particular KeyboardTranslator.

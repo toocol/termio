@@ -288,7 +288,7 @@ pub trait Emulation: 'static + EmulationSignal + ActionExt {
 
     /// Interprets a key press event and emits the sendData() signal with
     /// the resulting character stream.
-    fn send_key_event(&self, event: KeyEvent, from_paste: bool);
+    fn send_key_event(&mut self, event: KeyEvent, from_paste: bool);
 
     /// Converts information about a mouse event into an xterm-compatible escape
     /// sequence and emits the character sequence via sendData()
@@ -584,7 +584,7 @@ impl Emulation for BaseEmulation {
         // Default implementation does nothing.
     }
 
-    fn send_key_event(&self, event: KeyEvent, _from_paste: bool) {
+    fn send_key_event(&mut self, event: KeyEvent, _from_paste: bool) {
         emit!(self.state_set(), EmulationState::NotifyNormal as i32);
 
         if !event.text().is_empty() {
