@@ -25,6 +25,7 @@ use crate::{
         translators::{Command, KeyboardTranslatorManager, State, CTRL_MODIFIER},
     },
 };
+use libc::commit;
 use log::warn;
 use std::{collections::HashMap, ptr::NonNull, rc::Rc};
 use tmui::{
@@ -2210,8 +2211,9 @@ impl Emulation for VT102Emulation {
                 emit!(self.output_from_keypress_event())
             }
 
-            emit!(self.send_data(), String::from_utf8(text_to_send).unwrap())
-
+            let text_to_send = String::from_utf8(text_to_send).unwrap();
+            let len = text_to_send.len() as i32;
+            emit!(self.send_data(), (text_to_send, len))
         } else {
             let translator_error = r#"No keyboard translator available.  
 The information needed to convert key presses 
@@ -2225,11 +2227,64 @@ is missing."#;
     }
 
     #[inline]
-    fn send_mouse_event(&self, buttons: i32, column: i32, line: i32, event_type: u8) {
-        self.emulation
-            .as_ref()
-            .unwrap()
-            .send_mouse_event(buttons, column, line, event_type)
+    fn send_mouse_event(&self, mut cb: i32, cx: i32, cy: i32, event_type: u8) {
+        if cx < 1 || cy < 1 {
+            return;
+        }
+
+        // With the exception of the 1006 mode, button release is encoded in cb.
+        // Note that if multiple extensions are enabled, the 1006 is used, so it's
+        // okay to check for only that.
+        if event_type == 2 && !self.get_mode(MODE_MOUSE_1006) {
+            cb = 3;
+        }
+
+        // normal buttons are passed as 0x20 + button,
+        // mouse wheel (buttons 4,5) as 0x5c + button
+        if cb >= 4 {
+            cb += 0x3c;
+        }
+
+        // Handle mouse motion:
+        // add 32 to signify motion event
+        if (self.get_mode(MODE_MOUSE_1002) || self.get_mode(MODE_MOUSE_1003)) && event_type == 1 {
+            cb += 0x20;
+        }
+
+        let mut command = String::new();
+        // Check the extensions in decreasing order of preference. Encoding the
+        // release event above assumes that 1006 comes first.
+        if self.get_mode(MODE_MOUSE_1006) {
+            command = format!(
+                "\x1B[<{};{};{}{}",
+                cb,
+                cx,
+                cy,
+                if event_type == 2 { 'm' } else { 'M' }
+            )
+        } else if self.get_mode(MODE_MOUSE_1015) {
+            command = format!("\x1B[{};{};{}M", cb + 0x20, cx, cy)
+        } else if self.get_mode(MODE_MOUSE_1005) {
+            if cx <= 2015 && cy <= 2015 {
+                // The xterm extension uses UTF-8 (up to 2 bytes) to encode
+                // coordinate+32, no matter what the locale is.
+                let coords: String = [
+                    char::from_u32(cx as u32 + 0x20).unwrap(),
+                    char::from_u32(cy as u32 + 0x20).unwrap(),
+                ].iter().collect();
+                command = format!("\x1B[M{}{}", (cb as u8 + 0x20) as char, coords)
+            }
+        } else if cx <= 223 && cy <= 223 {
+            command = format!(
+                "\x1B[M{}{}{}",
+                (cb as u8 + 0x20) as char,
+                (cx as u8 + 0x20) as char,
+                (cy as u8 + 0x20) as char
+            )
+        }
+
+        let len = command.len() as i32;
+        self.send_string(command, len)
     }
 
     #[inline]
@@ -2238,6 +2293,9 @@ is missing."#;
             emit!(self.send_data(), (string, length));
         } else {
             let len = string.len() as i32;
+            if len == 0 {
+                return;
+            }
             emit!(self.send_data(), (string, len));
         }
     }
