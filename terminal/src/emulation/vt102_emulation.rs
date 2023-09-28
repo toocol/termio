@@ -25,7 +25,6 @@ use crate::{
         translators::{Command, KeyboardTranslatorManager, State, CTRL_MODIFIER},
     },
 };
-use libc::commit;
 use log::warn;
 use std::{collections::HashMap, ptr::NonNull, rc::Rc};
 use tmui::{
@@ -2107,7 +2106,6 @@ impl Emulation for VT102Emulation {
 
     #[inline]
     fn send_key_event(&mut self, event: KeyEvent, from_paste: bool) {
-        println!("Emulation receive key event: {:?}", event);
         let modifiers = event.modifier();
         let mut states = State::NoState;
 

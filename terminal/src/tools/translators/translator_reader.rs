@@ -204,7 +204,13 @@ impl KeyboardTranslatorReader {
     }
 
     fn tokenize(&self, text: &str) -> Vec<Token> {
-        let mut text = text.trim().as_bytes().to_vec();
+        let text = text.trim();
+        if text.is_empty() {
+            return vec![]
+        }
+
+        let mut text = text.as_bytes().to_vec();
+
         let mut in_quotes = false;
         let mut comment_pos = -1;
         let mut i = text.len() as i32 - 1;
@@ -231,6 +237,10 @@ impl KeyboardTranslatorReader {
         }
 
         let text = String::from_utf8(text).unwrap();
+        if text.is_empty() {
+            return vec![]
+        }
+
         let mut list = vec![];
         if TITLE_REGEX.is_match(&text) {
             let title = TITLE_REGEX

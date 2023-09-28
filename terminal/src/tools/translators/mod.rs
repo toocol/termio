@@ -480,10 +480,10 @@ impl Entry {
 
         self.insert_state(&mut result, State::AlternateScreenState);
         self.insert_state(&mut result, State::NewLineState);
-        self.insert_state(&mut result, State::AlternateScreenState);
-        self.insert_state(&mut result, State::AlternateScreenState);
-        self.insert_state(&mut result, State::AlternateScreenState);
-        self.insert_state(&mut result, State::AlternateScreenState);
+        self.insert_state(&mut result, State::AnsiState);
+        self.insert_state(&mut result, State::CursorKeysState);
+        self.insert_state(&mut result, State::AnyModifierState);
+        self.insert_state(&mut result, State::ApplicationKeypadState);
 
         result
     }

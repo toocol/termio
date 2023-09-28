@@ -111,8 +111,8 @@ key End         -AppCuKeys+KeyPad : "\E[F"
 
 key Insert        +KeyPad : "\E[2~"
 key Delete        +KeyPad : "\E[3~"
-key PgUp    -Shift+KeyPad : "\E[5~"
-key PgDown  -Shift+KeyPad : "\E[6~"
+key PageUp    -Shift+KeyPad : "\E[5~"
+key PageDown  -Shift+KeyPad : "\E[6~"
 
 key Clear -AnyMod+KeyPad+AppKeyPad : "\E[OE"
 key Clear +AnyMod+KeyPad+AppKeyPad : "\E[1;*E"
@@ -134,10 +134,10 @@ key Delete      -AnyMod  : "\E[3~"
 key Insert      +AnyMod  : "\E[2;*~"
 key Delete      +AnyMod  : "\E[3;*~"
 
-key PgUp    -Shift-AnyMod : "\E[5~"
-key PgDown  -Shift-AnyMod : "\E[6~"
-key PgUp    -Shift+AnyMod : "\E[5;*~"
-key PgDown  -Shift+AnyMod : "\E[6;*~"
+key PageUp    -Shift-AnyMod : "\E[5~"
+key PageDown  -Shift-AnyMod : "\E[6~"
+key PageUp    -Shift+AnyMod : "\E[5;*~"
+key PageDown  -Shift+AnyMod : "\E[6;*~"
 
 # Function keys
 key F1  -AnyMod  : "\EOP"
@@ -174,10 +174,10 @@ key Space +Control : "\x00"
 # The scroll* operations refer to the history buffer.
 
 key Up      +Shift-AppScreen : scrollLineUp
-key PgUp    +Shift-AppScreen : scrollPageUp
+key PageUp    +Shift-AppScreen : scrollPageUp
 key Home    +Shift-AppScreen : scrollUpToTop
 key Down    +Shift-AppScreen : scrollLineDown
-key PgDown  +Shift-AppScreen : scrollPageDown
+key PageDown  +Shift-AppScreen : scrollPageDown
 key End     +Shift-AppScreen : scrollDownToBottom
 
 key ScrollLock     : scrollLock
