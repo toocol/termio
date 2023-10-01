@@ -25,7 +25,6 @@ use crate::{
         translators::{Command, KeyboardTranslatorManager, State, CTRL_MODIFIER},
     },
 };
-use log::warn;
 use std::{collections::HashMap, ptr::NonNull, rc::Rc};
 use tmui::{
     prelude::*,
@@ -1791,13 +1790,10 @@ impl Emulation for VT102Emulation {
                     Some(State::NoState),
                 )
         };
-        if let Some(entry) = entry {
-            let text = entry.text(None, None);
-            if text.len() > 0 {
-                text[0] as char
-            } else {
-                '\u{b}'
-            }
+
+        let text = entry.text(None, None);
+        if text.len() > 0 {
+            text[0] as char
         } else {
             '\u{b}'
         }
@@ -2139,11 +2135,6 @@ impl Emulation for VT102Emulation {
                 modifiers,
                 Some(states),
             );
-            if entry.is_none() {
-                warn!("Key translator find entry failed, key_code: {:?}, modifier: {:?}, states: {:?}", event.key_code(), modifiers, states);
-                return;
-            }
-            let entry = entry.take().unwrap();
 
             let mut text_to_send: Vec<u8> = vec![];
 
@@ -2210,8 +2201,11 @@ impl Emulation for VT102Emulation {
             }
 
             let text_to_send = String::from_utf8(text_to_send).unwrap();
-            let len = text_to_send.len() as i32;
-            emit!(self.send_data(), (text_to_send, len))
+            // emit!(self.send_data(), text_to_send)
+
+            // receive data for test:
+            let buffer = text_to_send.as_bytes();
+            self.receive_data(buffer, buffer.len() as i32)
         } else {
             let translator_error = r#"No keyboard translator available.  
 The information needed to convert key presses 
@@ -2269,7 +2263,9 @@ is missing."#;
                 let coords: String = [
                     char::from_u32(cx as u32 + 0x20).unwrap(),
                     char::from_u32(cy as u32 + 0x20).unwrap(),
-                ].iter().collect();
+                ]
+                .iter()
+                .collect();
                 command = format!("\x1B[M{}{}", (cb as u8 + 0x20) as char, coords)
             }
         } else if cx <= 223 && cy <= 223 {
@@ -2288,13 +2284,13 @@ is missing."#;
     #[inline]
     fn send_string(&self, string: String, length: i32) {
         if length >= 0 {
-            emit!(self.send_data(), (string, length));
+            emit!(self.send_data(), string);
         } else {
             let len = string.len() as i32;
             if len == 0 {
                 return;
             }
-            emit!(self.send_data(), (string, len));
+            emit!(self.send_data(), string);
         }
     }
 

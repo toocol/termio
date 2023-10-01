@@ -173,6 +173,11 @@ impl ScreenWindow {
         self.scroll_count = 0
     }
 
+    /// Transfer function to emit `scroll_to_end` signal
+    pub fn emit_scroll_to_end(&self) {
+        emit!(self.scroll_to_end())
+    }
+
     /// Returns the area of the window which was last scrolled, this is usually the whole window area.
     ///
     /// Like scroll_count(), this is not guaranteed to be accurate, but allows views to optimize rendering.

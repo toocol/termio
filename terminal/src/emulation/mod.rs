@@ -409,7 +409,7 @@ impl Emulation for BaseEmulation {
             self,
             output_from_keypress_event(),
             self.windows.last_mut().unwrap(),
-            scroll_to(i32)
+            emit_scroll_to_end()
         );
 
         window_ptr

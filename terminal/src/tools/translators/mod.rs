@@ -727,7 +727,7 @@ impl KeyboardTranslator {
         key_code: u32,
         modifiers: KeyboardModifier,
         state: Option<State>,
-    ) -> Option<Rc<Entry>> {
+    ) -> Rc<Entry> {
         let state = if state.is_some() {
             state.unwrap()
         } else {
@@ -737,12 +737,12 @@ impl KeyboardTranslator {
             if *it.0 == key_code {
                 for en in it.1.iter() {
                     if en.matches(key_code, modifiers, state) {
-                        return Some(en.clone());
+                        return en.clone();
                     }
                 }
             }
         }
-        None
+        Rc::new(Entry::new())
     }
 
     /// Adds an entry to this keyboard translator's table.  Entries can be looked
