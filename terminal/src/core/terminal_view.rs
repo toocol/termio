@@ -647,7 +647,10 @@ impl TerminalView {
                     -line_width / 2.,
                 );
 
-                debug!("Draw cursor, foreground_color: {:?}, cursor_rect: {:?}", foreground_color, adjusted_cursor_rect);
+                debug!(
+                    "Draw cursor, foreground_color: {:?}, cursor_rect: {:?}",
+                    foreground_color, adjusted_cursor_rect
+                );
 
                 painter.draw_rect(adjusted_cursor_rect);
 

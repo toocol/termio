@@ -318,6 +318,10 @@ impl VT102Emulation {
         let base_emulation = BaseEmulation::new(translator_manager);
         let mut vt102_emulation: VT102Emulation = Default::default();
         vt102_emulation.emulation = Some(base_emulation);
+
+        vt102_emulation.init_tokenizer();
+        vt102_emulation.reset();
+
         vt102_emulation
     }
 
