@@ -14,7 +14,7 @@ use crate::tools::{
         TABLE_COLORS,
     },
     filter::{FilterChainImpl, HotSpotImpl, HotSpotType, TerminalImageFilterChain},
-    system_ffi::string_width,
+    system_ffi::string_width, event::{KeyPressedEvent, ToKeyPressedEvent},
 };
 use derivative::Derivative;
 use lazy_static::lazy_static;
@@ -305,7 +305,7 @@ impl WidgetImpl for TerminalView {
 
         self.get_screen_window_mut().unwrap().clear_selection();
 
-        emit!(self.key_pressed_signal(), (event.clone(), false));
+        emit!(self.key_pressed_signal(), (event.to_key_pressed_event(), false));
     }
 }
 
@@ -713,7 +713,7 @@ impl TerminalView {
         let use_strike_out = style.rendition & RE_STRIKEOUT != 0;
         let use_overline = style.rendition & RE_OVERLINE != 0;
 
-        let mut font = self.font_mut();
+        let font = self.font_mut();
         let typeface = FontTypeface::builder()
             .bold(use_bold)
             .italic(use_italic)
@@ -1219,12 +1219,7 @@ impl TerminalView {
                 text.push('\r');
             }
 
-            let e = KeyEvent::new(
-                EventType::KeyPress,
-                KeyCode::Unknown,
-                text,
-                KeyboardModifier::NoModifier,
-            );
+            let e = KeyPressedEvent::new(KeyCode::Unknown, text, KeyboardModifier::NoModifier);
             emit!(self.key_pressed_signal(), e, true);
 
             let screen_window = unsafe { self.screen_window.as_mut().unwrap().as_mut() };

@@ -9,7 +9,7 @@ use crate::{
     core::terminal_view::TerminalViewSignals,
     emulation::{Emulation, VT102Emulation},
     pty::{ProtocolType, Pty},
-    tools::history::HistoryType,
+    tools::{history::HistoryType, event::KeyPressedEvent},
 };
 use derivative::Derivative;
 use log::debug;
@@ -20,7 +20,6 @@ use tmui::{
     scroll_bar::ScrollBarPosition,
     tlib::{
         connect, emit,
-        events::KeyEvent,
         figure::Color,
         namespace::{ExitStatus, Orientation},
         nonnull_mut, nonnull_ref,
@@ -254,7 +253,7 @@ impl Session {
         terminal_view.set_bracketed_paste_mode(emulation.program_bracketed_paste_mode());
 
         // Connect `TerminalView`'s signal to emulation:
-        connect!(terminal_view, key_pressed_signal(), emulation, send_key_event(KeyEvent:0, bool:1));
+        connect!(terminal_view, key_pressed_signal(), emulation, send_key_event(KeyPressedEvent:0, bool:1));
         connect!(terminal_view, mouse_signal(), emulation, send_mouse_event(i32:0, i32:1, i32:2, u8:3));
         connect!(terminal_view, send_string_to_emulation(), emulation, send_string(String:0, i32:1));
 

@@ -22,7 +22,7 @@ use crate::{
         },
         history::HistoryType,
         terminal_character_decoder::TerminalCharacterDecoder,
-        translators::{Command, KeyboardTranslatorManager, State, CTRL_MODIFIER},
+        translators::{Command, KeyboardTranslatorManager, State, CTRL_MODIFIER}, event::KeyPressedEvent,
     },
 };
 use std::{collections::HashMap, ptr::NonNull, rc::Rc};
@@ -30,7 +30,6 @@ use tmui::{
     prelude::*,
     tlib::{
         emit,
-        events::KeyEvent,
         figure::Size,
         impl_as_any,
         namespace::{AsNumeric, KeyCode, KeyboardModifier},
@@ -2105,7 +2104,7 @@ impl Emulation for VT102Emulation {
     }
 
     #[inline]
-    fn send_key_event(&mut self, event: KeyEvent, from_paste: bool) {
+    fn send_key_event(&mut self, event: KeyPressedEvent, from_paste: bool) {
         let modifiers = event.modifier();
         let mut states = State::NoState;
 
@@ -2134,7 +2133,7 @@ impl Emulation for VT102Emulation {
         }
 
         if self.emulation().key_translator.is_some() {
-            let mut entry = nonnull_ref!(self.emulation().key_translator).find_entry(
+            let entry = nonnull_ref!(self.emulation().key_translator).find_entry(
                 event.key_code().as_numeric(),
                 modifiers,
                 Some(states),
@@ -2202,6 +2201,10 @@ impl Emulation for VT102Emulation {
 
             if !from_paste && text_to_send.len() > 0 {
                 emit!(self.output_from_keypress_event())
+            }
+
+            if text_to_send.len() == 0 {
+                return
             }
 
             let text_to_send = String::from_utf8(text_to_send).unwrap();

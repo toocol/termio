@@ -1,10 +1,13 @@
 use super::session::Session;
-use crate::{config::Config, tools::history::HistoryTypeBuffer};
+use crate::{
+    config::Config,
+    tools::{event::ToKeyPressedEvent, history::HistoryTypeBuffer},
+};
 use derivative::Derivative;
 use std::rc::Rc;
 use tmui::{
     prelude::*,
-    tlib::{object::ObjectSubclass, events::KeyEvent},
+    tlib::{events::KeyEvent, object::ObjectSubclass},
 };
 
 /// TerminalPanel was built to manage the terminal view, it holds all the terminal session,
@@ -58,10 +61,18 @@ impl TerminalPanel {
     pub fn when_resize(&mut self, size: Size) {}
 
     pub fn send_key_event(&mut self, event: KeyEvent) {
-        self.sessions.first_mut().unwrap().emulation_mut().send_key_event(event, false);
+        self.sessions
+            .first_mut()
+            .unwrap()
+            .emulation_mut()
+            .send_key_event(event.to_key_pressed_event(), false);
     }
 
     pub fn send_text(&mut self, text: String) {
-        self.sessions.first_mut().unwrap().emulation_mut().send_text(text);
+        self.sessions
+            .first_mut()
+            .unwrap()
+            .emulation_mut()
+            .send_text(text);
     }
 }

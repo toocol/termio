@@ -470,7 +470,7 @@ impl Entry {
 
     /// Returns this entry's conditions ( ie. its key code, modifier and state criteria ) as a string.
     pub fn condition_to_string(&mut self) -> String {
-        let mut result = KeyCode::from(self.key_code as u32).to_string();
+        let mut result = KeyCode::from(self.key_code as u32).name().to_string();
 
         self.insert_modifier(&mut result, KeyboardModifier::ShiftModifier);
         self.insert_modifier(&mut result, KeyboardModifier::ControlModifier);

@@ -2,6 +2,7 @@ pub mod system_ffi;
 pub mod block_array;
 pub mod translators;
 pub mod character_color;
+pub mod event;
 pub mod filter;
 pub mod history;
 pub mod character;
