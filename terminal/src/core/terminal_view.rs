@@ -39,7 +39,7 @@ use tmui::{
     system::System,
     tlib::{
         connect, disconnect, emit,
-        events::{DeltaType, EventType, KeyEvent, MouseEvent},
+        events::{DeltaType, KeyEvent, MouseEvent},
         figure::{Color, FRect, FontTypeface, Size},
         namespace::{KeyCode, KeyboardModifier},
         nonnull_mut,
@@ -323,52 +323,52 @@ pub trait TerminalViewSignals: ActionExt {
     signals!(
         TerminalViewSignals:
 
-       /// Emitted when the user presses a key whilst the terminal widget has focus.
-       ///
-       /// @param [`KeyEvent`] key event.
-       /// @param [`bool`] from paste.
-       key_pressed_signal();
+        /// Emitted when the user presses a key whilst the terminal widget has focus.
+        ///
+        /// @param [`KeyEvent`] key event.
+        /// @param [`bool`] from paste.
+        key_pressed_signal();
 
-       /// A mouse event occurred.
-       /// @param [`i32`] button: The mouse button (0 for left button, 1 for middle button, 2
-       /// for right button, 3 for release) <br>
-       /// @param [`i32`] column: The character column where the event occurred <br>
-       /// @param [`i32`] row: The character row where the event occurred <br>
-       /// @param [`u8`] type: The type of event.  0 for a mouse press / release or 1 for
-       /// mouse motion
-       mouse_signal();
+        /// A mouse event occurred.
+        /// @param [`i32`] button: The mouse button (0 for left button, 1 for middle button, 2
+        /// for right button, 3 for release) <br>
+        /// @param [`i32`] column: The character column where the event occurred <br>
+        /// @param [`i32`] row: The character row where the event occurred <br>
+        /// @param [`u8`] type: The type of event.  0 for a mouse press / release or 1 for
+        /// mouse motion
+        mouse_signal();
 
-       changed_font_metrics_signal();
-       changed_content_size_signal();
+        changed_font_metrics_signal();
+        changed_content_size_signal();
 
-       /// Emitted when the user right clicks on the display, or right-clicks with the
-       /// Shift key held down if [`uses_mouse()`] is true.
-       ///
-       /// This can be used to display a context menu.
-       configure_request();
+        /// Emitted when the user right clicks on the display, or right-clicks with the
+        /// Shift key held down if [`uses_mouse()`] is true.
+        ///
+        /// This can be used to display a context menu.
+        configure_request();
 
-       /// When a shortcut which is also a valid terminal key sequence is pressed
-       /// while the terminal widget  has focus, this signal is emitted to allow the
-       /// host to decide whether the shortcut should be overridden. When the shortcut
-       /// is overridden, the key sequence will be sent to the terminal emulation
-       /// instead and the action associated with the shortcut will not be triggered.
-       ///
-       /// @p [`override`] is set to false by default and the shortcut will be triggered
-       /// as normal.
-       override_shortcut_check();
+        /// When a shortcut which is also a valid terminal key sequence is pressed
+        /// while the terminal widget  has focus, this signal is emitted to allow the
+        /// host to decide whether the shortcut should be overridden. When the shortcut
+        /// is overridden, the key sequence will be sent to the terminal emulation
+        /// instead and the action associated with the shortcut will not be triggered.
+        ///
+        /// @p [`override`] is set to false by default and the shortcut will be triggered
+        /// as normal.
+        override_shortcut_check();
 
-       is_busy_selecting();
+        is_busy_selecting();
 
-       /// @param [`String`]
-       /// @param [`i32`] length of the string, if there was a empty string, the value was -1/0
-       send_string_to_emulation();
+        /// @param [`String`]
+        /// @param [`i32`] length of the string, if there was a empty string, the value was -1/0
+        send_string_to_emulation();
 
-       copy_avaliable();
-       term_get_focus();
-       term_lost_focus();
+        copy_avaliable();
+        term_get_focus();
+        term_lost_focus();
 
-       notify_bell();
-       uses_mouse_changed();
+        notify_bell();
+        uses_mouse_changed();
     );
 }
 impl TerminalViewSignals for TerminalView {}
