@@ -41,12 +41,12 @@ use tmui::{
     tlib::{
         connect, disconnect, emit,
         events::{DeltaType, KeyEvent, MouseEvent},
-        figure::{Color, FRect, FontTypeface, Size},
+        figure::{Color, FRect, Size},
         namespace::{KeyCode, KeyboardModifier},
         nonnull_mut, nonnull_ref,
         object::{ObjectImpl, ObjectSubclass},
         ptr_mut, run_after, signals,
-        timer::Timer,
+        timer::Timer, global::{round64, bound64},
     },
     widget::WidgetImpl,
 };
@@ -83,8 +83,6 @@ pub struct TerminalView {
     font_height: i32,
     #[derivative(Default(value = "1"))]
     font_width: i32,
-    #[derivative(Default(value = "1"))]
-    font_ascend: i32,
     draw_text_addition_height: i32,
 
     #[derivative(Default(value = "5"))]
@@ -258,7 +256,7 @@ impl ObjectImpl for TerminalView {
 impl WidgetImpl for TerminalView {
     fn paint(&mut self, mut painter: Painter) {
         let _image = self.image();
-        painter.set_antialiasing();
+        painter.set_antialiasing(true);
         let _cr = self.contents_rect(Some(Coordinate::Widget));
 
         // TODO: Process the background image.
@@ -414,7 +412,10 @@ impl TerminalView {
     /// fragments according to their colors and styles and calls
     /// drawTextFragment() to draw the fragments
     fn draw_contents(&mut self, painter: &mut Painter, rect: Rect) {
-        println!("Draw contents: {:?}", rect);
+        // println!("Draw contents: {:?}", rect);
+        if rect.width() != 7 && rect.height() != 11 {
+            print!("");
+        }
         let _image = self.image();
 
         let tl = self.contents_rect(Some(Coordinate::Widget)).top_left();
@@ -463,6 +464,7 @@ impl TerminalView {
                     for index in 0..extended_char_length as usize {
                         assert!(p < buffer_size);
                         unistr[p] = chars[index];
+                        p += 1;
                     }
                 } else {
                     c = self.image()[self.loc(x, y) as usize].character_union.data();
@@ -602,11 +604,11 @@ impl TerminalView {
 
         let mut invert_character_color = false;
 
-        // draw text
-        self.draw_characters(painter, rect, &text, style, invert_character_color);
-
         if style.rendition & RE_CURSOR != 0 {
             self.draw_cursor(painter, rect, foreground_color, &mut invert_character_color);
+        } else {
+            // draw text
+            self.draw_characters(painter, rect, &text, style, invert_character_color);
         }
 
         painter.restore();
@@ -724,11 +726,13 @@ impl TerminalView {
         let use_overline = style.rendition & RE_OVERLINE != 0;
 
         let font = self.font_mut();
-        let typeface = FontTypeface::builder()
-            .bold(use_bold)
-            .italic(use_italic)
-            .build();
-        font.set_typeface(typeface);
+        let mut typeface = font.typeface().unwrap();
+        if typeface.bold() != use_bold || typeface.italic() != use_italic {
+            typeface.set_bold(use_bold);
+            typeface.set_italic(use_italic);
+            font.set_typeface(typeface);
+        }
+        painter.set_font(font.to_skia_font());
 
         let text_color = if invert_character_color {
             style.background_color
@@ -745,36 +749,38 @@ impl TerminalView {
             let text = text
                 .to_string()
                 .expect("`draw_characters()` transfer wchar_t text to utf-8 failed.");
+            println!(
+                "Draw line: \"{}\", x: {}, y: {}, width: {}",
+                text,
+                rect.x(),
+                rect.y(),
+                rect.width()
+            );
 
             if self.bidi_enable {
                 painter.fill_rect(rect, style.background_color.color(&self.color_table));
-                painter.draw_text(
-                    &text,
-                    (
-                        rect.x(),
-                        rect.y() + self.font_ascend + self.line_spacing as i32,
-                    ),
-                );
+                painter.draw_paragraph(&text, (rect.x(), rect.y()), 0., rect.width() as f32);
             } else {
                 let mut draw_rect = Rect::new(rect.x(), rect.y(), rect.width(), rect.height());
                 draw_rect.set_height(rect.height() + self.draw_text_addition_height);
+
                 painter.fill_rect(draw_rect, style.background_color.color(&self.color_table));
                 // Draw the text start at the left-bottom.
-                painter.draw_text(&text, (rect.left(), rect.bottom()));
+                painter.draw_paragraph(&text, (rect.x(), rect.y()), 0., self.size().width() as f32);
 
                 if use_underline {
-                    let y = rect.bottom() as f32 - 0.5;
-                    painter.draw_line_f(rect.left() as f32, y, rect.right() as f32, y)
+                    let y = draw_rect.bottom() as f32 - 0.5;
+                    painter.draw_line_f(draw_rect.left() as f32, y, draw_rect.right() as f32, y)
                 }
 
                 if use_strike_out {
-                    let y = (rect.top() as f32 + rect.bottom() as f32) / 2.;
-                    painter.draw_line_f(rect.left() as f32, y, rect.right() as f32, y)
+                    let y = (draw_rect.top() as f32 + draw_rect.bottom() as f32) / 2.;
+                    painter.draw_line_f(draw_rect.left() as f32, y, draw_rect.right() as f32, y)
                 }
 
                 if use_overline {
-                    let y = rect.top() as f32 + 0.5;
-                    painter.draw_line_f(rect.left() as f32, y, rect.right() as f32, y)
+                    let y = draw_rect.top() as f32 + 0.5;
+                    painter.draw_line_f(draw_rect.left() as f32, y, draw_rect.right() as f32, y)
                 }
             }
         }
@@ -992,7 +998,7 @@ impl TerminalView {
     /// Sets the opacity of the terminal view.
     #[inline]
     pub fn set_opacity(&mut self, opacity: f64) {
-        self.opacity = bound(0., opacity, 1.);
+        self.opacity = bound64(0., opacity, 1.);
     }
 
     /// Sets the background image of the terminal view.
@@ -1820,7 +1826,10 @@ performance degradation and display/alignment errors."
         dirty_region.or(&self.input_method_data.previous_preedit_rect);
 
         // update the parts of the view which have changed
-        self.update_region(dirty_region);
+        if dirty_region.width() > 0 && dirty_region.height() > 0 {
+            println!("update_image() -> {:?}", dirty_region);
+            self.update_region(dirty_region);
+        }
 
         if self.has_blinker && !self.blink_timer.is_active() {
             self.blink_timer.start(Duration::from_millis(
@@ -2058,22 +2067,21 @@ performance degradation and display/alignment errors."
 
     fn font_change(&mut self) {
         let font = self.font().to_skia_font();
-        let (_, fm) = font.metrics();
         let measure = font.measure_str(REPCHAR, None).1;
 
         self.font_height = measure.height() as i32 + self.line_spacing as i32;
 
-        // "Base character width on widest ASCII character. This prevents too wide
-        // characters in the presence of double wide (e.g. Japanese) characters."
-        // Get the width from representative normal width characters
-        let wstring = U16String::from_str(REPCHAR);
-        let wchar_t_repchar = wstring.as_slice();
-        let mut widths = vec![0f32; wchar_t_repchar.len()];
-        font.get_widths(wchar_t_repchar, &mut widths);
-        self.font_width = round(measure.width() as f64 / REPCHAR.len() as f64);
+        let width = measure.width() as f64 / REPCHAR.len() as f64;
+        self.font_width = round64(width);
 
         self.fixed_font = true;
 
+        // "Base character width on widest ASCII character. This prevents too wide
+        // characters in the presence of double wide (e.g. Chinese) characters."
+        // Get the width from representative normal width characters
+        let wchar_t_repchar: Vec<u16> = REPCHAR.encode_utf16().collect();
+        let mut widths = vec![0f32; wchar_t_repchar.len()];
+        font.get_widths(&wchar_t_repchar, &mut widths);
         let fw = widths[0];
         for i in 1..widths.len() {
             if fw != widths[i] {
@@ -2085,8 +2093,6 @@ performance degradation and display/alignment errors."
         if self.font_width < 1 {
             self.font_width = 1;
         }
-
-        self.font_ascend = fm.ascent as i32;
 
         emit!(
             self.changed_font_metrics_signal(),
@@ -2610,6 +2616,7 @@ performance degradation and display/alignment errors."
         scroll_rect.set_height(lines_to_move * self.font_height);
 
         nonnull_mut!(self.scroll_bar).scroll(self.font_height * lines, DeltaType::Pixel);
+        println!("scroll_image() -> {:?}", scroll_rect);
         self.update_region(scroll_rect);
     }
 
@@ -2812,21 +2819,6 @@ const REPCHAR: &'static str = concat!(
 );
 
 const LTR_OVERRIDE_CHAR: wchar_t = 0x202D;
-
-#[inline]
-pub fn bound(min: f64, val: f64, max: f64) -> f64 {
-    assert!(max >= min);
-    min.max(max.min(val))
-}
-
-#[inline]
-pub fn round(d: f64) -> i32 {
-    if d >= 0. {
-        (d + 0.5) as i32
-    } else {
-        (d - 0.5) as i32
-    }
-}
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
 /// Display Operations
