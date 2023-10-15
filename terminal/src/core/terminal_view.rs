@@ -463,6 +463,7 @@ impl TerminalView {
                     for index in 0..extended_char_length as usize {
                         assert!(p < buffer_size);
                         unistr[p] = chars[index];
+                        p += 1;
                     }
                 } else {
                     c = self.image()[self.loc(x, y) as usize].character_union.data();
