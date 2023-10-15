@@ -13,8 +13,9 @@ use crate::tools::{
         CharacterColor, ColorEntry, BASE_COLOR_TABLE, DEFAULT_BACK_COLOR, DEFAULT_FORE_COLOR,
         TABLE_COLORS,
     },
+    event::{KeyPressedEvent, ToKeyPressedEvent},
     filter::{FilterChainImpl, HotSpotImpl, HotSpotType, TerminalImageFilterChain},
-    system_ffi::string_width, event::{KeyPressedEvent, ToKeyPressedEvent},
+    system_ffi::string_width,
 };
 use derivative::Derivative;
 use lazy_static::lazy_static;
@@ -30,7 +31,7 @@ use std::{
 use tmui::{
     application::{self, cursor_blinking_time},
     clipboard::ClipboardLevel,
-    cursor::Cursor,
+    cursor::{self, Cursor},
     graphics::painter::Painter,
     label::Label,
     prelude::*,
@@ -256,6 +257,7 @@ impl ObjectImpl for TerminalView {
 
 impl WidgetImpl for TerminalView {
     fn paint(&mut self, mut painter: Painter) {
+        let _image = self.image();
         painter.set_antialiasing();
         let _cr = self.contents_rect(Some(Coordinate::Widget));
 
@@ -305,7 +307,10 @@ impl WidgetImpl for TerminalView {
 
         self.get_screen_window_mut().unwrap().clear_selection();
 
-        emit!(self.key_pressed_signal(), (event.to_key_pressed_event(), false));
+        emit!(
+            self.key_pressed_signal(),
+            (event.to_key_pressed_event(), false)
+        );
     }
 }
 
@@ -407,10 +412,11 @@ impl TerminalView {
     /// fragments according to their colors and styles and calls
     /// drawTextFragment() to draw the fragments
     fn draw_contents(&mut self, painter: &mut Painter, rect: Rect) {
-        let tl = self.contents_rect(Some(Coordinate::Widget));
+        let tl = self.contents_rect(Some(Coordinate::Widget)).top_left();
 
         let tlx = tl.x();
         let tly = tl.y();
+        println!("{}, {}", self.used_columns, self.used_lines);
 
         let lux = (self.used_columns - 1)
             .min(0.max((rect.left() - tlx - self.left_margin) / self.font_width));
@@ -501,10 +507,10 @@ impl TerminalView {
                 }
 
                 if x + len < self.used_columns
-                    && !self.image()[self.loc(x + len, y) as usize]
+                    && self.image()[self.loc(x + len, y) as usize]
                         .character_union
                         .data()
-                        != 0
+                        == 0
                 {
                     len += 1;
                 }
@@ -1162,6 +1168,8 @@ impl TerminalView {
     #[inline]
     pub fn set_line_spacing(&mut self, spacing: u32) {
         self.line_spacing = spacing;
+
+        // line spacing was changed, should recalculate the font_width
         self.set_vt_font(self.font().to_skia_font())
     }
     #[inline]
@@ -1610,7 +1618,6 @@ performance degradation and display/alignment errors."
             // recreated, so do this first.
             self.update_image_size()
         }
-        // info!("[1] image color space: {} {}", self.image()[0].background_color.color_space, self.image()[0].foreground_color.color_space);
 
         let lines = screen_window.window_lines();
         let columns = screen_window.window_columns();
@@ -2042,7 +2049,9 @@ performance degradation and display/alignment errors."
     fn font_change(&mut self) {
         let font = self.font().to_skia_font();
         let (_, fm) = font.metrics();
-        self.font_height = fm.cap_height as i32 + self.line_spacing as i32;
+        let measure = font.measure_str(REPCHAR, None).1;
+
+        self.font_height = measure.height() as i32 + self.line_spacing as i32;
 
         // "Base character width on widest ASCII character. This prevents too wide
         // characters in the presence of double wide (e.g. Japanese) characters."
@@ -2051,8 +2060,7 @@ performance degradation and display/alignment errors."
         let wchar_t_repchar = wstring.as_slice();
         let mut widths = vec![0f32; wchar_t_repchar.len()];
         font.get_widths(wchar_t_repchar, &mut widths);
-        let sum_width: f32 = widths.iter().sum();
-        self.font_width = round(sum_width as f64 / wchar_t_repchar.len() as f64);
+        self.font_width = round(measure.width() as f64 / REPCHAR.len() as f64);
 
         self.fixed_font = true;
 
@@ -2799,11 +2807,11 @@ static ANTIALIAS_TEXT: AtomicBool = AtomicBool::new(true);
 static HAVE_TRANSPARENCY: AtomicBool = AtomicBool::new(true);
 static TEXT_BLINK_DELAY: AtomicU64 = AtomicU64::new(500);
 
-const REPCHAR: &'static str = "
-ABCDEFGHIJKLMNOPQRSTUVWXYZ
-abcdefgjijklmnopqrstuvwxyz
-0123456789./+@
-";
+const REPCHAR: &'static str = concat!(
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+    "abcdefgjijklmnopqrstuvwxyz",
+    "0123456789./+@"
+);
 
 const LTR_OVERRIDE_CHAR: wchar_t = 0x202D;
 
