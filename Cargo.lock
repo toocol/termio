@@ -1418,7 +1418,7 @@ dependencies = [
 [[package]]
 name = "macros"
 version = "0.1.0"
-source = "git+https://github.com/toocol/tmui#8df06b8c6ecd20d4656cc0231eee72e13060d1c6"
+source = "git+https://github.com/toocol/tmui#093afab426418c00c91adb953bd029b85f0e3d7d"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2781,7 +2781,7 @@ checksum = "1f3ccbac311fea05f86f61904b462b55fb3df8837a366dfc601a0161d0532f20"
 [[package]]
 name = "tipc"
 version = "0.1.0"
-source = "git+https://github.com/toocol/tmui#8df06b8c6ecd20d4656cc0231eee72e13060d1c6"
+source = "git+https://github.com/toocol/tmui#093afab426418c00c91adb953bd029b85f0e3d7d"
 dependencies = [
  "log",
  "parking_lot 0.12.1",
@@ -2794,7 +2794,7 @@ dependencies = [
 [[package]]
 name = "tlib"
 version = "0.1.0"
-source = "git+https://github.com/toocol/tmui#8df06b8c6ecd20d4656cc0231eee72e13060d1c6"
+source = "git+https://github.com/toocol/tmui#093afab426418c00c91adb953bd029b85f0e3d7d"
 dependencies = [
  "derivative",
  "hex_color",
@@ -2816,7 +2816,7 @@ dependencies = [
 [[package]]
 name = "tmui"
 version = "0.1.0"
-source = "git+https://github.com/toocol/tmui#8df06b8c6ecd20d4656cc0231eee72e13060d1c6"
+source = "git+https://github.com/toocol/tmui#093afab426418c00c91adb953bd029b85f0e3d7d"
 dependencies = [
  "beep",
  "cfg_aliases",

@@ -31,7 +31,7 @@ use std::{
 use tmui::{
     application::{self, cursor_blinking_time},
     clipboard::ClipboardLevel,
-    cursor::{self, Cursor},
+    cursor::Cursor,
     graphics::painter::Painter,
     label::Label,
     prelude::*,
@@ -43,7 +43,7 @@ use tmui::{
         events::{DeltaType, KeyEvent, MouseEvent},
         figure::{Color, FRect, FontTypeface, Size},
         namespace::{KeyCode, KeyboardModifier},
-        nonnull_mut,
+        nonnull_mut, nonnull_ref,
         object::{ObjectImpl, ObjectSubclass},
         ptr_mut, run_after, signals,
         timer::Timer,
@@ -302,10 +302,12 @@ impl WidgetImpl for TerminalView {
                 .start(Duration::from_millis(cursor_blinking_time() as u64));
             if self.cursor_blinking {
                 self.blink_cursor_event()
+            } else {
+                self.cursor_blinking = false
             }
         }
 
-        self.get_screen_window_mut().unwrap().clear_selection();
+        self.screen_window_mut().unwrap().clear_selection();
 
         emit!(
             self.key_pressed_signal(),
@@ -412,11 +414,12 @@ impl TerminalView {
     /// fragments according to their colors and styles and calls
     /// drawTextFragment() to draw the fragments
     fn draw_contents(&mut self, painter: &mut Painter, rect: Rect) {
-        let tl = self.contents_rect(Some(Coordinate::Widget)).top_left();
+        println!("Draw contents: {:?}", rect);
+        let _image = self.image();
 
+        let tl = self.contents_rect(Some(Coordinate::Widget)).top_left();
         let tlx = tl.x();
         let tly = tl.y();
-        println!("{}, {}", self.used_columns, self.used_lines);
 
         let lux = (self.used_columns - 1)
             .min(0.max((rect.left() - tlx - self.left_margin) / self.font_width));
@@ -436,7 +439,7 @@ impl TerminalView {
                 .character_union
                 .data();
             let mut x = lux;
-            if !c != 0 && x != 0 {
+            if c == 0 && x != 0 {
                 // Search for start of multi-column character
                 x -= 1;
             }
@@ -466,6 +469,7 @@ impl TerminalView {
                     if c != 0 {
                         assert!(p < buffer_size);
                         unistr[p] = c;
+                        p += 1;
                     }
                 }
 
@@ -1027,7 +1031,7 @@ impl TerminalView {
     }
     /// Setting the current position and range of the display scroll bar.
     pub fn set_scroll(&mut self, cursor: i32, lines: i32) {
-        let scroll_bar = unsafe { self.scroll_bar.as_mut().unwrap().as_mut() };
+        let scroll_bar = nonnull_mut!(self.scroll_bar);
         if scroll_bar.minimum() == 0
             && scroll_bar.maximum() == (lines - self.lines)
             && scroll_bar.value() == cursor
@@ -1048,7 +1052,7 @@ impl TerminalView {
     }
     /// Scroll to the bottom of the terminal (reset scrolling).
     pub fn scroll_to_end(&mut self) {
-        let scroll_bar = unsafe { self.scroll_bar.as_mut().unwrap().as_mut() };
+        let scroll_bar = nonnull_mut!(self.scroll_bar);
         disconnect!(scroll_bar, value_changed(), self, null);
         scroll_bar.set_value(scroll_bar.maximum());
         connect!(
@@ -1058,7 +1062,7 @@ impl TerminalView {
             scroll_bar_position_changed(i32)
         );
 
-        let screen_window = unsafe { self.screen_window.as_mut().unwrap().as_mut() };
+        let screen_window = nonnull_mut!(self.screen_window);
         screen_window.scroll_to(scroll_bar.value() + 1);
         screen_window.set_track_output(screen_window.at_end_of_output());
     }
@@ -1086,7 +1090,7 @@ impl TerminalView {
         if self.screen_window.is_none() {
             return;
         }
-        let screen_window = unsafe { self.screen_window.as_mut().unwrap().as_mut() };
+        let screen_window = nonnull_mut!(self.screen_window);
 
         let _pre_update_hotspots = self.hotspot_region();
 
@@ -1230,7 +1234,7 @@ impl TerminalView {
             let e = KeyPressedEvent::new(KeyCode::Unknown, text, KeyboardModifier::NoModifier);
             emit!(self.key_pressed_signal(), e, true);
 
-            let screen_window = unsafe { self.screen_window.as_mut().unwrap().as_mut() };
+            let screen_window = nonnull_mut!(self.screen_window);
             screen_window.clear_selection();
 
             match self.motion_after_pasting {
@@ -1331,7 +1335,7 @@ impl TerminalView {
     }
 
     pub fn set_size(&mut self, _cols: i32, _lins: i32) {
-        let scroll_bar = unsafe { self.scroll_bar.as_mut().unwrap().as_mut() };
+        let scroll_bar = nonnull_mut!(self.scroll_bar);
         let scroll_bar_width = if !scroll_bar.visible() {
             0
         } else {
@@ -1509,7 +1513,7 @@ performance degradation and display/alignment errors."
     /// Returns the terminal screen section which is displayed in this widget.
     /// See [`set_screen_window()`]
     #[inline]
-    pub fn get_screen_window(&self) -> Option<&ScreenWindow> {
+    pub fn screen_window(&self) -> Option<&ScreenWindow> {
         match self.screen_window.as_ref() {
             Some(window) => unsafe { Some(window.as_ref()) },
             None => None,
@@ -1517,9 +1521,25 @@ performance degradation and display/alignment errors."
     }
 
     #[inline]
-    pub fn get_screen_window_mut(&mut self) -> Option<&mut ScreenWindow> {
+    pub fn screen_window_mut(&mut self) -> Option<&mut ScreenWindow> {
         match self.screen_window.as_mut() {
             Some(window) => unsafe { Some(window.as_mut()) },
+            None => None,
+        }
+    }
+
+    #[inline]
+    pub fn scroll_bar(&self) -> Option<&ScrollBar> {
+        match self.scroll_bar.as_ref() {
+            Some(scroll_bar) => unsafe { Some(scroll_bar.as_ref()) },
+            None => None,
+        }
+    }
+
+    #[inline]
+    pub fn scroll_bar_mut(&mut self) -> Option<&mut ScrollBar> {
+        match self.scroll_bar.as_mut() {
+            Some(scroll_bar) => unsafe { Some(scroll_bar.as_mut()) },
             None => None,
         }
     }
@@ -1604,7 +1624,7 @@ performance degradation and display/alignment errors."
         if self.screen_window.is_none() {
             return;
         }
-        let screen_window = unsafe { self.screen_window.as_mut().unwrap().as_mut() };
+        let screen_window = nonnull_mut!(self.screen_window);
 
         // optimization - scroll the existing image where possible and
         // avoid expensive text drawing for parts of the image that
@@ -1829,13 +1849,7 @@ performance degradation and display/alignment errors."
             return;
         }
 
-        self.line_properties = unsafe {
-            self.screen_window
-                .as_ref()
-                .unwrap()
-                .as_ref()
-                .get_line_properties()
-        };
+        self.line_properties = self.screen_window().unwrap().get_line_properties();
     }
 
     /// Copies the selected text to the clipboard.
@@ -1844,13 +1858,10 @@ performance degradation and display/alignment errors."
             return;
         }
 
-        let text = unsafe {
-            self.screen_window
-                .as_ref()
-                .unwrap()
-                .as_ref()
-                .selected_text(self.preserve_line_breaks)
-        };
+        let text = self
+            .screen_window()
+            .unwrap()
+            .selected_text(self.preserve_line_breaks);
         System::clipboard().set_text(text, ClipboardLevel::Os);
     }
 
@@ -1940,7 +1951,7 @@ performance degradation and display/alignment errors."
     /// Sets the background of the view to the specified color.
     /// @see [`set_color_table()`], [`set_foreground_color()`]
     pub fn set_background_color(&mut self, color: Color) {
-        let scroll_bar = unsafe { self.scroll_bar.as_mut().unwrap().as_mut() };
+        let scroll_bar = nonnull_mut!(self.scroll_bar);
         self.color_table[DEFAULT_BACK_COLOR as usize].color = color;
 
         self.set_background(color);
@@ -1960,15 +1971,14 @@ performance degradation and display/alignment errors."
         if self.screen_window.is_none() {
             return;
         }
-        emit!(self.copy_avaliable(), unsafe {
-            self.screen_window
-                .as_ref()
+        emit!(
+            self.copy_avaliable(),
+            self.screen_window()
                 .unwrap()
-                .as_ref()
                 .selected_text(false)
                 .is_empty()
                 == false
-        });
+        );
     }
 
     fn scroll_bar_position_changed(&mut self, _value: i32) {
@@ -1976,8 +1986,8 @@ performance degradation and display/alignment errors."
             return;
         }
 
-        let scroll_bar = unsafe { self.scroll_bar.as_mut().unwrap().as_mut() };
-        let screen_window = unsafe { self.screen_window.as_mut().unwrap().as_mut() };
+        let scroll_bar = nonnull_mut!(self.scroll_bar);
+        let screen_window = nonnull_mut!(self.screen_window);
         screen_window.scroll_to(scroll_bar.value());
 
         // if the thumb has been moved to the bottom of the _scrollBar then set
@@ -2095,7 +2105,7 @@ performance degradation and display/alignment errors."
         if self.screen_window.is_none() {
             return;
         }
-        let scroll_bar = unsafe { self.scroll_bar.as_mut().unwrap().as_mut() };
+        let scroll_bar = nonnull_mut!(self.scroll_bar);
 
         let tl = self.contents_rect(Some(Coordinate::Widget)).top_left();
         let tlx = tl.x();
@@ -2298,7 +2308,7 @@ performance degradation and display/alignment errors."
             return;
         }
 
-        let screen_window = unsafe { self.screen_window.as_mut().unwrap().as_mut() };
+        let screen_window = nonnull_mut!(self.screen_window);
         if self.act_sel < 2 || swapping {
             if self.column_selection_mode && !self.line_selection_mode && !self.word_selection_mode
             {
@@ -2363,8 +2373,8 @@ performance degradation and display/alignment errors."
         if self.screen_window.is_none() {
             return;
         }
-        let scroll_bar = unsafe { self.scroll_bar.as_mut().unwrap().as_mut() };
-        let screen_window = unsafe { self.screen_window.as_mut().unwrap().as_mut() };
+        let scroll_bar = nonnull_mut!(self.scroll_bar);
+        let screen_window = nonnull_mut!(self.screen_window);
 
         let (char_line, char_column) = self.get_character_position(ev.position().into());
         self.pnt_sel = Point::new(char_column, char_line);
@@ -2535,7 +2545,7 @@ performance degradation and display/alignment errors."
             return;
         }
 
-        let scroll_bar = unsafe { self.scroll_bar.as_mut().unwrap().as_mut() };
+        let scroll_bar = nonnull_mut!(self.scroll_bar);
 
         // constrain the region to the display
         // the bottom of the region is capped to the number of lines in the display's
@@ -2670,13 +2680,7 @@ performance degradation and display/alignment errors."
         }
 
         if self.screen_window.is_some() {
-            unsafe {
-                self.screen_window
-                    .as_mut()
-                    .unwrap()
-                    .as_mut()
-                    .set_window_lines(self.lines)
-            };
+            nonnull_mut!(self.screen_window).set_window_lines(self.lines)
         }
 
         self.resizing = (old_line != self.lines) || (old_col != self.columns);
@@ -2756,13 +2760,7 @@ performance degradation and display/alignment errors."
     /// returns the position of the cursor in columns and lines.
     fn cursor_position(&self) -> Point {
         if self.screen_window.is_some() {
-            unsafe {
-                self.screen_window
-                    .as_ref()
-                    .unwrap()
-                    .as_ref()
-                    .cursor_position()
-            }
+            nonnull_ref!(self.screen_window).cursor_position()
         } else {
             Point::new(0, 0)
         }
