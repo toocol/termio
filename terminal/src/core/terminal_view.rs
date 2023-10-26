@@ -36,17 +36,24 @@ use tmui::{
     label::Label,
     prelude::*,
     scroll_bar::{ScrollBar, ScrollBarPosition},
-    skia_safe::{self, Matrix},
+    skia_safe::{
+        self,
+        textlayout::{
+            FontCollection, ParagraphBuilder, ParagraphStyle, TextStyle, TypefaceFontProvider,
+        },
+        Matrix,
+    },
     system::System,
     tlib::{
         connect, disconnect, emit,
         events::{DeltaType, KeyEvent, MouseEvent},
-        figure::{Color, FRect, Size},
+        figure::{Color, FPoint, FRect, FRegion, Size},
+        global::bound64,
         namespace::{KeyCode, KeyboardModifier},
         nonnull_mut, nonnull_ref,
         object::{ObjectImpl, ObjectSubclass},
         ptr_mut, run_after, signals,
-        timer::Timer, global::{round64, bound64},
+        timer::Timer,
     },
     widget::WidgetImpl,
 };
@@ -79,20 +86,20 @@ pub struct TerminalView {
     // whether has fixed pitch.
     #[derivative(Default(value = "true"))]
     fixed_font: bool,
-    #[derivative(Default(value = "1"))]
-    font_height: i32,
-    #[derivative(Default(value = "1"))]
-    font_width: i32,
-    draw_text_addition_height: i32,
+    #[derivative(Default(value = "1."))]
+    font_height: f32,
+    #[derivative(Default(value = "1."))]
+    font_width: f32,
+    draw_text_addition_height: f32,
 
-    #[derivative(Default(value = "5"))]
-    left_margin: i32,
-    #[derivative(Default(value = "5"))]
-    top_margin: i32,
-    #[derivative(Default(value = "5"))]
-    left_base_margin: i32,
-    #[derivative(Default(value = "5"))]
-    top_base_margin: i32,
+    #[derivative(Default(value = "5."))]
+    left_margin: f32,
+    #[derivative(Default(value = "5."))]
+    top_margin: f32,
+    #[derivative(Default(value = "5."))]
+    left_base_margin: f32,
+    #[derivative(Default(value = "5."))]
+    top_base_margin: f32,
 
     // The total number of lines that can be displayed in the view.
     #[derivative(Default(value = "1"))]
@@ -211,7 +218,7 @@ pub struct TerminalView {
 #[derive(Default)]
 struct InputMethodData {
     preedit_string: WideString,
-    previous_preedit_rect: Rect,
+    previous_preedit_rect: FRect,
 }
 
 #[derive(Default)]
@@ -255,9 +262,7 @@ impl ObjectImpl for TerminalView {
 
 impl WidgetImpl for TerminalView {
     fn paint(&mut self, mut painter: Painter) {
-        let _image = self.image();
         painter.set_antialiasing(true);
-        let _cr = self.contents_rect(Some(Coordinate::Widget));
 
         // TODO: Process the background image.
 
@@ -265,9 +270,9 @@ impl WidgetImpl for TerminalView {
             self.cal_draw_text_addition_height(&mut painter);
         }
 
-        let region = self.redraw_region().clone();
+        let region = self.redraw_region_f().clone();
         if region.is_empty() {
-            let rect = self.contents_rect(Some(Coordinate::Widget));
+            let rect = self.contents_rect_f(Some(Coordinate::Widget));
             self.draw_background(&mut painter, rect, self.background(), true);
             self.draw_contents(&mut painter, rect);
         } else {
@@ -411,25 +416,25 @@ impl TerminalView {
     /// divides the part of the display specified by 'rect' into
     /// fragments according to their colors and styles and calls
     /// drawTextFragment() to draw the fragments
-    fn draw_contents(&mut self, painter: &mut Painter, rect: Rect) {
-        // println!("Draw contents: {:?}", rect);
-        if rect.width() != 7 && rect.height() != 11 {
-            print!("");
-        }
+    fn draw_contents(&mut self, painter: &mut Painter, rect: FRect) {
         let _image = self.image();
 
         let tl = self.contents_rect(Some(Coordinate::Widget)).top_left();
         let tlx = tl.x();
         let tly = tl.y();
 
-        let lux = (self.used_columns - 1)
-            .min(0.max((rect.left() - tlx - self.left_margin) / self.font_width));
-        let luy = (self.used_lines - 1)
-            .min(0.max((rect.top() - tly - self.top_margin) / self.font_height));
-        let rlx = (self.used_columns - 1)
-            .min(0.max((rect.right() - tlx - self.left_margin) / self.font_width));
-        let rly = (self.used_lines - 1)
-            .min(0.max((rect.bottom() - tly - self.top_margin) / self.font_height));
+        let lux = (self.used_columns - 1).min(
+            0.max(((rect.left() as f32 - tlx as f32 - self.left_margin) / self.font_width) as i32),
+        );
+        let luy = (self.used_lines - 1).min(
+            0.max(((rect.top() as f32 - tly as f32 - self.top_margin) / self.font_height) as i32),
+        );
+        let rlx = (self.used_columns - 1).min(
+            0.max(((rect.right() as f32 - tlx as f32 - self.left_margin) / self.font_width) as i32),
+        );
+        let rly = (self.used_lines - 1).min(0.max(
+            ((rect.bottom() as f32 - tly as f32 - self.top_margin) / self.font_height) as i32,
+        ));
 
         let buffer_size = self.used_columns as usize;
         let mut unistr = vec![0 as wchar_t; buffer_size];
@@ -575,7 +580,9 @@ impl TerminalView {
                     // both lines will have the LINE_DOUBLEHEIGHT attribute.
                     // If the current line has the LINE_DOUBLEHEIGHT attribute,
                     // we can therefore skip the next line
-                    y += 1;
+                    if self.line_properties[y as usize] & LINE_DOUBLE_HEIGHT != 0 {
+                        y += 1;
+                    }
                 }
 
                 x += len - 1;
@@ -589,7 +596,7 @@ impl TerminalView {
     fn draw_text_fragment(
         &mut self,
         painter: &mut Painter,
-        rect: Rect,
+        rect: FRect,
         text: WideString,
         style: &Character,
     ) {
@@ -604,11 +611,11 @@ impl TerminalView {
 
         let mut invert_character_color = false;
 
+        // draw text
+        self.draw_characters(painter, rect, &text, style, invert_character_color);
+
         if style.rendition & RE_CURSOR != 0 {
             self.draw_cursor(painter, rect, foreground_color, &mut invert_character_color);
-        } else {
-            // draw text
-            self.draw_characters(painter, rect, &text, style, invert_character_color);
         }
 
         painter.restore();
@@ -620,7 +627,7 @@ impl TerminalView {
     fn draw_background(
         &mut self,
         painter: &mut Painter,
-        rect: Rect,
+        rect: FRect,
         color: Color,
         use_opacity_setting: bool,
     ) {
@@ -634,7 +641,7 @@ impl TerminalView {
     fn draw_cursor(
         &mut self,
         painter: &mut Painter,
-        rect: Rect,
+        rect: FRect,
         foreground_color: Color,
         invert_colors: &mut bool,
     ) {
@@ -703,7 +710,7 @@ impl TerminalView {
     fn draw_characters(
         &mut self,
         painter: &mut Painter,
-        rect: Rect,
+        rect: FRect,
         text: &WideString,
         style: &Character,
         invert_character_color: bool,
@@ -749,20 +756,30 @@ impl TerminalView {
             let text = text
                 .to_string()
                 .expect("`draw_characters()` transfer wchar_t text to utf-8 failed.");
-            println!(
-                "Draw line: \"{}\", x: {}, y: {}, width: {}",
-                text,
-                rect.x(),
-                rect.y(),
-                rect.width()
-            );
+            // println!(
+            //     "Draw line: \"{}\", x: {}, y: {}, width: {}",
+            //     text,
+            //     rect.x(),
+            //     rect.y(),
+            //     rect.width()
+            // );
 
             if self.bidi_enable {
                 painter.fill_rect(rect, style.background_color.color(&self.color_table));
-                painter.draw_paragraph(&text, (rect.x(), rect.y()), 0., rect.width() as f32);
+                painter.draw_paragraph(
+                    &text,
+                    (rect.x() as f32, rect.y() as f32),
+                    0.,
+                    rect.width() as f32,
+                );
             } else {
-                let mut draw_rect = Rect::new(rect.x(), rect.y(), rect.width(), rect.height());
-                draw_rect.set_height(rect.height() + self.draw_text_addition_height);
+                let mut draw_rect = FRect::new(
+                    rect.x() as f32,
+                    rect.y() as f32,
+                    rect.width() as f32,
+                    rect.height() as f32,
+                );
+                draw_rect.set_height(draw_rect.height() + self.draw_text_addition_height);
 
                 painter.fill_rect(draw_rect, style.background_color.color(&self.color_table));
                 // Draw the text start at the left-bottom.
@@ -789,8 +806,8 @@ impl TerminalView {
     fn draw_line_char_string(
         &mut self,
         painter: &mut Painter,
-        x: i32,
-        y: i32,
+        x: f32,
+        y: f32,
         str: &WideString,
         attributes: &Character,
     ) {
@@ -806,7 +823,7 @@ impl TerminalView {
             if LINE_CHARS[code as usize] != 0 {
                 draw_line_char(
                     painter,
-                    x + (self.font_width * i as i32),
+                    x + (self.font_width * i as f32),
                     y,
                     self.font_width,
                     self.font_height,
@@ -815,7 +832,7 @@ impl TerminalView {
             } else {
                 draw_other_char(
                     painter,
-                    x + (self.font_width * i as i32),
+                    x + (self.font_width * i as f32),
                     y,
                     self.font_width,
                     self.font_height,
@@ -832,7 +849,7 @@ impl TerminalView {
     }
 
     fn paint_filters(&mut self, painter: &mut Painter) {
-        let cursor_pos = self.map_to_widget(&Cursor::position());
+        let cursor_pos = self.map_to_widget_f(&Cursor::position().into());
 
         let (cursor_line, cursor_column) = self.get_character_position(cursor_pos);
         let cursor_character = self.image()[self.loc(cursor_column, cursor_line) as usize];
@@ -845,7 +862,7 @@ impl TerminalView {
 
         let spots = self.filter_chain.hotspots();
         for spot in spots.iter() {
-            let mut region = Region::default();
+            let mut region = FRegion::default();
 
             if spot.type_() == HotSpotType::Link {
                 self.calc_hotspot_link_region(spot, &mut region)
@@ -857,39 +874,39 @@ impl TerminalView {
         }
     }
 
-    fn calc_hotspot_link_region(&self, spot: &Rc<Box<dyn HotSpotImpl>>, region: &mut Region) {
-        let mut r = Rect::default();
+    fn calc_hotspot_link_region(&self, spot: &Rc<Box<dyn HotSpotImpl>>, region: &mut FRegion) {
+        let mut r = FRect::default();
         if spot.start_line() == spot.end_line() {
             r.set_coords(
-                spot.start_column() * self.font_width + 1 + self.left_base_margin,
-                spot.start_line() * self.font_height + 1 + self.top_base_margin,
-                spot.end_column() * self.font_width - 1 + self.left_base_margin,
-                (spot.end_line() + 1) * self.font_height - 1 + self.top_base_margin,
+                spot.start_column() as f32 * self.font_width + 1. + self.left_base_margin,
+                spot.start_line() as f32 * self.font_height + 1. + self.top_base_margin,
+                spot.end_column() as f32 * self.font_width - 1. + self.left_base_margin,
+                (spot.end_line() as f32 + 1.) * self.font_height - 1. + self.top_base_margin,
             );
             region.add_rect(r);
         } else {
             r.set_coords(
-                spot.start_column() * self.font_width + 1 + self.left_base_margin,
-                spot.start_line() * self.font_height + 1 + self.top_base_margin,
-                self.columns * self.font_width - 1 + self.left_base_margin,
-                (spot.start_line() + 1) * self.font_height - 1 + self.top_base_margin,
+                spot.start_column() as f32 * self.font_width + 1. + self.left_base_margin,
+                spot.start_line() as f32 * self.font_height + 1. + self.top_base_margin,
+                self.columns as f32 * self.font_width - 1. + self.left_base_margin,
+                (spot.start_line() as f32 + 1.) * self.font_height - 1. + self.top_base_margin,
             );
             region.add_rect(r);
 
             for line in spot.start_line() + 1..spot.end_line() {
                 r.set_coords(
-                    0 * self.font_width + 1 + self.left_base_margin,
-                    line * self.font_height + 1 + self.top_base_margin,
-                    self.columns * self.font_width - 1 + self.left_base_margin,
-                    (line + 1) * self.font_height - 1 + self.top_base_margin,
+                    0. * self.font_width + 1. + self.left_base_margin,
+                    line as f32 * self.font_height + 1. + self.top_base_margin,
+                    self.columns as f32 * self.font_width - 1. + self.left_base_margin,
+                    (line as f32 + 1.) * self.font_height - 1. + self.top_base_margin,
                 );
                 region.add_rect(r);
             }
             r.set_coords(
-                0 * self.font_width + 1 + self.left_base_margin,
-                spot.end_line() * self.font_height + 1 + self.top_base_margin,
-                spot.end_column() * self.font_width - 1 + self.left_base_margin,
-                (spot.end_line() + 1) * self.font_height - 1 + self.top_base_margin,
+                0. * self.font_width + 1. + self.left_base_margin,
+                spot.end_line() as f32 * self.font_height + 1. + self.top_base_margin,
+                spot.end_column() as f32 * self.font_width - 1. + self.left_base_margin,
+                (spot.end_line() as f32 + 1.) * self.font_height - 1. + self.top_base_margin,
             );
             region.add_rect(r);
         }
@@ -899,7 +916,7 @@ impl TerminalView {
         &self,
         line: i32,
         spot: &Rc<Box<dyn HotSpotImpl>>,
-        region: &Region,
+        region: &FRegion,
         painter: &mut Painter,
     ) {
         let mut start_column = 0;
@@ -931,21 +948,21 @@ impl TerminalView {
         // subtracting one pixel from all sides also prevents an edge case where
         // moving the mouse outside a link could still leave it underlined
         // because the check below for the position of the cursor finds it on the border of the target area.
-        let mut r = Rect::default();
+        let mut r = FRect::default();
         r.set_coords(
-            start_column * self.font_width + 1 + self.left_base_margin,
-            line * self.font_height + 1 + self.top_base_margin,
-            end_column * self.font_width - 1 + self.left_base_margin,
-            (line + 1) * self.font_height - 1 + self.top_base_margin,
+            start_column as f32 * self.font_width + 1. + self.left_base_margin,
+            line as f32 * self.font_height + 1. + self.top_base_margin,
+            end_column as f32 * self.font_width - 1. + self.left_base_margin,
+            (line as f32 + 1.) * self.font_height - 1. + self.top_base_margin,
         );
 
         match spot.type_() {
             HotSpotType::Link => {
                 let (_, metrics) = self.font().to_skia_font().metrics();
-                let base_line = r.bottom() - metrics.descent as i32;
-                let under_line_pos = base_line + metrics.underline_position().unwrap() as i32;
-                if region.contains_point(&self.map_to_widget(&Cursor::position())) {
-                    painter.draw_line(r.left(), under_line_pos, r.right(), under_line_pos);
+                let base_line = r.bottom() - metrics.descent;
+                let under_line_pos = base_line + metrics.underline_position().unwrap();
+                if region.contains_point(&self.map_to_widget_f(&Cursor::position().into())) {
+                    painter.draw_line_f(r.left(), under_line_pos, r.right(), under_line_pos);
                 }
             }
             HotSpotType::Marker => painter.fill_rect(r, Color::from_rgba(255, 0, 0, 120)),
@@ -1028,8 +1045,8 @@ impl TerminalView {
             nonnull_mut!(self.scroll_bar).show();
         }
 
-        self.top_margin = 1;
-        self.left_margin = 1;
+        self.top_margin = 1.;
+        self.left_margin = 1.;
         self.scroll_bar_location = position;
 
         self.propagate_size();
@@ -1189,12 +1206,12 @@ impl TerminalView {
 
     #[inline]
     pub fn set_margin(&mut self, margin: i32) {
-        self.top_base_margin = margin;
-        self.left_base_margin = margin;
+        self.top_base_margin = margin as f32;
+        self.left_base_margin = margin as f32;
     }
     #[inline]
     pub fn margin(&mut self) -> i32 {
-        self.top_base_margin
+        self.top_base_margin as i32
     }
 
     #[inline]
@@ -1330,13 +1347,13 @@ impl TerminalView {
     /// Returns the height of the characters in the font used to draw the text in
     /// the view.
     #[inline]
-    pub fn font_height(&self) -> i32 {
+    pub fn font_height(&self) -> f32 {
         self.font_height
     }
     /// Returns the width of the characters in the view.
     /// This assumes the use of a fixed-width font.
     #[inline]
-    pub fn font_width(&self) -> i32 {
+    pub fn font_width(&self) -> f32 {
         self.font_width
     }
 
@@ -1348,12 +1365,12 @@ impl TerminalView {
             scroll_bar.size_hint().1.unwrap().width()
         };
 
-        let horizontal_margin = 2 * self.left_base_margin;
-        let vertical_margin = 2 * self.top_base_margin;
+        let horizontal_margin = 2 * self.left_base_margin as i32;
+        let vertical_margin = 2 * self.top_base_margin as i32;
 
         let new_size = Size::new(
-            horizontal_margin + scroll_bar_width + (self.columns * self.font_width),
-            vertical_margin + (self.lines * self.font_height),
+            horizontal_margin + scroll_bar_width + (self.columns * self.font_width.ceil() as i32),
+            vertical_margin + (self.lines * self.font_height.ceil() as i32),
         );
 
         if new_size != self.size() {
@@ -1569,9 +1586,10 @@ performance degradation and display/alignment errors."
 
     /// maps a point on the widget to the position ( ie. line and column )
     /// of the character at that point.
-    pub fn get_character_position(&self, widget_point: Point) -> (i32, i32) {
-        let content_rect = self.contents_rect(Some(Coordinate::Widget));
-        let mut line = (widget_point.y() - content_rect.top() - self.top_margin) / self.font_height;
+    pub fn get_character_position(&self, widget_point: FPoint) -> (i32, i32) {
+        let content_rect = self.contents_rect_f(Some(Coordinate::Widget));
+        let mut line =
+            ((widget_point.y() - content_rect.top() - self.top_margin) / self.font_height) as i32;
         let mut column;
         if line < 0 {
             line = 0;
@@ -1580,9 +1598,9 @@ performance degradation and display/alignment errors."
             line = self.used_lines - 1;
         }
 
-        let x = widget_point.x() + self.font_width / 2 - content_rect.left() - self.left_margin;
+        let x = widget_point.x() + self.font_width / 2. - content_rect.left() - self.left_margin;
         if self.fixed_font {
-            column = x / self.font_width;
+            column = (x / self.font_width) as i32;
         } else {
             column = 0;
             while column + 1 < self.used_columns && x > self.text_width(0, column + 1, line) {
@@ -1671,11 +1689,7 @@ performance degradation and display/alignment errors."
         let columns_to_update = self.columns.min(0.max(columns));
 
         let mut disstr_u = vec![0 as wchar_t; columns_to_update as usize];
-        // The dirty mask indicates which characters need repainting. We also
-        // mark surrounding neighbours dirty, in case the character exceeds
-        // its cell boundaries
-        let mut dirty_mask = vec![false; columns_to_update as usize + 2];
-        let mut dirty_region = Rect::default();
+        let mut dirty_region = FRect::default();
 
         // debugging variable, this records the number of lines that are found to
         // be 'dirty' ( ie. have changed from the old _image to the new _image ) and
@@ -1685,6 +1699,11 @@ performance degradation and display/alignment errors."
         for y in 0..lines_to_update {
             let current_line = &mut image[(y * self.columns) as usize..];
             let new_line = &new_img[(y * columns) as usize..];
+
+            // The dirty mask indicates which characters need repainting. We also
+            // mark surrounding neighbours dirty, in case the character exceeds
+            // its cell boundaries
+            let mut dirty_mask = vec![false; columns_to_update as usize + 2];
 
             let mut update_line = false;
 
@@ -1754,8 +1773,6 @@ performance degradation and display/alignment errors."
                             len += 1;
                         }
 
-                        // let unistr = WideString::from_vec(disstr_u[0..p].to_vec());
-
                         let save_fixed_font = self.fixed_font;
                         if line_draw {
                             self.fixed_font = false;
@@ -1785,10 +1802,10 @@ performance degradation and display/alignment errors."
             // then this line must be repainted.
             if update_line {
                 _dirty_line_count += 1;
-                let dirty_rect = Rect::new(
-                    self.left_margin + tlx,
-                    self.top_margin + tly + self.font_height * y,
-                    self.font_width * columns_to_update,
+                let dirty_rect = FRect::new(
+                    self.left_margin + tlx as f32,
+                    self.top_margin + tly as f32 + self.font_height * y as f32,
+                    self.font_width * columns_to_update as f32,
                     self.font_height,
                 );
 
@@ -1802,22 +1819,22 @@ performance degradation and display/alignment errors."
         // if the new _image is smaller than the previous _image, then ensure that the
         // area outside the new _image is cleared
         if lines_to_update < self.used_lines {
-            let rect = Rect::new(
-                self.left_margin + tlx + columns_to_update * self.font_width,
-                self.top_margin + tly,
-                self.font_width * (self.used_columns - columns_to_update),
-                self.font_height * self.lines,
+            let rect = FRect::new(
+                self.left_margin + tlx as f32,
+                self.top_margin + tly as f32 + self.font_height * lines_to_update as f32,
+                self.font_width * self.columns as f32,
+                self.font_height * (self.used_lines - lines_to_update) as f32,
             );
             dirty_region.or(&rect);
         }
         self.set_used_lines(lines_to_update);
 
         if columns_to_update < self.used_columns {
-            let rect = Rect::new(
-                self.left_margin + tlx + columns_to_update * self.font_width,
-                self.top_margin + tly,
-                self.font_width * (self.used_columns - columns_to_update),
-                self.font_height * self.lines,
+            let rect = FRect::new(
+                self.left_margin + tlx as f32 + columns_to_update as f32 * self.font_width,
+                self.top_margin + tly as f32,
+                self.font_width * (self.used_columns - columns_to_update) as f32,
+                self.font_height * self.lines as f32,
             );
             dirty_region.or(&rect);
         }
@@ -1826,9 +1843,8 @@ performance degradation and display/alignment errors."
         dirty_region.or(&self.input_method_data.previous_preedit_rect);
 
         // update the parts of the view which have changed
-        if dirty_region.width() > 0 && dirty_region.height() > 0 {
-            println!("update_image() -> {:?}", dirty_region);
-            self.update_region(dirty_region);
+        if dirty_region.width() > 0. && dirty_region.height() > 0. {
+            self.update_region_f(dirty_region);
         }
 
         if self.has_blinker && !self.blink_timer.is_active() {
@@ -2067,12 +2083,31 @@ performance degradation and display/alignment errors."
 
     fn font_change(&mut self) {
         let font = self.font().to_skia_font();
-        let measure = font.measure_str(REPCHAR, None).1;
+        let typeface = font.typeface().unwrap();
 
-        self.font_height = measure.height() as i32 + self.line_spacing as i32;
+        let mut typeface_provider = TypefaceFontProvider::new();
+        let family = typeface.family_name();
+        typeface_provider.register_typeface(typeface, Some(family.clone()));
 
-        let width = measure.width() as f64 / REPCHAR.len() as f64;
-        self.font_width = round64(width);
+        let mut font_collection = FontCollection::new();
+        font_collection.set_asset_font_manager(Some(typeface_provider.clone().into()));
+
+        // define text style
+        let mut style = ParagraphStyle::new();
+        let mut text_style = TextStyle::new();
+        text_style.set_font_size(font.size());
+        text_style.set_font_families(&vec![family]);
+        text_style.set_letter_spacing(0.);
+        style.set_text_style(&text_style);
+
+        // layout the paragraph
+        let mut paragraph_builder = ParagraphBuilder::new(&style, font_collection);
+        paragraph_builder.add_text(REPCHAR);
+        let mut paragraph = paragraph_builder.build();
+        paragraph.layout(f32::MAX);
+
+        self.font_width = paragraph.max_intrinsic_width() / REPCHAR.len() as f32;
+        self.font_height = paragraph.height();
 
         self.fixed_font = true;
 
@@ -2090,8 +2125,8 @@ performance degradation and display/alignment errors."
             }
         }
 
-        if self.font_width < 1 {
-            self.font_width = 1;
+        if self.font_width < 1. {
+            self.font_width = 1.;
         }
 
         emit!(
@@ -2107,7 +2142,7 @@ performance degradation and display/alignment errors."
         self.update();
     }
 
-    fn extend_selection(&mut self, mut pos: Point) {
+    fn extend_selection(&mut self, mut pos: FPoint) {
         if self.screen_window.is_none() {
             return;
         }
@@ -2122,22 +2157,22 @@ performance degradation and display/alignment errors."
         // the mouse cursor will kept caught within the bounds of the text in this widget.
         let mut lines_beyond_widget;
 
-        let text_bounds = Rect::new(
-            tlx + self.left_margin,
-            tly + self.top_margin,
-            self.used_columns * self.font_width - 1,
-            self.used_lines * self.font_height - 1,
+        let text_bounds = FRect::new(
+            tlx as f32 + self.left_margin,
+            tly as f32 + self.top_margin,
+            self.used_columns as f32 * self.font_width - 1.,
+            self.used_lines as f32 * self.font_height - 1.,
         );
 
         // Adjust position within text area bounds.
         let old_pos = pos;
 
-        pos.set_x(tmui::tlib::global::bound(
+        pos.set_x(tmui::tlib::global::bound32(
             text_bounds.left(),
             pos.x(),
             text_bounds.right(),
         ));
-        pos.set_y(tmui::tlib::global::bound(
+        pos.set_y(tmui::tlib::global::bound32(
             text_bounds.top(),
             pos.y(),
             text_bounds.bottom(),
@@ -2146,11 +2181,11 @@ performance degradation and display/alignment errors."
         if old_pos.y() > text_bounds.bottom() {
             lines_beyond_widget = (old_pos.y() - text_bounds.bottom()) / self.font_height;
             // Scroll forward
-            scroll_bar.set_value(scroll_bar.value() + lines_beyond_widget + 1);
+            scroll_bar.set_value(scroll_bar.value() + lines_beyond_widget as i32 + 1);
         }
         if old_pos.y() < text_bounds.top() {
             lines_beyond_widget = (text_bounds.top() - old_pos.y()) / self.font_height;
-            scroll_bar.set_value(scroll_bar.value() - lines_beyond_widget - 1);
+            scroll_bar.set_value(scroll_bar.value() - lines_beyond_widget as i32 - 1);
         }
 
         let (char_line, char_column) = self.get_character_position(pos);
@@ -2442,13 +2477,13 @@ performance degradation and display/alignment errors."
     }
 
     /// determine the width of this text.
-    fn text_width(&self, start_column: i32, length: i32, line: i32) -> i32 {
+    fn text_width(&self, start_column: i32, length: i32, line: i32) -> f32 {
         if self.image.is_none() {
-            return 0;
+            return 0.;
         }
         let image = self.image();
         let font = self.font().to_skia_font();
-        let mut result = 0;
+        let mut result = 0.;
         let mut widths = vec![];
         for column in 0..length {
             let c: &[uwchar_t; 1] = unsafe {
@@ -2471,7 +2506,7 @@ performance degradation and display/alignment errors."
             };
             font.get_widths(c, &mut widths);
             let width: f32 = widths.iter().sum();
-            result += width as i32;
+            result += width;
         }
         result
     }
@@ -2483,30 +2518,30 @@ performance degradation and display/alignment errors."
         start_column: i32,
         line: i32,
         length: i32,
-    ) -> Rect {
+    ) -> FRect {
         let left = if self.fixed_font {
-            self.font_width * start_column
+            self.font_width * start_column as f32
         } else {
             self.text_width(0, start_column, line)
         };
-        let top = self.font_height * line;
+        let top = self.font_height * line as f32;
         let width = if self.fixed_font {
-            self.font_width * length
+            self.font_width * length as f32
         } else {
             self.text_width(start_column, length, line)
         };
 
-        Rect::new(
-            self.left_margin + top_left_x + left,
-            self.top_margin + top_left_y + top,
+        FRect::new(
+            self.left_margin + top_left_x as f32 + left,
+            self.top_margin + top_left_y as f32 + top,
             width,
             self.font_height,
         )
     }
 
     /// maps an area in the character image to an area on the widget.
-    fn image_to_widget(&self, image_area: &Rect) -> Rect {
-        let mut result = Rect::default();
+    fn image_to_widget(&self, image_area: &FRect) -> FRect {
+        let mut result = FRect::default();
         result.set_left(self.left_margin + self.font_width * image_area.left());
         result.set_top(self.top_margin + self.font_height * image_area.top());
         result.set_width(self.font_width * image_area.width());
@@ -2516,17 +2551,17 @@ performance degradation and display/alignment errors."
     }
 
     /// the area where the preedit string for input methods will be draw.
-    fn preedit_rect(&mut self) -> Rect {
+    fn preedit_rect(&mut self) -> FRect {
         let preedit_length = string_width(&self.input_method_data.preedit_string);
 
         if preedit_length == 0 {
-            return Rect::default();
+            return FRect::default();
         }
 
-        Rect::new(
-            self.left_margin + self.font_width * self.cursor_position().x(),
-            self.top_margin + self.font_height * self.cursor_position().y(),
-            self.font_width * preedit_length,
+        FRect::new(
+            self.left_margin + self.font_width * self.cursor_position().x() as f32,
+            self.top_margin + self.font_height * self.cursor_position().y() as f32,
+            self.font_width * preedit_length as f32,
             self.font_height,
         )
     }
@@ -2581,13 +2616,14 @@ performance degradation and display/alignment errors."
             0
         };
         let scrollbar_content_gap = if scroll_bar_width == 0 { 0 } else { 1 };
-        let mut scroll_rect = Rect::default();
+        let mut scroll_rect = FRect::default();
         if self.scroll_bar_location == ScrollBarState::ScrollBarLeft {
-            scroll_rect.set_left(scroll_bar_width + scrollbar_content_gap);
-            scroll_rect.set_right(self.size().width());
+            scroll_rect.set_left((scroll_bar_width + scrollbar_content_gap) as f32);
+            scroll_rect.set_right(self.size().width() as f32);
         } else {
-            scroll_rect.set_left(0);
-            scroll_rect.set_right(self.size().width() - scroll_bar_width - scrollbar_content_gap);
+            scroll_rect.set_left(0.);
+            scroll_rect
+                .set_right((self.size().width() - scroll_bar_width - scrollbar_content_gap) as f32);
         }
 
         let first_char_pos = &mut self.image.as_mut().unwrap()
@@ -2596,7 +2632,7 @@ performance degradation and display/alignment errors."
             [((region.top() + lines.abs()) * self.columns) as usize]
             as *mut Character;
 
-        let top = self.top_margin + (region.top() * self.font_height);
+        let top = self.top_margin.ceil() + region.top() as f32 * self.font_height.ceil();
         let lines_to_move = region.height() - lines.abs();
         let bytes_to_move = lines_to_move * self.columns * size_of::<Character>() as i32;
 
@@ -2611,13 +2647,13 @@ performance degradation and display/alignment errors."
         } else {
             // memmove
             unsafe { copy_nonoverlapping(first_char_pos, last_char_pos, bytes_to_move as usize) };
-            scroll_rect.set_top(top + lines.abs() * self.font_height);
+            scroll_rect.set_top(top + lines.abs() as f32 * self.font_height);
         }
-        scroll_rect.set_height(lines_to_move * self.font_height);
+        scroll_rect.set_height(lines_to_move as f32 * self.font_height);
 
-        nonnull_mut!(self.scroll_bar).scroll(self.font_height * lines, DeltaType::Pixel);
-        println!("scroll_image() -> {:?}", scroll_rect);
-        self.update_region(scroll_rect);
+        nonnull_mut!(self.scroll_bar)
+            .scroll((self.font_height * lines as f32) as i32, DeltaType::Pixel);
+        self.update_region_f(scroll_rect);
     }
 
     /// shows the multiline prompt
@@ -2640,16 +2676,16 @@ performance degradation and display/alignment errors."
         }
 
         self.top_margin = self.top_base_margin;
-        self.content_width = contents_rect.width() + 1;
-        self.content_height = contents_rect.height() + 1;
+        self.content_width = contents_rect.width() - 2 * self.left_base_margin as i32;
+        self.content_height = contents_rect.height() - 2 * self.top_base_margin as i32;
 
         if !self.is_fixed_size {
             // ensure that display is always at least one column wide
-            self.set_columns((self.content_width / self.font_width).max(1));
+            self.set_columns(((self.content_width as f32 / self.font_width) as i32).max(1));
             self.set_used_columns(self.used_columns.min(self.columns));
 
             // ensure that display is always at least one line high
-            self.set_lines((self.content_height / self.font_height).max(1));
+            self.set_lines(((self.content_height as f32 / self.font_height) as i32).max(1));
             self.set_used_lines(self.used_lines.min(self.lines));
         }
     }
@@ -2726,37 +2762,37 @@ performance degradation and display/alignment errors."
     }
 
     /// returns a region covering all of the areas of the widget which contain a hotspot.
-    fn hotspot_region(&self) -> Rect {
-        let mut region = Rect::default();
+    fn hotspot_region(&self) -> FRect {
+        let mut region = FRect::default();
         let hotspots = self.filter_chain.hotspots();
 
         hotspots.iter().for_each(|hotspot| {
-            let mut r = Rect::default();
+            let mut r = FRect::default();
             if hotspot.start_line() == hotspot.end_line() {
-                r.set_left(hotspot.start_column());
-                r.set_top(hotspot.start_line());
-                r.set_right(hotspot.end_column());
-                r.set_bottom(hotspot.end_line());
+                r.set_left(hotspot.start_column() as f32);
+                r.set_top(hotspot.start_line() as f32);
+                r.set_right(hotspot.end_column() as f32);
+                r.set_bottom(hotspot.end_line() as f32);
                 region.or(&self.image_to_widget(&r))
             } else {
-                r.set_left(hotspot.start_column());
-                r.set_top(hotspot.start_line());
-                r.set_right(self.columns);
-                r.set_bottom(hotspot.start_line());
+                r.set_left(hotspot.start_column() as f32);
+                r.set_top(hotspot.start_line() as f32);
+                r.set_right(self.columns as f32);
+                r.set_bottom(hotspot.start_line() as f32);
                 region.or(&self.image_to_widget(&r));
 
                 for line in hotspot.start_line() + 1..hotspot.end_line() {
-                    r.set_left(0);
-                    r.set_top(line);
-                    r.set_right(self.columns);
-                    r.set_bottom(line);
+                    r.set_left(0.);
+                    r.set_top(line as f32);
+                    r.set_right(self.columns as f32);
+                    r.set_bottom(line as f32);
                     region.or(&self.image_to_widget(&r));
                 }
 
-                r.set_left(0);
-                r.set_top(hotspot.end_line());
-                r.set_right(hotspot.end_column());
-                r.set_bottom(hotspot.end_line());
+                r.set_left(0.);
+                r.set_top(hotspot.end_line() as f32);
+                r.set_right(hotspot.end_column() as f32);
+                r.set_bottom(hotspot.end_line() as f32);
                 region.or(&self.image_to_widget(&r));
             }
         });
@@ -2775,9 +2811,9 @@ performance degradation and display/alignment errors."
 
     /// redraws the cursor.
     fn update_cursor(&mut self) {
-        let rect = Rect::from_point_size(self.cursor_position(), Size::new(1, 1));
+        let rect = FRect::from_point_size(self.cursor_position().into(), Size::new(1, 1).into());
         let cursor_rect = self.image_to_widget(&rect);
-        self.update_region(cursor_rect);
+        self.update_region_f(cursor_rect);
     }
 
     fn handle_shortcut_override_event(&mut self, event: KeyEvent) {
@@ -2871,160 +2907,160 @@ const LINE_CHARS: [u32; 128] = [
     0x00039ce0, 0x000039ce, 0x000e7380, 0x00e73800, 0x000e7f80, 0x00e73884, 0x0003fce0, 0x004239ce,
 ];
 
-fn draw_line_char(painter: &mut Painter, x: i32, y: i32, w: i32, h: i32, code: u8) {
+fn draw_line_char(painter: &mut Painter, x: f32, y: f32, w: f32, h: f32, code: u8) {
     // Calculate cell midpoints, end points.
-    let cx = x + w / 2;
-    let cy = y + h / 2;
-    let ex = x + w - 1;
-    let ey = y + h - 1;
+    let cx = x + w / 2.;
+    let cy = y + h / 2.;
+    let ex = x + w - 1.;
+    let ey = y + h - 1.;
 
     let to_draw = LINE_CHARS[code as usize];
 
     // Top lines:
     if to_draw & TopL as u32 != 0 {
-        painter.draw_line(cx - 1, y, cx - 1, cy - 2);
+        painter.draw_line_f(cx - 1., y, cx - 1., cy - 2.);
     }
     if to_draw & TopC as u32 != 0 {
-        painter.draw_line(cx, y, cx, cy - 2);
+        painter.draw_line_f(cx, y, cx, cy - 2.);
     }
     if to_draw & TopR as u32 != 0 {
-        painter.draw_line(cx + 1, y, cx + 1, cy - 2);
+        painter.draw_line_f(cx + 1., y, cx + 1., cy - 2.);
     }
 
     // Bot lines:
     if to_draw & BotL as u32 != 0 {
-        painter.draw_line(cx - 1, cy + 2, cx - 1, ey);
+        painter.draw_line_f(cx - 1., cy + 2., cx - 1., ey);
     }
     if to_draw & BotC as u32 != 0 {
-        painter.draw_line(cx, cy + 2, cx, ey);
+        painter.draw_line_f(cx, cy + 2., cx, ey);
     }
     if to_draw & BotR as u32 != 0 {
-        painter.draw_line(cx + 1, cy + 2, cx + 1, ey);
+        painter.draw_line_f(cx + 1., cy + 2., cx + 1., ey);
     }
 
     // Left lines:
     if to_draw & LeftT as u32 != 0 {
-        painter.draw_line(x, cy - 1, cx - 2, cy - 1);
+        painter.draw_line_f(x, cy - 1., cx - 2., cy - 1.);
     }
     if to_draw & LeftC as u32 != 0 {
-        painter.draw_line(x, cy, cx - 2, cy);
+        painter.draw_line_f(x, cy, cx - 2., cy);
     }
     if to_draw & LeftB as u32 != 0 {
-        painter.draw_line(x, cy + 1, cx - 2, cy + 1);
+        painter.draw_line_f(x, cy + 1., cx - 2., cy + 1.);
     }
 
     // Right lines:
     if to_draw & RightT as u32 != 0 {
-        painter.draw_line(cx + 2, cy - 1, ex, cy - 1);
+        painter.draw_line_f(cx + 2., cy - 1., ex, cy - 1.);
     }
     if to_draw & RightC as u32 != 0 {
-        painter.draw_line(cx + 2, cy, ex, cy);
+        painter.draw_line_f(cx + 2., cy, ex, cy);
     }
     if to_draw & RightB as u32 != 0 {
-        painter.draw_line(cx + 2, cy + 1, ex, cy + 1);
+        painter.draw_line_f(cx + 2., cy + 1., ex, cy + 1.);
     }
 
     // Intersection points.
     if to_draw & Int11 as u32 != 0 {
-        painter.draw_point(cx - 1, cy - 1);
+        painter.draw_point_f(cx - 1., cy - 1.);
     }
     if to_draw & Int12 as u32 != 0 {
-        painter.draw_point(cx, cy - 1);
+        painter.draw_point_f(cx, cy - 1.);
     }
     if to_draw & Int13 as u32 != 0 {
-        painter.draw_point(cx + 1, cy - 1);
+        painter.draw_point_f(cx + 1., cy - 1.);
     }
 
     if to_draw & Int21 as u32 != 0 {
-        painter.draw_point(cx - 1, cy);
+        painter.draw_point_f(cx - 1., cy);
     }
     if to_draw & Int22 as u32 != 0 {
-        painter.draw_point(cx, cy);
+        painter.draw_point_f(cx, cy);
     }
     if to_draw & Int23 as u32 != 0 {
-        painter.draw_point(cx + 1, cy);
+        painter.draw_point_f(cx + 1., cy);
     }
 
     if to_draw & Int31 as u32 != 0 {
-        painter.draw_point(cx - 1, cy + 1);
+        painter.draw_point_f(cx - 1., cy + 1.);
     }
     if to_draw & Int32 as u32 != 0 {
-        painter.draw_point(cx, cy + 1);
+        painter.draw_point_f(cx, cy + 1.);
     }
     if to_draw & Int33 as u32 != 0 {
-        painter.draw_point(cx + 1, cy + 1);
+        painter.draw_point_f(cx + 1., cy + 1.);
     }
 }
 
-fn draw_other_char(painter: &mut Painter, x: i32, y: i32, w: i32, h: i32, code: u8) {
+fn draw_other_char(painter: &mut Painter, x: f32, y: f32, w: f32, h: f32, code: u8) {
     // Calculate cell midpoints, end points.
-    let cx = x + w / 2;
-    let cy = y + h / 2;
-    let ex = x + w - 1;
-    let ey = y + h - 1;
+    let cx = x + w / 2.;
+    let cy = y + h / 2.;
+    let ex = x + w - 1.;
+    let ey = y + h - 1.;
 
     // Double dashes
     if 0x4C <= code && code <= 0x4F {
-        let x_half_gap = 1.max(w / 15);
-        let y_half_gap = 1.max(h / 15);
+        let x_half_gap = 1f32.max(w / 15.);
+        let y_half_gap = 1f32.max(h / 15.);
 
         match code {
             0x4D => {
                 // BOX DRAWINGS HEAVY DOUBLE DASH HORIZONTAL
-                painter.draw_line(x, cy - 1, cx - x_half_gap - 1, cy - 1);
-                painter.draw_line(x, cy + 1, cx - x_half_gap - 1, cy + 1);
-                painter.draw_line(cx + x_half_gap, cy - 1, ex, cy - 1);
-                painter.draw_line(cx + x_half_gap, cy + 1, ex, cy + 1);
+                painter.draw_line_f(x, cy - 1., cx - x_half_gap - 1., cy - 1.);
+                painter.draw_line_f(x, cy + 1., cx - x_half_gap - 1., cy + 1.);
+                painter.draw_line_f(cx + x_half_gap, cy - 1., ex, cy - 1.);
+                painter.draw_line_f(cx + x_half_gap, cy + 1., ex, cy + 1.);
             }
             0x4C => {
                 // BOX DRAWINGS LIGHT DOUBLE DASH HORIZONTAL
-                painter.draw_line(x, cy, cx - x_half_gap - 1, cy);
-                painter.draw_line(cx + x_half_gap, cy, ex, cy);
+                painter.draw_line_f(x, cy, cx - x_half_gap - 1., cy);
+                painter.draw_line_f(cx + x_half_gap, cy, ex, cy);
             }
             0x4F => {
                 // BOX DRAWINGS HEAVY DOUBLE DASH VERTICAL
-                painter.draw_line(cx - 1, y, cx - 1, cy - y_half_gap - 1);
-                painter.draw_line(cx + 1, y, cx + 1, cy - y_half_gap - 1);
-                painter.draw_line(cx - 1, cy + y_half_gap, cx - 1, ey);
-                painter.draw_line(cx + 1, cy + y_half_gap, cx + 1, ey);
+                painter.draw_line_f(cx - 1., y, cx - 1., cy - y_half_gap - 1.);
+                painter.draw_line_f(cx + 1., y, cx + 1., cy - y_half_gap - 1.);
+                painter.draw_line_f(cx - 1., cy + y_half_gap, cx - 1., ey);
+                painter.draw_line_f(cx + 1., cy + y_half_gap, cx + 1., ey);
             }
             0x4E => {
                 // BOX DRAWINGS LIGHT DOUBLE DASH VERTICAL
-                painter.draw_line(cx, y, cx, cy - y_half_gap - 1);
-                painter.draw_line(cx, cy + y_half_gap, cx, ey);
+                painter.draw_line_f(cx, y, cx, cy - y_half_gap - 1.);
+                painter.draw_line_f(cx, cy + y_half_gap, cx, ey);
             }
             _ => {}
         }
 
     // Rounded corner characters
     } else if 0x6D <= code && code <= 0x70 {
-        let r = w * 3 / 8;
-        let d = 2 * r;
+        let r = w * 3. / 8.;
+        let d = 2. * r;
 
         match code {
             0x6D => {
                 // BOX DRAWINGS LIGHT ARC DOWN AND RIGHT
-                painter.draw_line(cx, cy + r, cx, ey);
-                painter.draw_line(cx + r, cy, ex, cy);
-                painter.draw_arc(cx, cy, d, d, 90 * 16, 90 * 16);
+                painter.draw_line_f(cx, cy + r, cx, ey);
+                painter.draw_line_f(cx + r, cy, ex, cy);
+                painter.draw_arc_f(cx, cy, d, d, 90. * 16., 90. * 16.);
             }
             0x6E => {
                 // BOX DRAWINGS LIGHT ARC DOWN AND LEFT
-                painter.draw_line(cx, cy + r, cx, ey);
-                painter.draw_line(x, cy, cx - r, cy);
-                painter.draw_arc(cx - d, cy, d, d, 0 * 16, 90 * 16);
+                painter.draw_line_f(cx, cy + r, cx, ey);
+                painter.draw_line_f(x, cy, cx - r, cy);
+                painter.draw_arc_f(cx - d, cy, d, d, 0. * 16., 90. * 16.);
             }
             0x6F => {
                 // BOX DRAWINGS LIGHT ARC UP AND LEFT
-                painter.draw_line(cx, y, cx, cy - r);
-                painter.draw_line(x, cy, cx - r, cy);
-                painter.draw_arc(cx - d, cy - d, d, d, 270 * 16, 90 * 16);
+                painter.draw_line_f(cx, y, cx, cy - r);
+                painter.draw_line_f(x, cy, cx - r, cy);
+                painter.draw_arc_f(cx - d, cy - d, d, d, 270. * 16., 90. * 16.);
             }
             0x70 => {
                 // BOX DRAWINGS LIGHT ARC UP AND RIGHT
-                painter.draw_line(cx, y, cx, cy - r);
-                painter.draw_line(cx + r, cy, ex, cy);
-                painter.draw_arc(cx, cy - d, d, d, 180 * 16, 90 * 16);
+                painter.draw_line_f(cx, y, cx, cy - r);
+                painter.draw_line_f(cx + r, cy, ex, cy);
+                painter.draw_arc_f(cx, cy - d, d, d, 180. * 16., 90. * 16.);
             }
             _ => {}
         }
@@ -3034,16 +3070,16 @@ fn draw_other_char(painter: &mut Painter, x: i32, y: i32, w: i32, h: i32, code: 
         match code {
             0x71 => {
                 // BOX DRAWINGS LIGHT DIAGONAL UPPER RIGHT TO LOWER LEFT
-                painter.draw_line(ex, y, x, ey);
+                painter.draw_line_f(ex, y, x, ey);
             }
             0x72 => {
                 // BOX DRAWINGS LIGHT DIAGONAL UPPER LEFT TO LOWER RIGHT
-                painter.draw_line(x, y, ex, ey);
+                painter.draw_line_f(x, y, ex, ey);
             }
             0x73 => {
                 // BOX DRAWINGS LIGHT DIAGONAL CROSS
-                painter.draw_line(ex, y, x, ey);
-                painter.draw_line(x, y, ex, ey);
+                painter.draw_line_f(ex, y, x, ey);
+                painter.draw_line_f(x, y, ex, ey);
             }
             _ => {}
         }

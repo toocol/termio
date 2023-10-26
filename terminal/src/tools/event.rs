@@ -142,7 +142,7 @@ mod tests {
 
     #[test]
     fn test_event_convert() {
-        let evt1 = KeyEvent::new(EventType::KeyPress, KeyCode::KeyA, KeyboardModifier::AltModifier);
+        let evt1 = KeyEvent::new(EventType::KeyPress, KeyCode::KeyA, KeyboardModifier::AltModifier, "a");
         let evt2 = evt1.to_key_pressed_event();
 
         assert_eq!(evt1.key_code(), evt2.key_code());

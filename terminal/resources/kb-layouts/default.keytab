@@ -26,6 +26,7 @@ key Tab   +Shift+Ansi  : "\E[Z"
 key Tab   +Shift-Ansi  : "\t"
 key Backtab     +Ansi  : "\E[Z"
 key Backtab     -Ansi  : "\t"
+key Space              : " "
 
 key Return-Shift-NewLine : "\r"
 key Return-Shift+NewLine : "\r\n"

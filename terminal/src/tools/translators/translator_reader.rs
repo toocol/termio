@@ -1,7 +1,7 @@
 use super::{is_letter_or_number, Command, Entry, State, KEY_REGEX, TITLE_REGEX};
 use crate::tools::text_stream::LineReader;
 use log::warn;
-use tmui::tlib::namespace::{KeyboardModifier, KeyCode};
+use tmui::tlib::namespace::{KeyCode, KeyboardModifier};
 
 #[repr(C)]
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
@@ -20,6 +20,7 @@ pub struct Token {
     text: String,
 }
 impl Token {
+    #[inline]
     fn new(type_: TokenType, text: String) -> Self {
         Self {
             type_: type_,
@@ -106,16 +107,19 @@ impl KeyboardTranslatorReader {
     }
 
     /// Returns the description text.
+    #[inline]
     pub fn description(&self) -> &str {
         &self.description
     }
 
     /// Returns true if there is another entry in the source stream.
+    #[inline]
     pub fn has_next_entry(&self) -> bool {
         self.has_next
     }
 
     /// Returns the next entry found in the source stream
+    #[inline]
     pub fn next_entry(&mut self) -> Entry {
         assert!(self.has_next);
         let entry = self.next_entry.take().unwrap();
@@ -206,7 +210,7 @@ impl KeyboardTranslatorReader {
     fn tokenize(&self, text: &str) -> Vec<Token> {
         let text = text.trim();
         if text.is_empty() {
-            return vec![]
+            return vec![];
         }
 
         let mut text = text.as_bytes().to_vec();
@@ -238,7 +242,7 @@ impl KeyboardTranslatorReader {
 
         let text = String::from_utf8(text).unwrap();
         if text.is_empty() {
-            return vec![]
+            return vec![];
         }
 
         let mut list = vec![];
@@ -269,7 +273,8 @@ impl KeyboardTranslatorReader {
                 list.push(command_token);
             } else {
                 let output = caps.get(3).unwrap().as_str();
-                let output_command = Token::new(TokenType::OutputText, output.to_string());
+                let output_command =
+                    Token::new(TokenType::OutputText, convert_ctrl_character(output));
                 list.push(output_command);
             }
         } else {
@@ -402,5 +407,28 @@ impl KeyboardTranslatorReader {
         *flag_mask = temp_flag_mask;
 
         true
+    }
+}
+
+#[inline]
+fn convert_ctrl_character(text: &str) -> String {
+    text.replace("\\E", "\x1B")
+        .replace("\\r", "\r")
+        .replace("\\n", "\n")
+        .replace("\\t", "\t")
+        .replace("\\b", "\x08")
+        .replace("\\x7f", "\x7F")
+        .replace("\\x00", "\x00")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::convert_ctrl_character;
+
+    #[test]
+    fn test_convert_ctrl_character() {
+        let text = "\\r\\n\\EOM\\E[1B\\bHello\\r\\x7f\\x00\\r\\n";
+        let text = convert_ctrl_character(text);
+        assert_eq!(text, "\r\n\x1BOM\x1B[1B\x08Hello\r\x7F\x00\r\n");
     }
 }

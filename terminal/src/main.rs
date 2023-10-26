@@ -16,8 +16,8 @@ fn main() {
     log4rs::init_file("terminal/log4rs.yaml", Default::default()).unwrap();
 
     let app = Application::builder()
-        .width(1280)
-        .height(800)
+        .width(200)
+        .height(120)
         .title("Termio Terminal Emulator")
         .build();
 

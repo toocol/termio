@@ -51,6 +51,7 @@ key Tab            : "\t"
 
 key Return-Alt     : "\r" 
 key Return+Alt     : "\E\r" 
+key Space          : " "
 
 # Backspace and Delete codes are preserving CTRL-H. 
  

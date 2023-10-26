@@ -75,6 +75,7 @@ key Backtab: "\E[Z"
 
 key Return-NewLine : "\r"  
 key Return+NewLine : "\r\n"
+key Space          : " "
 
 # Some desperately try to save the ^H.
 # may be not everyone wants this

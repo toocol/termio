@@ -69,6 +69,7 @@ key Up   -Shift-Ansi : "\EA"
 key Down -Shift-Ansi : "\EB"
 key Right-Shift-Ansi : "\EC"
 key Left -Shift-Ansi : "\ED"
+key Space            : " "
 
 # VT100 emits a mode bit together
 # with the arrow keys.The AppCuKeys

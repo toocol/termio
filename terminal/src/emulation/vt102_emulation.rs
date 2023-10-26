@@ -2133,6 +2133,9 @@ impl Emulation for VT102Emulation {
         }
 
         if self.emulation().key_translator.is_some() {
+            if event.key_code() != KeyCode::KeyF22 {
+                print!("");
+            }
             let entry = nonnull_ref!(self.emulation().key_translator).find_entry(
                 event.key_code().as_numeric(),
                 modifiers,

@@ -37,6 +37,7 @@ key Return+Shift         : "\EOM"
 # Backspace and Delete codes are preserving CTRL-H.
 
 key Backspace      : "\x7f"
+key Space          : " "
 
 # Arrow keys in VT52 mode
 # shift up/down are reserved for scrolling.
