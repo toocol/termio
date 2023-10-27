@@ -253,7 +253,7 @@ pub trait Emulation: 'static + EmulationSignal + ActionExt {
     fn clear_entire_screen(&mut self);
 
     /// Resets the state of the terminal.
-    fn reset(&self);
+    fn reset(&mut self);
 
     /// Returns true if the active terminal program wants mouse input events.
     fn program_use_mouse(&self) -> bool;
@@ -501,7 +501,7 @@ impl Emulation for BaseEmulation {
         }
     }
 
-    fn reset(&self) {
+    fn reset(&mut self) {
         // Default implementation does nothing.
     }
 

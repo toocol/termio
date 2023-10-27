@@ -615,14 +615,12 @@ impl VT102Emulation {
         } else if token == ty_csi_ps!('h', 4) {
             current_screen.set_mode(MODE_INSERT);
         } else if token == ty_csi_ps!('h', 20) {
-            current_screen.set_mode(MODE_NEWLINE);
+            self.set_mode(MODE_NEWLINE);
         } else if token == ty_csi_ps!('i', 0) {
             // IGNORE: attached printer
             // VT100
         } else if token == ty_csi_ps!('l', 4) {
             current_screen.reset_mode(MODE_INSERT);
-        } else if token == ty_csi_ps!('l', 20) {
-            current_screen.reset_mode(MODE_NEWLINE);
         } else if token == ty_csi_ps!('l', 20) {
             self.reset_mode(MODE_NEWLINE);
         } else if token == ty_csi_ps!('s', 0) {
@@ -910,27 +908,27 @@ impl VT102Emulation {
             // VT100
             //////////////////////////////////////////////////////////////
         } else if token == ty_csi_pr!('h', 5) {
-            self.set_mode(MODE_SCREEN);
+            current_screen.set_mode(MODE_SCREEN);
         } else if token == ty_csi_pr!('l', 5) {
-            self.reset_mode(MODE_SCREEN);
+            current_screen.reset_mode(MODE_SCREEN);
         //////////////////////////////////////////////////////////////
         } else if token == ty_csi_pr!('h', 6) {
-            self.set_mode(MODE_ORIGIN);
+            current_screen.set_mode(MODE_ORIGIN);
         } else if token == ty_csi_pr!('l', 6) {
-            self.reset_mode(MODE_ORIGIN);
+            current_screen.reset_mode(MODE_ORIGIN);
         } else if token == ty_csi_pr!('s', 6) {
-            self.save_mode(MODE_ORIGIN);
+            current_screen.save_mode(MODE_ORIGIN);
         } else if token == ty_csi_pr!('r', 6) {
-            self.restore_mode(MODE_ORIGIN);
+            current_screen.restore_mode(MODE_ORIGIN);
         //////////////////////////////////////////////////////////////
         } else if token == ty_csi_pr!('h', 7) {
-            self.set_mode(MODE_WRAP);
+            current_screen.set_mode(MODE_WRAP);
         } else if token == ty_csi_pr!('l', 7) {
-            self.reset_mode(MODE_WRAP);
+            current_screen.reset_mode(MODE_WRAP);
         } else if token == ty_csi_pr!('s', 7) {
-            self.save_mode(MODE_WRAP);
+            current_screen.save_mode(MODE_WRAP);
         } else if token == ty_csi_pr!('r', 7) {
-            self.restore_mode(MODE_WRAP);
+            current_screen.restore_mode(MODE_WRAP);
         //////////////////////////////////////////////////////////////
         } else if token == ty_csi_pr!('h', 8) {
             // IGNORED: autorepeat on
@@ -1371,15 +1369,15 @@ impl VT102Emulation {
     /// "Charset" related part of the emulation state. This configures the VT100 charset filter.
     ///
     /// While most operation work on the current _screen, the following two are different.
-    fn reset_charset(&mut self, scrno: i32) {
-        self.charset[scrno as usize].current_charset = 0;
-        self.charset[scrno as usize]
+    fn reset_charset(&mut self, scrno: usize) {
+        self.charset[scrno].current_charset = 0;
+        self.charset[scrno]
             .charset
             .copy_from_slice("BBBB".as_bytes());
-        self.charset[scrno as usize].saved_graphic = false;
-        self.charset[scrno as usize].saved_pound = false;
-        self.charset[scrno as usize].graphic = false;
-        self.charset[scrno as usize].pound = false;
+        self.charset[scrno].saved_graphic = false;
+        self.charset[scrno].saved_pound = false;
+        self.charset[scrno].graphic = false;
+        self.charset[scrno].pound = false;
     }
 
     fn set_charset(&mut self, n: i32, cs: u8) {
@@ -1814,8 +1812,14 @@ impl Emulation for VT102Emulation {
         self.emulation_mut().clear_entire_screen()
     }
 
-    fn reset(&self) {
-        self.emulation().reset()
+    fn reset(&mut self) {
+        self.reset_tokenizer();
+        self.reset_modes();
+        self.reset_charset(0);
+        self.emulation_mut().screen[0].reset(None);
+        self.reset_charset(1);
+
+        self.buffered_update();
     }
 
     fn program_use_mouse(&self) -> bool {
