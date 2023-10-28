@@ -19,11 +19,12 @@ use crate::tools::{
 };
 use derivative::Derivative;
 use lazy_static::lazy_static;
+use libc::{c_void, memmove};
 use log::{debug, info, warn};
 use regex::Regex;
 use std::{
     mem::size_of,
-    ptr::{copy_nonoverlapping, NonNull},
+    ptr::NonNull,
     rc::Rc,
     sync::atomic::{AtomicBool, AtomicU64, Ordering},
     time::Duration,
@@ -249,6 +250,7 @@ impl ObjectImpl for TerminalView {
 
         self.set_color_table(&BASE_COLOR_TABLE);
         self.set_mouse_tracking(true);
+        self.output_suspend_label.hide();
 
         connect!(self, size_changed(), self, when_resized(Size));
         connect!(
@@ -316,6 +318,24 @@ impl WidgetImpl for TerminalView {
             self.key_pressed_signal(),
             (event.to_key_pressed_event(), false)
         );
+    }
+
+    fn on_mouse_wheel(&mut self, event: &MouseEvent) {
+        if event.delta().y() == 0 {
+            return;
+        }
+        if self.screen_window.is_none() {
+            return;
+        }
+        if self.screen_window().unwrap().screen().get_history_lines() == 0 {
+            return;
+        }
+
+        // if the terminal program is not interested mouse events
+        // then send the event to the ScrollBar.
+        if self.mouse_marks {
+            self.scroll_bar_mut().unwrap().on_mouse_wheel(event)
+        }
     }
 }
 
@@ -1221,13 +1241,18 @@ impl TerminalView {
 
     /// @param [`use_x_selection`] Store and retrieve data from global mouse selection.
     /// Support for selection is only available on systems with global mouse selection (such as X11).
-    pub fn emit_selection(&mut self, _use_x_selection: bool, append_return: bool) {
+    pub fn emit_selection(&mut self, use_x_selection: bool, append_return: bool) {
         if self.screen_window.is_none() {
             return;
         }
 
         // Paste Clipboard by simulating keypress events
-        let text = System::clipboard().text(ClipboardLevel::Os);
+        let text = if use_x_selection {
+            // TODO: Paste selections
+            None
+        } else {
+            System::clipboard().text(ClipboardLevel::Os)
+        };
         if let Some(mut text) = text {
             if text.is_empty() {
                 return;
@@ -1688,7 +1713,7 @@ performance degradation and display/alignment errors."
         let lines_to_update = self.lines.min(0.max(lines));
         let columns_to_update = self.columns.min(0.max(columns));
 
-        let mut disstr_u = vec![0 as wchar_t; columns_to_update as usize];
+        // let mut disstr_u = vec![0 as wchar_t; columns_to_update as usize];
         let mut dirty_region = FRect::default();
 
         // debugging variable, this records the number of lines that are found to
@@ -1727,9 +1752,6 @@ performance degradation and display/alignment errors."
                             continue;
                         }
 
-                        let mut p = 0;
-                        disstr_u[p] = c;
-                        p += 1;
                         let line_draw = self.is_line_char(c);
                         let double_width = if x + 1 == columns_to_update as usize {
                             false
@@ -1768,8 +1790,6 @@ performance degradation and display/alignment errors."
                                 break;
                             }
 
-                            disstr_u[p] = c;
-                            p += 1;
                             len += 1;
                         }
 
@@ -1936,6 +1956,7 @@ performance degradation and display/alignment errors."
     }
 
     /// See [`set_uses_mouse()`]
+    #[inline]
     pub fn uses_mouse(&mut self) -> bool {
         self.mouse_marks
     }
@@ -2586,8 +2607,6 @@ performance degradation and display/alignment errors."
             return;
         }
 
-        let scroll_bar = nonnull_mut!(self.scroll_bar);
-
         // constrain the region to the display
         // the bottom of the region is capped to the number of lines in the display's
         // internal image - 2, so that the height of 'region' is strictly less
@@ -2598,7 +2617,7 @@ performance degradation and display/alignment errors."
         // return if there is nothing to do
         if lines == 0
             || self.image.is_none()
-            || region.is_valid()
+            || !region.is_valid()
             || region.top() + lines.abs() >= region.bottom()
             || self.lines <= region.height()
         {
@@ -2610,27 +2629,16 @@ performance degradation and display/alignment errors."
             self.resize_widget.hide()
         }
 
-        let scroll_bar_width = if scroll_bar.visible() {
-            scroll_bar.size().width()
-        } else {
-            0
-        };
-        let scrollbar_content_gap = if scroll_bar_width == 0 { 0 } else { 1 };
         let mut scroll_rect = FRect::default();
-        if self.scroll_bar_location == ScrollBarState::ScrollBarLeft {
-            scroll_rect.set_left((scroll_bar_width + scrollbar_content_gap) as f32);
-            scroll_rect.set_right(self.size().width() as f32);
-        } else {
-            scroll_rect.set_left(0.);
-            scroll_rect
-                .set_right((self.size().width() - scroll_bar_width - scrollbar_content_gap) as f32);
-        }
+        scroll_rect.set_left(0.);
+        scroll_rect.set_right(self.size().width() as f32);
 
         let first_char_pos = &mut self.image.as_mut().unwrap()
-            [(region.top() * self.columns) as usize] as *mut Character;
+            [(region.top() * self.columns) as usize] as *mut Character
+            as *mut c_void;
         let last_char_pos = &mut self.image.as_mut().unwrap()
             [((region.top() + lines.abs()) * self.columns) as usize]
-            as *mut Character;
+            as *mut Character as *mut c_void;
 
         let top = self.top_margin.ceil() + region.top() as f32 * self.font_height.ceil();
         let lines_to_move = region.height() - lines.abs();
@@ -2641,18 +2649,16 @@ performance degradation and display/alignment errors."
 
         // Scroll internal image
         if lines > 0 {
-            // memmove
-            unsafe { copy_nonoverlapping(last_char_pos, first_char_pos, bytes_to_move as usize) };
+            // Scroll down:
+            unsafe { memmove(first_char_pos, last_char_pos, bytes_to_move as usize) };
             scroll_rect.set_top(top);
         } else {
-            // memmove
-            unsafe { copy_nonoverlapping(first_char_pos, last_char_pos, bytes_to_move as usize) };
+            // Scroll up:
+            unsafe { memmove(last_char_pos, first_char_pos, bytes_to_move as usize) };
             scroll_rect.set_top(top + lines.abs() as f32 * self.font_height);
         }
         scroll_rect.set_height(lines_to_move as f32 * self.font_height);
 
-        nonnull_mut!(self.scroll_bar)
-            .scroll((self.font_height * lines as f32) as i32, DeltaType::Pixel);
         self.update_region_f(scroll_rect);
     }
 

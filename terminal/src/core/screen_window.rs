@@ -100,6 +100,7 @@ impl ScreenWindow {
     }
 
     /// Sets the screen which this window looks onto
+    #[inline]
     pub fn set_screen(&mut self, screen: Option<NonNull<Screen>>) {
         self.screen = screen;
     }
@@ -164,16 +165,19 @@ impl ScreenWindow {
     ///
     /// This is not guaranteed to be accurate, but allows views to optimize rendering by reducing the amount of
     /// costly text rendering that needs to be done when the output is scrolled.
+    #[inline]
     pub fn scroll_count(&self) -> i32 {
         self.scroll_count
     }
 
     /// Resets the count of scrolled lines returned by scroll_count().
+    #[inline]
     pub fn reset_scroll_count(&mut self) {
         self.scroll_count = 0
     }
 
     /// Transfer function to emit `scroll_to_end` signal
+    #[inline]
     pub fn emit_scroll_to_end(&self) {
         emit!(self.scroll_to_end())
     }
@@ -257,26 +261,31 @@ impl ScreenWindow {
     }
 
     /// Returns the number of lines in the window.
+    #[inline]
     pub fn window_lines(&self) -> i32 {
         self.window_lines
     }
 
     /// Returns the number of columns in the window.
+    #[inline]
     pub fn window_columns(&self) -> i32 {
         self.screen().get_columns()
     }
 
     /// Returns the total number of lines in the screen.
+    #[inline]
     pub fn line_count(&self) -> i32 {
         self.screen().get_history_lines() + self.screen().get_lines()
     }
 
     /// Returns the total number of columns in the screen.
+    #[inline]
     pub fn column_count(&self) -> i32 {
         self.screen().get_columns()
     }
 
     /// Returns the index of the line which is currently at the top of this window.
+    #[inline]
     pub fn current_line(&self) -> i32 {
         bound(
             0,
@@ -286,11 +295,13 @@ impl ScreenWindow {
     }
 
     /// Returns the position of the cursor within the window.
+    #[inline]
     pub fn cursor_position(&self) -> Point {
         Point::new(self.screen().get_cursor_x(), self.screen().get_cursor_y())
     }
 
     /// Returns true if the window is currently at the bottom of the screen.
+    #[inline]
     pub fn at_end_of_output(&self) -> bool {
         self.current_line() == self.line_count() - self.window_lines()
     }
@@ -331,12 +342,14 @@ impl ScreenWindow {
     ///
     /// If this is set to true, the window will be moved to the bottom of the
     /// associated screen ( see screen() ) when the notify_output_changed() method is called.
+    #[inline]
     pub fn set_track_output(&mut self, track_output: bool) {
         self.track_output = track_output
     }
 
     /// Returns whether the window automatically moves to the bottom of the screen
     /// as new output is added.  See set_track_output()
+    #[inline]
     pub fn track_output(&self) -> bool {
         self.track_output
     }
@@ -344,10 +357,12 @@ impl ScreenWindow {
     ///  Returns the text which is currently selected.
     ///
     /// @param preserveLineBreaks See Screen::selected_text()
+    #[inline]
     pub fn selected_text(&self, preserve_line_break: bool) -> String {
         self.screen().selected_text(preserve_line_break)
     }
 
+    #[inline]
     fn end_window_line(&self) -> i32 {
         (self.current_line() + self.window_lines() - 1).min(self.line_count() - 1)
     }
@@ -357,11 +372,14 @@ impl ScreenWindow {
         let window_end_line = self.current_line() + self.window_lines() - 1;
 
         let unused_lines = window_end_line - screen_end_line;
-        let chars_to_till = unused_lines * self.window_columns();
+        let chars_to_fill = unused_lines * self.window_columns();
 
+        if chars_to_fill <= 0 {
+            return
+        }
         let buffer_slice = &mut self.window_buffer.as_deref_mut().unwrap()
-            [(self.window_buffer_size - chars_to_till) as usize..];
-        Screen::fill_with_default_char(buffer_slice, chars_to_till)
+            [(self.window_buffer_size - chars_to_fill) as usize..];
+        Screen::fill_with_default_char(buffer_slice, chars_to_fill)
     }
 
     pub fn notify_output_changed(&mut self) {

@@ -178,6 +178,7 @@ impl Screen {
     }
 
     /// Fills the buffer @p dest with @p count instances of the default (ie. blank) Character style.
+    #[inline]
     pub fn fill_with_default_char(character: &mut [Character], count: i32) {
         for i in 0..count as usize {
             character[i] = Character::default()
@@ -312,16 +313,19 @@ impl Screen {
     }
 
     /// Returns the top line of the scrolling region.
+    #[inline]
     pub fn top_margin(&self) -> i32 {
         self.top_margin
     }
 
     /// Returns the bottom line of the scrolling region.
+    #[inline]
     pub fn bottom_margin(&self) -> i32 {
         self.bottom_margin
     }
 
     /// Resets the scrolling margins back to the top and bottom lines of the screen.
+    #[inline]
     pub fn set_default_margins(&mut self) {
         self.top_margin = 0;
         self.bottom_margin = self.lines - 1;
@@ -387,6 +391,7 @@ impl Screen {
 
     /// Moves the cursor to the beginning of the current line.
     /// Equivalent to setCursorX(0).
+    #[inline]
     pub fn to_start_of_line(&mut self) {
         self.cursor_x = 0;
     }

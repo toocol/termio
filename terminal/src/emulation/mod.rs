@@ -73,6 +73,7 @@ pub struct BaseEmulation {
     pub screen: [Box<Screen>; 2],
 
     windows: Vec<Box<ScreenWindow>>,
+    #[derivative(Default(value = "true"))]
     use_mouse: bool,
     bracket_paste_mode: bool,
     bulk_timer1: Timer,
