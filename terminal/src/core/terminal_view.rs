@@ -20,7 +20,7 @@ use crate::tools::{
 use derivative::Derivative;
 use lazy_static::lazy_static;
 use libc::{c_void, memmove};
-use log::{debug, info, warn};
+use log::{debug, warn};
 use regex::Regex;
 use std::{
     mem::size_of,
@@ -997,9 +997,7 @@ impl TerminalView {
     //////////////////////////////////////////////// Drawing functions end.  ////////////////////////////////////////////////
 
     #[inline]
-    fn when_resized(&mut self, size: Size) {
-        info!("`TerminalView` resized, size = {:?}", size);
-
+    fn when_resized(&mut self, _size: Size) {
         self.update_image_size();
         self.process_filters();
     }

@@ -895,16 +895,22 @@ impl Screen {
         for i in 0..self.lines.min(new_lines + 1) as usize {
             new_screen_lines[i] = self.screen_lines[i].clone();
         }
-        for i in 0..(new_lines + 1) as usize {
+        for i in self.lines as usize..(new_lines + 1) as usize {
+            if i <= 0 {
+                break;
+            }
             new_screen_lines[i].resize(new_columns as usize, Character::default());
         }
 
-        self.line_properties.resize(new_lines as usize + 1, LINE_DEFAULT);
-        for i in 0..(new_lines + 1) as usize {
+        self.line_properties
+            .resize(new_lines as usize + 1, LINE_DEFAULT);
+        for i in self.lines as usize..(new_lines + 1) as usize {
+            if i <= 0 {
+                break;
+            }
             self.line_properties[i] = LINE_DEFAULT;
         }
 
-        self.clear_selection();
         self.screen_lines = new_screen_lines;
 
         self.lines = new_lines;
@@ -1757,7 +1763,9 @@ impl Screen {
                 let dest_index = (dest_line_start_index + column) as usize;
 
                 dest[dest_index as usize] = self.screen_lines[src_index / self.columns as usize]
-                    [src_index % self.columns as usize];
+                    .get(src_index % self.columns as usize)
+                    .cloned()
+                    .unwrap_or(Character::default());
 
                 // Invert selected text
                 if self.select_begin != -1
