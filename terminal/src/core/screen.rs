@@ -1453,7 +1453,7 @@ impl Screen {
         // so it matters that we do the copy in the right order - forwards if dest < sourceBegin or backwards otherwise.
         //(search the web for 'memmove implementation' for details)
         if dest < source_begin {
-            for i in 0..lines {
+            for i in 0..=lines {
                 self.screen_lines[(dest / self.columns as usize) + i] =
                     self.screen_lines[(source_begin / self.columns as usize) + i].clone();
                 self.line_properties[(dest / self.columns as usize) + i] =

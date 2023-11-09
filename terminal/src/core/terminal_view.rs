@@ -20,7 +20,7 @@ use crate::tools::{
 use derivative::Derivative;
 use lazy_static::lazy_static;
 use libc::{c_void, memmove};
-use log::{debug, warn};
+use log::warn;
 use regex::Regex;
 use std::{
     mem::size_of,
@@ -47,7 +47,7 @@ use tmui::{
     system::System,
     tlib::{
         connect, disconnect, emit,
-        events::{DeltaType, KeyEvent, MouseEvent},
+        events::{KeyEvent, MouseEvent},
         figure::{Color, FPoint, FRect, FRegion, Size},
         global::bound64,
         namespace::{KeyCode, KeyboardModifier},
@@ -243,6 +243,8 @@ impl ObjectImpl for TerminalView {
         self.set_hexpand(true);
         self.set_vexpand(true);
         self.set_focus(true);
+
+        self.set_rerender_difference(true);
     }
 
     fn initialize(&mut self) {
@@ -251,6 +253,20 @@ impl ObjectImpl for TerminalView {
         self.set_color_table(&BASE_COLOR_TABLE);
         self.set_mouse_tracking(true);
         self.output_suspend_label.hide();
+
+        self.resize_widget.set_halign(Align::Center);
+        self.resize_widget.set_valign(Align::Center);
+        self.resize_widget.set_content_halign(Align::Center);
+        self.resize_widget.set_content_valign(Align::Center);
+        self.resize_widget.width_request(10);
+        self.resize_widget.height_request(10);
+
+        self.output_suspend_label.set_halign(Align::Center);
+        self.output_suspend_label.set_valign(Align::Center);
+        self.output_suspend_label.set_content_halign(Align::Center);
+        self.output_suspend_label.set_content_valign(Align::Center);
+        self.output_suspend_label.width_request(10);
+        self.output_suspend_label.height_request(10);
 
         connect!(self, size_changed(), self, when_resized(Size));
         connect!(
@@ -649,7 +665,7 @@ impl TerminalView {
         painter: &mut Painter,
         rect: FRect,
         color: Color,
-        use_opacity_setting: bool,
+        _use_opacity_setting: bool,
     ) {
         // TODO: Return if there is a background image
         // TODO: Set the opacity
@@ -665,6 +681,7 @@ impl TerminalView {
         foreground_color: Color,
         invert_colors: &mut bool,
     ) {
+        painter.set_antialiasing(false);
         let mut cursor_rect: FRect = rect.into();
         cursor_rect.set_height(self.font_height as f32 - self.line_spacing as f32 - 1.);
 
@@ -680,22 +697,17 @@ impl TerminalView {
                 // it is draw entirely inside 'rect'
                 let line_width = painter.line_width().max(1.);
                 let adjusted_cursor_rect = cursor_rect.adjusted(
-                    line_width / 2.,
-                    line_width / 2.,
-                    -line_width / 2.,
-                    -line_width / 2.,
-                );
-
-                debug!(
-                    "Draw cursor, foreground_color: {:?}, cursor_rect: {:?}",
-                    foreground_color, adjusted_cursor_rect
+                    line_width * 0.6,
+                    line_width * 0.6,
+                    -line_width * 0.5,
+                    -line_width * 0.5,
                 );
 
                 painter.draw_rect(adjusted_cursor_rect);
 
                 if self.is_focus() {
                     painter.fill_rect(
-                        rect,
+                        adjusted_cursor_rect,
                         if self.cursor_color.valid {
                             self.cursor_color
                         } else {
@@ -725,6 +737,7 @@ impl TerminalView {
                 )
             }
         }
+        painter.set_antialiasing(true);
     }
     /// draws the characters or line graphics in a text fragment.
     fn draw_characters(
@@ -776,13 +789,6 @@ impl TerminalView {
             let text = text
                 .to_string()
                 .expect("`draw_characters()` transfer wchar_t text to utf-8 failed.");
-            // println!(
-            //     "Draw line: \"{}\", x: {}, y: {}, width: {}",
-            //     text,
-            //     rect.x(),
-            //     rect.y(),
-            //     rect.width()
-            // );
 
             if self.bidi_enable {
                 painter.fill_rect(rect, style.background_color.color(&self.color_table));
@@ -794,10 +800,10 @@ impl TerminalView {
                 );
             } else {
                 let mut draw_rect = FRect::new(
-                    rect.x() as f32,
-                    rect.y() as f32,
-                    rect.width() as f32,
-                    rect.height() as f32,
+                    rect.x(),
+                    rect.y(),
+                    rect.width(),
+                    rect.height(),
                 );
                 draw_rect.set_height(draw_rect.height() + self.draw_text_addition_height);
 
@@ -997,7 +1003,10 @@ impl TerminalView {
     //////////////////////////////////////////////// Drawing functions end.  ////////////////////////////////////////////////
 
     #[inline]
-    fn when_resized(&mut self, _size: Size) {
+    fn when_resized(&mut self, size: Size) {
+        if size.width() == 0 || size.height() == 0 {
+            return;
+        }
         self.update_image_size();
         self.process_filters();
     }
@@ -1133,7 +1142,7 @@ impl TerminalView {
         }
         let screen_window = nonnull_mut!(self.screen_window);
 
-        let _pre_update_hotspots = self.hotspot_region();
+        let mut pre_update_hotspots = self.hotspot_region();
 
         // use [`ScreenWindow::get_image()`] here rather than `image` because
         // other classes may call process_filters() when this view's
@@ -1148,10 +1157,13 @@ impl TerminalView {
             .set_image(image, window_lines, window_columns, line_properties);
         self.filter_chain.process();
 
-        let _post_update_hotspots = self.hotspot_region();
+        let post_update_hotspots = self.hotspot_region();
 
         // Should only update the region in pre_update_hotspots|post_update_hotspots
-        self.update();
+        pre_update_hotspots.or(&post_update_hotspots);
+        if pre_update_hotspots.is_valid() {
+            self.update_region_f(pre_update_hotspots);
+        }
     }
 
     /// Returns a list of menu actions created by the filters for the content

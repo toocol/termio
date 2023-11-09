@@ -30,6 +30,7 @@ impl ObjectImpl for TerminalPanel {
 
         self.set_hexpand(true);
         self.set_vexpand(true);
+        self.set_rerender_difference(true);
 
         let session = self.create_session();
         let scrolled_view = session.create_terminal_view();
@@ -57,8 +58,6 @@ impl TerminalPanel {
             .iter_mut()
             .for_each(|session| session.view_mut().set_vt_font(font.into()))
     }
-
-    pub fn when_resize(&mut self, size: Size) {}
 
     pub fn send_key_event(&mut self, event: KeyEvent) {
         self.sessions
