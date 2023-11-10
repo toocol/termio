@@ -50,10 +50,10 @@ use tmui::{
         events::{KeyEvent, MouseEvent},
         figure::{Color, FPoint, FRect, FRegion, Size},
         global::bound64,
-        namespace::{KeyCode, KeyboardModifier},
+        namespace::{KeyCode, KeyboardModifier, MouseButton},
         nonnull_mut, nonnull_ref,
         object::{ObjectImpl, ObjectSubclass},
-        ptr_mut, run_after, signals,
+        ptr_mut, signals,
         timer::Timer,
     },
     widget::WidgetImpl,
@@ -70,7 +70,6 @@ lazy_static! {
 
 #[extends(Widget, Layout(Stack))]
 #[derive(Childrenable)]
-#[run_after]
 pub struct TerminalView {
     extended_char_table: ExtendedCharTable,
 
@@ -137,6 +136,7 @@ pub struct TerminalView {
     bracketed_paste_mode: bool,
     disable_bracketed_paste_mode: bool,
 
+    drag_info: DragInfo,
     // initial selection point.
     i_pnt_sel: Point,
     // current selection point.
@@ -171,8 +171,6 @@ pub struct TerminalView {
     ctrl_drag: bool,
     // columns/lines are locked.
     is_fixed_size: bool,
-    // set in mouseDoubleClickEvent and delete after double_click_interval() delay.
-    possible_triple_click: bool,
     triple_click_mode: TripleClickMode,
     blink_timer: Timer,
     blink_cursor_timer: Timer,
@@ -197,7 +195,8 @@ pub struct TerminalView {
 
     #[derivative(Default(value = "TerminalImageFilterChain::new()"))]
     filter_chain: Box<TerminalImageFilterChain>,
-    mouse_over_hotspot_area: Rect,
+    #[derivative(Default(value = "Some(FRegion::new())"))]
+    mouse_over_hotspot_area: Option<FRegion>,
 
     cursor_shape: KeyboardCursorShape,
     cursor_color: Color,
@@ -304,17 +303,6 @@ impl WidgetImpl for TerminalView {
         self.paint_filters(&mut painter);
     }
 
-    fn run_after(&mut self) {
-        self.parent_run_after();
-        let parent_rect = self.get_parent_ref().unwrap().rect();
-
-        println!(
-            "`TerminalView` run after. parent rect: {:?}, self rect: {:?}",
-            parent_rect,
-            self.rect()
-        );
-    }
-
     fn on_key_pressed(&mut self, event: &KeyEvent) {
         self.act_sel = 0;
 
@@ -352,6 +340,191 @@ impl WidgetImpl for TerminalView {
         if self.mouse_marks {
             self.scroll_bar_mut().unwrap().on_mouse_wheel(event)
         }
+    }
+
+    fn on_mouse_pressed(&mut self, event: &MouseEvent) {
+        if event.n_press() == 2 {
+            self.handle_mouse_double_click(event)
+        } else if event.n_press() == 3 {
+            self.handle_mouse_triple_click(event)
+        } else {
+            self.handle_mouse_pressed(event)
+        }
+    }
+
+    fn on_mouse_released(&mut self, event: &MouseEvent) {
+        if self.screen_window().is_none() {
+            return;
+        }
+
+        let (char_line, char_column) = self.get_character_position(event.position().into());
+        if event.mouse_button() == MouseButton::LeftButton {
+            if self.drag_info.state == DragState::DiPending {
+                self.screen_window_mut().unwrap().clear_selection();
+            } else if self.drag_info.state == DragState::DiDragging {
+                if self.act_sel > 1 {
+                    self.set_selection(
+                        self.screen_window()
+                            .unwrap()
+                            .selected_text(self.preserve_line_breaks),
+                    );
+                }
+
+                self.act_sel = 0;
+
+                if !self.mouse_marks && !event.modifier().has(KeyboardModifier::ShiftModifier) {
+                    let scroll_bar = self.scroll_bar().unwrap();
+                    emit!(
+                        self.mouse_signal(),
+                        0,
+                        char_column + 1,
+                        char_line + 1 + scroll_bar.value() - scroll_bar.maximum(),
+                        2u8
+                    )
+                }
+            }
+
+            self.drag_info.state = DragState::DiNone;
+        } // end: event.mouse_button() == MouseButton::LeftButton
+
+        if !self.mouse_marks
+            && !event.modifier().has(KeyboardModifier::ShiftModifier)
+            && (event.mouse_button() == MouseButton::RightButton
+                || event.mouse_button() == MouseButton::MiddleButton)
+        {
+            let scroll_bar = self.scroll_bar().unwrap();
+            let button = if event.mouse_button() == MouseButton::MiddleButton {
+                1
+            } else {
+                2
+            };
+
+            emit!(
+                self.mouse_signal(),
+                button,
+                char_column + 1,
+                char_line + 1 + scroll_bar.value() - scroll_bar.maximum(),
+                2u8
+            );
+        }
+    }
+
+    fn on_mouse_move(&mut self, event: &MouseEvent) {
+        let (char_line, char_column) = self.get_character_position(event.position().into());
+
+        let spot = self.filter_chain().hotspot_at(char_line, char_column);
+        if let Some(spot) = spot {
+            if spot.type_() == HotSpotType::Link {
+                let mut previous_hotspot_area = self
+                    .mouse_over_hotspot_area
+                    .replace(FRegion::new())
+                    .unwrap();
+                let mouse_over_hotspot_area = self.mouse_over_hotspot_area.as_mut().unwrap();
+
+                let mut r = FRect::default();
+
+                if spot.start_line() == spot.end_line() {
+                    r.set_coords(
+                        spot.start_column() as f32 * self.font_width + self.left_base_margin,
+                        spot.start_line() as f32 * self.font_height + self.top_base_margin,
+                        spot.end_column() as f32 * self.font_width + self.left_base_margin,
+                        (spot.end_line() + 1) as f32 * self.font_height - 1. + self.top_base_margin,
+                    );
+                    mouse_over_hotspot_area.add_rect(r);
+                } else {
+                    r.set_coords(
+                        spot.start_column() as f32 * self.font_width + self.left_base_margin,
+                        spot.start_line() as f32 * self.font_height + self.top_base_margin,
+                        self.columns as f32 * self.font_width - 1. + self.left_base_margin,
+                        (spot.start_line() + 1) as f32 * self.font_height + self.top_base_margin,
+                    );
+                    mouse_over_hotspot_area.add_rect(r);
+
+                    for line in spot.start_line() + 1..spot.end_line() {
+                        r.set_coords(
+                            self.left_base_margin,
+                            line as f32 * self.font_height + self.top_base_margin,
+                            self.columns as f32 * self.font_width + self.left_base_margin,
+                            (line + 1) as f32 * self.font_height + self.top_base_margin,
+                        );
+                        mouse_over_hotspot_area.add_rect(r);
+                    }
+
+                    r.set_coords(
+                        self.left_base_margin,
+                        spot.end_line() as f32 * self.font_height + self.top_base_margin,
+                        spot.end_column() as f32 * self.font_width + self.left_base_margin,
+                        (spot.end_line() + 1) as f32 * self.font_height + self.top_base_margin,
+                    );
+                    mouse_over_hotspot_area.add_rect(r);
+                }
+
+                // update
+                previous_hotspot_area.add_region(mouse_over_hotspot_area);
+                self.update_region_f(&previous_hotspot_area);
+            }
+        } else if !self.mouse_over_hotspot_area.as_ref().unwrap().is_empty() {
+            let mouse_over_hotspot_area = self
+                .mouse_over_hotspot_area
+                .replace(FRegion::new())
+                .unwrap();
+            self.update_region_f(&mouse_over_hotspot_area);
+        }
+
+        if !event.mouse_button().has(MouseButton::LeftButton) {
+            return;
+        }
+
+        if !self.mouse_marks && !event.modifier().has(KeyboardModifier::ShiftModifier) {
+            let mut button = 3;
+            let mouse_button = event.mouse_button();
+            if mouse_button.has(MouseButton::LeftButton) {
+                button = 0;
+            }
+            if mouse_button.has(MouseButton::MiddleButton) {
+                button = 1;
+            }
+            if mouse_button.has(MouseButton::RightButton) {
+                button = 2;
+            }
+
+            let scroll_bar = self.scroll_bar().unwrap();
+            emit!(
+                self.mouse_signal(),
+                button,
+                char_column + 1,
+                char_line + 1 + scroll_bar.value() - scroll_bar.maximum(),
+                1u8
+            );
+            return;
+        }
+
+        if self.drag_info.state == DragState::DiPending {
+            let distance = 10;
+            let pos = event.position();
+            let drag_start = self.drag_info.start;
+            if pos.0 > drag_start.x() + distance
+                || pos.0 < drag_start.x() - distance
+                || pos.1 > drag_start.y() + distance
+                || pos.1 < drag_start.y() - distance
+            {
+                self.screen_window_mut().unwrap().clear_selection();
+
+                self.do_drag();
+            }
+        } else if self.drag_info.state == DragState::DiDragging {
+            return;
+        }
+
+        if self.act_sel == 0 {
+            return;
+        }
+
+        if event.mouse_button().has(MouseButton::MiddleButton) {
+            return;
+        }
+
+        self.extend_selection(event.position().into());
     }
 }
 
@@ -697,10 +870,10 @@ impl TerminalView {
                 // it is draw entirely inside 'rect'
                 let line_width = painter.line_width().max(1.);
                 let adjusted_cursor_rect = cursor_rect.adjusted(
-                    line_width * 0.6,
-                    line_width * 0.6,
-                    -line_width * 0.5,
-                    -line_width * 0.5,
+                    line_width * 0.7,
+                    line_width * 0.,
+                    -line_width * 0.7,
+                    -line_width * 0.,
                 );
 
                 painter.draw_rect(adjusted_cursor_rect);
@@ -799,12 +972,7 @@ impl TerminalView {
                     rect.width() as f32,
                 );
             } else {
-                let mut draw_rect = FRect::new(
-                    rect.x(),
-                    rect.y(),
-                    rect.width(),
-                    rect.height(),
-                );
+                let mut draw_rect = FRect::new(rect.x(), rect.y(), rect.width(), rect.height());
                 draw_rect.set_height(draw_rect.height() + self.draw_text_addition_height);
 
                 painter.fill_rect(draw_rect, style.background_color.color(&self.color_table));
@@ -1162,7 +1330,7 @@ impl TerminalView {
         // Should only update the region in pre_update_hotspots|post_update_hotspots
         pre_update_hotspots.or(&post_update_hotspots);
         if pre_update_hotspots.is_valid() {
-            self.update_region_f(pre_update_hotspots);
+            self.update_rect_f(pre_update_hotspots);
         }
     }
 
@@ -1170,6 +1338,264 @@ impl TerminalView {
     /// at the given @p position.
     pub fn filter_actions(&self, _position: Point) -> Vec<Action> {
         todo!()
+    }
+
+    pub fn handle_mouse_pressed(&mut self, evt: &MouseEvent) {
+        if self.screen_window().is_none() {
+            return;
+        }
+
+        let modifier = evt.modifier();
+        let (char_line, char_column) = self.get_character_position(evt.position().into());
+
+        if evt.mouse_button() == MouseButton::LeftButton {
+            self.line_selection_mode = false;
+            self.word_selection_mode = false;
+
+            let selected = self
+                .screen_window()
+                .unwrap()
+                .is_selected(char_column, char_line);
+
+            if (!self.ctrl_drag || modifier.has(KeyboardModifier::ControlModifier)) && selected {
+                self.drag_info.state = DragState::DiPending;
+                self.drag_info.start = evt.position().into();
+            } else {
+                self.drag_info.state = DragState::DiNone;
+
+                self.preserve_line_breaks = !modifier.has(KeyboardModifier::ControlModifier)
+                    && !modifier.has(KeyboardModifier::AltModifier);
+                self.column_selection_mode = modifier.has(KeyboardModifier::AltModifier)
+                    && modifier.has(KeyboardModifier::ControlModifier);
+
+                if self.mouse_marks || modifier.has(KeyboardModifier::ShiftModifier) {
+                    self.screen_window_mut().unwrap().clear_selection();
+
+                    let mut pos = Point::new(char_column, char_line);
+                    *pos.y_mut() += self.scroll_bar().unwrap().value();
+                    self.pnt_sel = pos;
+                    self.i_pnt_sel = pos;
+                    self.act_sel = 1;
+                } else {
+                    let scroll_bar = self.scroll_bar().unwrap();
+                    emit!(
+                        self.mouse_signal(),
+                        0,
+                        char_column + 1,
+                        char_line + 1 + scroll_bar.value() - scroll_bar.maximum(),
+                        0u8
+                    )
+                }
+
+                let spot = self.filter_chain.hotspot_at(char_line, char_column);
+                if let Some(spot) = spot {
+                    spot.activate("click-action");
+                }
+            }
+        } else if evt.mouse_button() == MouseButton::MiddleButton {
+            if self.mouse_marks || modifier.has(KeyboardModifier::ShiftModifier) {
+                self.emit_selection(true, modifier.has(KeyboardModifier::ControlModifier));
+            } else {
+                let scroll_bar = self.scroll_bar().unwrap();
+                emit!(
+                    self.mouse_signal(),
+                    1,
+                    char_column + 1,
+                    char_line + 1 + scroll_bar.value() - scroll_bar.maximum(),
+                    0u8
+                );
+            }
+        } else if evt.mouse_button() == MouseButton::RightButton {
+            if self.mouse_marks || modifier.has(KeyboardModifier::ShiftModifier) {
+                let pos: Point = evt.position().into();
+                emit!(self.configure_request(), pos);
+            } else {
+                let scroll_bar = self.scroll_bar().unwrap();
+                emit!(
+                    self.mouse_signal(),
+                    2,
+                    char_column + 1,
+                    char_line + 1 + scroll_bar.value() - scroll_bar.maximum(),
+                    0u8
+                );
+            }
+        }
+    }
+
+    pub fn handle_mouse_double_click(&mut self, evt: &MouseEvent) {
+        if evt.mouse_button() != MouseButton::LeftButton {
+            return;
+        }
+        if self.screen_window.is_none() {
+            return;
+        }
+        let modifier = evt.modifier();
+
+        let (char_line, char_column) = self.get_character_position(evt.position().into());
+        let pos = Point::new(char_column, char_line);
+
+        if !self.mouse_marks && !modifier.has(KeyboardModifier::ShiftModifier) {
+            let scroll_bar = self.scroll_bar().unwrap();
+            emit!(
+                self.mouse_signal(),
+                0,
+                pos.x() + 1,
+                pos.y() + 1 + scroll_bar.value() - scroll_bar.maximum(),
+                0u8
+            );
+            return;
+        }
+
+        self.screen_window_mut().unwrap().clear_selection();
+        let mut bgn_sel = pos;
+        let mut end_sel = pos;
+        let mut i = self.loc(bgn_sel.x(), bgn_sel.y());
+        self.i_pnt_sel = bgn_sel;
+        *self.i_pnt_sel.y_mut() += self.scroll_bar().unwrap().value();
+
+        self.word_selection_mode = true;
+
+        // find word boundaries:
+        let sel_class = self.char_class(self.image()[i as usize].character_union.data());
+
+        // find the start of the word:
+        let mut x = bgn_sel.x();
+        while (x > 0
+            || (bgn_sel.y() > 0
+                && self.line_properties[bgn_sel.y() as usize - 1] & LINE_WRAPPED != 0))
+            && self.char_class(self.image()[i as usize - 1].character_union.data()) == sel_class
+        {
+            i -= 1;
+            if x > 0 {
+                x -= 1;
+            } else {
+                x = self.used_columns - 1;
+                *bgn_sel.y_mut() -= 1;
+            }
+        }
+
+        bgn_sel.set_x(x);
+        self.screen_window_mut()
+            .unwrap()
+            .set_selection_start(bgn_sel.x(), bgn_sel.y(), false);
+
+        // find the end of the word:
+        i = self.loc(end_sel.x(), end_sel.y());
+        x = end_sel.x();
+        while (x < self.used_columns - 1
+            || (end_sel.y() < self.used_lines - 1
+                && self.line_properties[end_sel.y() as usize] & LINE_WRAPPED != 0))
+            && self.char_class(self.image()[i as usize + 1].character_union.data()) == sel_class
+        {
+            i += 1;
+            if x < self.used_columns - 1 {
+                x += 1;
+            } else {
+                x = 0;
+                *end_sel.y_mut() += 1;
+            }
+        }
+
+        end_sel.set_x(x);
+
+        // In word selection mode don't select @ (64) if at end of word.
+        if self.image()[i as usize].character_union.data() == wch!('@')
+            && end_sel.x() - bgn_sel.x() > 0
+        {
+            end_sel.set_x(x - 1);
+        }
+
+        self.act_sel = 2;
+
+        self.screen_window_mut()
+            .unwrap()
+            .set_selection_end(end_sel.x(), end_sel.y());
+
+        self.set_selection(
+            self.screen_window()
+                .unwrap()
+                .selected_text(self.preserve_line_breaks),
+        );
+    }
+
+    pub fn handle_mouse_triple_click(&mut self, evt: &MouseEvent) {
+        if self.screen_window().is_none() {
+            return;
+        }
+
+        let (char_line, char_column) = self.get_character_position(evt.position().into());
+        self.i_pnt_sel = Point::new(char_column, char_line);
+
+        self.screen_window_mut().unwrap().clear_selection();
+
+        self.line_selection_mode = true;
+        self.word_selection_mode = false;
+
+        self.act_sel = 2;
+
+        while self.i_pnt_sel.y() > 0
+            && self.line_properties[self.i_pnt_sel.y() as usize - 1] & LINE_WRAPPED != 0
+        {
+            *self.i_pnt_sel.y_mut() -= 1;
+        }
+
+        match self.triple_click_mode {
+            TripleClickMode::SelectForwardsFromCursor => {
+                let mut i = self.loc(self.i_pnt_sel.x(), self.i_pnt_sel.y());
+                let sel_class = self.char_class(self.image()[i as usize].character_union.data());
+                let mut x = self.i_pnt_sel.x();
+
+                while (x > 0
+                    || (self.i_pnt_sel.y() > 0
+                        && self.line_properties[self.i_pnt_sel.y() as usize - 1] & LINE_WRAPPED
+                            != 0))
+                    && self.char_class(self.image()[i as usize - 1].character_union.data())
+                        == sel_class
+                {
+                    i -= 1;
+                    if x > 0 {
+                        x -= 1;
+                    } else {
+                        x = self.columns - 1;
+                        *self.i_pnt_sel.y_mut() -= 1;
+                    }
+                }
+
+                let y = self.i_pnt_sel.y();
+                self.screen_window_mut()
+                    .unwrap()
+                    .set_selection_start(x, y, false);
+                self.triple_sel_begin = Point::new(x, y);
+            }
+            TripleClickMode::SelectWholeLine => {
+                let y = self.i_pnt_sel.y();
+                self.screen_window_mut()
+                    .unwrap()
+                    .set_selection_start(0, y, false);
+                self.triple_sel_begin = Point::new(0, y);
+            }
+        }
+
+        while self.i_pnt_sel.y() < self.lines - 1
+            && self.line_properties[self.i_pnt_sel.y() as usize] & LINE_WRAPPED != 0
+        {
+            *self.i_pnt_sel.y_mut() += 1;
+        }
+
+        let column = self.columns - 1;
+        let line = self.i_pnt_sel.y();
+        self.screen_window_mut()
+            .unwrap()
+            .set_selection_end(column, line);
+
+        self.set_selection(
+            self.screen_window()
+                .unwrap()
+                .selected_text(self.preserve_line_breaks),
+        );
+
+        let scroll_bar = self.scroll_bar().unwrap();
+        *self.i_pnt_sel.y_mut() += scroll_bar.value();
     }
 
     /// Returns true if the cursor is set to blink or false otherwise.
@@ -1874,7 +2300,7 @@ performance degradation and display/alignment errors."
 
         // update the parts of the view which have changed
         if dirty_region.width() > 0. && dirty_region.height() > 0. {
-            self.update_region_f(dirty_region);
+            self.update_rect_f(dirty_region);
         }
 
         if self.has_blinker && !self.blink_timer.is_active() {
@@ -2085,10 +2511,6 @@ performance degradation and display/alignment errors."
         self.color_table[0] = color;
         self.colors_inverted = !self.colors_inverted;
         self.update();
-    }
-
-    fn triple_click_timeout(&mut self) {
-        self.possible_triple_click = false;
     }
 
     ////////////////////////////////////// Private functions. //////////////////////////////////////
@@ -2401,8 +2823,9 @@ performance degradation and display/alignment errors."
         }
     }
 
+    #[inline]
     fn do_drag(&mut self) {
-        todo!()
+        self.drag_info.state = DragState::DiDragging;
     }
 
     /// classifies the 'ch' into one of three categories
@@ -2669,7 +3092,7 @@ performance degradation and display/alignment errors."
         }
         scroll_rect.set_height(lines_to_move as f32 * self.font_height);
 
-        self.update_region_f(scroll_rect);
+        self.update_rect_f(scroll_rect);
     }
 
     /// shows the multiline prompt
@@ -2829,7 +3252,7 @@ performance degradation and display/alignment errors."
     fn update_cursor(&mut self) {
         let rect = FRect::from_point_size(self.cursor_position().into(), Size::new(1, 1).into());
         let cursor_rect = self.image_to_widget(&rect);
-        self.update_region_f(cursor_rect);
+        self.update_rect_f(cursor_rect);
     }
 
     fn handle_shortcut_override_event(&mut self, event: KeyEvent) {
