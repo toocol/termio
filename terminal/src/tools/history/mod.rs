@@ -28,11 +28,6 @@ pub trait HistoryScroll: Sized + 'static {
         Box::new(RefCell::new(self))
     }
 
-    #[inline]
-    fn dynamic_cast_type<T: HistoryType>(&self) -> &mut T {
-        unsafe { &mut *(self.get_type().as_ref() as *const Self::HistoryType as *mut T) }
-    }
-
     fn has_scroll(&self) -> bool;
 
     fn get_lines(&self) -> i32;
@@ -55,7 +50,7 @@ pub trait HistoryScroll: Sized + 'static {
 
     fn add_line(&mut self, previous_wrapped: bool);
 
-    fn get_type(&self) -> Rc<Self::HistoryType>;
+    fn get_type(&self) -> Rc<RefCell<Self::HistoryType>>;
 
     fn set_max_nb_lines(&mut self, _: usize) {}
 }
@@ -70,7 +65,7 @@ pub trait HistoryScrollWrapper {
     fn add_cells(&self, character: &[Character], count: i32);
     fn add_cells_list(&self, list: Vec<Character>);
     fn add_line(&self, previous_wrapped: bool);
-    fn get_type(&self) -> Rc<dyn HistoryType>;
+    fn get_type(&self) -> Rc<RefCell<dyn HistoryType>>;
     fn set_max_nb_lines(&self, nb_lines: usize);
 }
 impl<T: HistoryScroll> HistoryScrollWrapper for RefCell<T> {
@@ -110,7 +105,7 @@ impl<T: HistoryScroll> HistoryScrollWrapper for RefCell<T> {
         self.borrow_mut().add_line(previous_wrapped)
     }
 
-    fn get_type(&self) -> Rc<dyn HistoryType> {
+    fn get_type(&self) -> Rc<RefCell<dyn HistoryType>> {
         self.borrow().get_type()
     }
 
@@ -119,7 +114,7 @@ impl<T: HistoryScroll> HistoryScrollWrapper for RefCell<T> {
     }
 
     fn type_(&self) -> HistoryTypeEnum {
-        self.borrow().get_type().type_()
+        self.borrow().get_type().borrow().type_()
     }
 }
 

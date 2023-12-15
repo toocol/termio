@@ -1023,7 +1023,7 @@ impl Screen {
     /// history buffer are copied into the new scroll.
     pub fn set_scroll(
         &mut self,
-        history_type: Rc<dyn HistoryType>,
+        history_type: Rc<RefCell<dyn HistoryType>>,
         copy_previous_scroll: Option<bool>,
     ) {
         let copy_previous_scroll = if copy_previous_scroll.is_none() {
@@ -1033,14 +1033,14 @@ impl Screen {
         };
 
         if copy_previous_scroll {
-            self.history = history_type.scroll(Some(self.history.clone()));
+            self.history = history_type.borrow().scroll(Some(self.history.clone()));
         } else {
-            self.history = history_type.scroll(None);
+            self.history = history_type.borrow().scroll(None);
         }
     }
 
     /// Returns the type of storage used to keep lines in the history.
-    pub fn get_scroll(&self) -> Rc<dyn HistoryType> {
+    pub fn get_scroll(&self) -> Rc<RefCell<dyn HistoryType>> {
         self.history.get_type()
     }
 

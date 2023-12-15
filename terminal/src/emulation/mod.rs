@@ -16,7 +16,7 @@ use crate::{
         translators::{KeyboardTranslator, KeyboardTranslatorManager}, event::KeyPressedEvent,
     },
 };
-use std::{ptr::NonNull, rc::Rc, time::Duration};
+use std::{ptr::NonNull, rc::Rc, time::Duration, cell::RefCell};
 use tmui::{
     prelude::*,
     tlib::{
@@ -217,10 +217,10 @@ pub trait Emulation: 'static + EmulationSignal + ActionExt {
     /// older lines at the top of the screen are transferred to a history store.
     ///
     /// The number of lines which are kept and the storage location depend on the type of store.
-    fn set_history(&mut self, history_type: Rc<dyn HistoryType>);
+    fn set_history(&mut self, history_type: Rc<RefCell<dyn HistoryType>>);
 
     /// Returns the history store used by this emulation.  @see set_history().
-    fn history(&self) -> Rc<dyn HistoryType>;
+    fn history(&self) -> Rc<RefCell<dyn HistoryType>>;
 
     /// Clears the history scroll.
     fn clear_history(&mut self);
@@ -436,11 +436,11 @@ impl Emulation for BaseEmulation {
         }
     }
 
-    fn set_history(&mut self, history_type: Rc<dyn HistoryType>) {
+    fn set_history(&mut self, history_type: Rc<RefCell<dyn HistoryType>>) {
         self.screen[0].set_scroll(history_type, None)
     }
 
-    fn history(&self) -> Rc<dyn HistoryType> {
+    fn history(&self) -> Rc<RefCell<dyn HistoryType>> {
         self.screen[0].get_scroll()
     }
 

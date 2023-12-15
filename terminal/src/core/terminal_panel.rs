@@ -4,7 +4,7 @@ use crate::{
     tools::{event::ToKeyPressedEvent, history::HistoryTypeBuffer},
 };
 use derivative::Derivative;
-use std::rc::Rc;
+use std::{rc::Rc, cell::RefCell};
 use tmui::{
     prelude::*,
     tlib::{events::KeyEvent, object::ObjectSubclass},
@@ -46,7 +46,7 @@ impl TerminalPanel {
     pub fn create_session(&mut self) -> &mut Box<Session> {
         let mut session = Session::new();
         session.set_auto_close(true);
-        session.set_history_type(Rc::new(HistoryTypeBuffer::new(10000)));
+        session.set_history_type(Rc::new(RefCell::new(HistoryTypeBuffer::new(10000))));
         session.set_key_binding("");
 
         self.sessions.push(session);

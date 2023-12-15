@@ -294,7 +294,7 @@ type HistoryArray = Vec<CompactHistoryLine>;
 /// compact history scroll
 ////////////////////////////////////////////////////////////////////////
 pub struct CompactHistoryScroll {
-    history_type: Rc<CompactHistoryType>,
+    history_type: Rc<RefCell<CompactHistoryType>>,
 
     lines: HistoryArray,
     block_list: CompactHistoryBlockList,
@@ -310,7 +310,7 @@ impl CompactHistoryScroll {
         };
 
         let mut scroll = Self {
-            history_type: Rc::new(CompactHistoryType::new(max_nb_lines as usize)),
+            history_type: Rc::new(RefCell::new(CompactHistoryType::new(max_nb_lines as usize))),
             lines: vec![],
             block_list: CompactHistoryBlockList::new(),
             max_line_count: 0,
@@ -368,7 +368,7 @@ impl HistoryScroll for CompactHistoryScroll {
         }
     }
 
-    fn get_type(&self) -> Rc<Self::HistoryType> {
+    fn get_type(&self) -> Rc<RefCell<Self::HistoryType>> {
         self.history_type.clone()
     }
 

@@ -9,7 +9,7 @@ use std::{
     mem::size_of,
     ptr::{null, null_mut},
     rc::Rc,
-    slice,
+    slice, cell::RefCell,
 };
 
 /// An extendable tempfile based buffer.
@@ -161,7 +161,7 @@ impl Drop for HistoryFile {
 // File-based history (e.g. file log, no limitation in length)
 ////////////////////////////////////////////////////////////////////////
 pub struct HistoryScrollFile {
-    history_type: Rc<HistoryTypeFile>,
+    history_type: Rc<RefCell<HistoryTypeFile>>,
 
     log_file_name: String,
     /// lines Row(int)
@@ -182,7 +182,7 @@ pub struct HistoryScrollFile {
 impl HistoryScrollFile {
     pub fn new(log_file_name: String) -> Self {
         Self {
-            history_type: Rc::new(HistoryTypeFile::new(log_file_name.clone())),
+            history_type: Rc::new(RefCell::new(HistoryTypeFile::new(log_file_name.clone()))),
             log_file_name: log_file_name,
             index: Box::new(HistoryFile::new()),
             cells: Box::new(HistoryFile::new()),
@@ -269,7 +269,7 @@ impl HistoryScroll for HistoryScrollFile {
             .add(&flags as *const u8, size_of::<u8>() as i32)
     }
 
-    fn get_type(&self) -> Rc<Self::HistoryType> {
+    fn get_type(&self) -> Rc<RefCell<Self::HistoryType>> {
         self.history_type.clone()
     }
 }

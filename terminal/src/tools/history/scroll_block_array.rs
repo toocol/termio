@@ -4,13 +4,13 @@ use crate::tools::{
     character::Character,
 };
 use libc::{c_void, memcpy, memset};
-use std::{collections::HashMap, mem::size_of, rc::Rc};
+use std::{collections::HashMap, mem::size_of, rc::Rc, cell::RefCell};
 
 ////////////////////////////////////////////////////////////////////////
 /// BlockArray-based history
 ////////////////////////////////////////////////////////////////////////
 pub struct HistoryScrollBlockArray {
-    history_type: Rc<HistoryTypeBlockArray>,
+    history_type: Rc<RefCell<HistoryTypeBlockArray>>,
 
     block_array: BlockArray,
     line_lengths: HashMap<i32, usize>,
@@ -18,7 +18,7 @@ pub struct HistoryScrollBlockArray {
 impl HistoryScrollBlockArray {
     pub fn new(size: usize) -> Self {
         Self {
-            history_type: Rc::new(HistoryTypeBlockArray::new(size)),
+            history_type: Rc::new(RefCell::new(HistoryTypeBlockArray::new(size))),
             block_array: BlockArray::new(),
             line_lengths: HashMap::new(),
         }
@@ -97,7 +97,7 @@ impl HistoryScroll for HistoryScrollBlockArray {
 
     fn add_line(&mut self, _: bool) {}
 
-    fn get_type(&self) -> Rc<Self::HistoryType> {
+    fn get_type(&self) -> Rc<RefCell<Self::HistoryType>>{
         self.history_type.clone()
     }
 }

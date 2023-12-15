@@ -13,7 +13,7 @@ use crate::{
 };
 use derivative::Derivative;
 use log::debug;
-use std::{ptr::NonNull, rc::Rc};
+use std::{ptr::NonNull, rc::Rc, cell::RefCell};
 use tmui::{
     prelude::*,
     scroll_area::{ScrollArea, ScrollAreaExt},
@@ -318,7 +318,7 @@ impl Session {
     }
 
     #[inline]
-    pub fn set_history_type(&mut self, ty: Rc<dyn HistoryType>) {
+    pub fn set_history_type(&mut self, ty: Rc<RefCell<dyn HistoryType>>) {
         self.emulation_mut().set_history(ty)
     }
 

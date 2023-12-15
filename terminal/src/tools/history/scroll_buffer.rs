@@ -2,14 +2,14 @@ use super::{HistoryScroll, HistoryTypeBuffer};
 use crate::tools::character::Character;
 use bitvec::vec::BitVec;
 use libc::{c_void, memcpy, memset};
-use std::{mem::size_of, rc::Rc};
+use std::{mem::size_of, rc::Rc, cell::RefCell};
 
 ////////////////////////////////////////////////////////////////////////
 // Buffer-based history (limited to a fixed nb of lines)
 ////////////////////////////////////////////////////////////////////////
 type HistoryLine = Vec<Character>;
 pub struct HistoryScrollBuffer {
-    history_type: Rc<HistoryTypeBuffer>,
+    history_type: Rc<RefCell<HistoryTypeBuffer>>,
 
     history_buffer: Vec<HistoryLine>,
     wrapped_line: BitVec,
@@ -26,7 +26,7 @@ impl HistoryScrollBuffer {
         };
 
         let mut scroll = Self {
-            history_type: Rc::new(HistoryTypeBuffer::new(max_nb_lines)),
+            history_type: Rc::new(RefCell::new(HistoryTypeBuffer::new(max_nb_lines))),
             history_buffer: vec![],
             wrapped_line: BitVec::new(),
             max_line_count: 0,
@@ -146,7 +146,7 @@ impl HistoryScroll for HistoryScrollBuffer {
         self.wrapped_line.set(buffer_index, previous_wrapped);
     }
 
-    fn get_type(&self) -> Rc<Self::HistoryType> {
+    fn get_type(&self) -> Rc<RefCell<Self::HistoryType>> {
         self.history_type.clone()
     }
 
@@ -168,6 +168,6 @@ impl HistoryScroll for HistoryScrollBuffer {
 
         self.history_buffer = new_buffer;
         self.wrapped_line.resize(nb_lines, false);
-        self.dynamic_cast_type::<HistoryTypeBuffer>().nb_lines = nb_lines;
+        self.get_type().borrow_mut().nb_lines = nb_lines;
     }
 }

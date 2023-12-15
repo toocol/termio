@@ -1,17 +1,17 @@
 use super::{HistoryScroll, HistoryTypeNone};
 use crate::tools::character::Character;
-use std::rc::Rc;
+use std::{rc::Rc, cell::RefCell};
 
 ///////////////////////////////////////////////////////////////////////
 // History Scroll None (No history)
 ///////////////////////////////////////////////////////////////////////
 pub struct HistoryScrollNone {
-    history_type: Rc<HistoryTypeNone>,
+    history_type: Rc<RefCell<HistoryTypeNone>>,
 }
 impl HistoryScrollNone {
     pub fn new() -> Self {
         Self {
-            history_type: Rc::new(HistoryTypeNone::new()),
+            history_type: Rc::new(RefCell::new(HistoryTypeNone::new())),
         }
     }
 }
@@ -40,7 +40,7 @@ impl HistoryScroll for HistoryScrollNone {
 
     fn add_line(&mut self, _previous_wrapped: bool) {}
 
-    fn get_type(&self) -> Rc<Self::HistoryType> {
+    fn get_type(&self) -> Rc<RefCell<Self::HistoryType>> {
         self.history_type.clone()
     }
 }

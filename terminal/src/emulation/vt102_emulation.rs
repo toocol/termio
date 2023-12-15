@@ -25,7 +25,7 @@ use crate::{
         translators::{Command, KeyboardTranslatorManager, State, CTRL_MODIFIER}, event::KeyPressedEvent,
     },
 };
-use std::{collections::HashMap, ptr::NonNull, rc::Rc};
+use std::{collections::HashMap, ptr::NonNull, rc::Rc, cell::RefCell};
 use tmui::{
     prelude::*,
     tlib::{
@@ -1756,11 +1756,11 @@ impl Emulation for VT102Emulation {
         self.emulation().line_count()
     }
 
-    fn set_history(&mut self, history_type: Rc<dyn HistoryType>) {
+    fn set_history(&mut self, history_type: Rc<RefCell<dyn HistoryType>>) {
         self.emulation_mut().set_history(history_type)
     }
 
-    fn history(&self) -> Rc<dyn HistoryType> {
+    fn history(&self) -> Rc<RefCell<dyn HistoryType>> {
         self.emulation().history()
     }
 
