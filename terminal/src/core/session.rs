@@ -273,8 +273,6 @@ impl Session {
         );
 
         terminal_view.set_screen_window(nonnull_mut!(emulation.create_window()));
-
-        emit!(emulation.output_changed());
     }
 
     #[inline]

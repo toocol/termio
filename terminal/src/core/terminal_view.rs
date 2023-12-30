@@ -210,7 +210,7 @@ pub struct TerminalView {
     #[derivative(Default(value = "true"))]
     draw_line_chars: bool,
 
-    bind_session: u16,
+    bind_session: ObjectId,
     /// `true` when the session this terminal view binded was finised.
     terminate: bool,
 }
@@ -251,7 +251,6 @@ impl ObjectImpl for TerminalView {
 
         self.set_color_table(&BASE_COLOR_TABLE);
         self.set_mouse_tracking(true);
-        self.output_suspend_label.hide();
 
         self.resize_widget.set_halign(Align::Center);
         self.resize_widget.set_valign(Align::Center);
@@ -267,6 +266,9 @@ impl ObjectImpl for TerminalView {
         self.output_suspend_label.width_request(10);
         self.output_suspend_label.height_request(10);
 
+        self.resize_widget.hide();
+        self.output_suspend_label.hide();
+
         connect!(self, size_changed(), self, when_resized(Size));
         connect!(
             self.blink_cursor_timer,
@@ -278,7 +280,7 @@ impl ObjectImpl for TerminalView {
 }
 
 impl WidgetImpl for TerminalView {
-    fn paint(&mut self, mut painter: Painter) {
+    fn paint(&mut self, mut painter: &mut Painter) {
         painter.set_antialiasing(true);
 
         // TODO: Process the background image.
@@ -529,7 +531,7 @@ impl WidgetImpl for TerminalView {
 }
 
 impl TerminalView {
-    pub fn new(session_id: u16) -> Box<Self> {
+    pub fn new(session_id: ObjectId) -> Box<Self> {
         let mut view: Box<Self> = Object::new(&[]);
         view.bind_session = session_id;
         view
@@ -970,6 +972,8 @@ impl TerminalView {
                     (rect.x() as f32, rect.y() as f32),
                     0.,
                     rect.width() as f32,
+                    Some(1),
+                    false
                 );
             } else {
                 let mut draw_rect = FRect::new(rect.x(), rect.y(), rect.width(), rect.height());
@@ -977,7 +981,7 @@ impl TerminalView {
 
                 painter.fill_rect(draw_rect, style.background_color.color(&self.color_table));
                 // Draw the text start at the left-bottom.
-                painter.draw_paragraph(&text, (rect.x(), rect.y()), 0., self.size().width() as f32);
+                painter.draw_paragraph(&text, (rect.x(), rect.y()), 0., self.size().width() as f32, Some(1), false);
 
                 if use_underline {
                     let y = draw_rect.bottom() as f32 - 0.5;

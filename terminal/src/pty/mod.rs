@@ -107,10 +107,10 @@ pub trait PtySignals: ActionExt {
 #[derive(Default)]
 pub struct PtyReceivePool {
     #[cfg(target_os = "windows")]
-    ptys: Arc<Mutex<HashMap<u16, (Arc<Mutex<PTY>>, Signal)>>>,
+    ptys: Arc<Mutex<HashMap<ObjectId, (Arc<Mutex<PTY>>, Signal)>>>,
 
     #[cfg(not(target_os = "windows"))]
-    ptys: Arc<Mutex<HashMap<u16, (Arc<Mutex<Fork>>, Signal)>>>,
+    ptys: Arc<Mutex<HashMap<ObjectId, (Arc<Mutex<Fork>>, Signal)>>>,
 }
 
 #[inline]
@@ -162,18 +162,18 @@ impl PtyReceivePool {
 
     #[inline]
     #[cfg(target_os = "windows")]
-    pub fn add_pty(&mut self, id: u16, pty: Arc<Mutex<PTY>>, signal: Signal) {
+    pub fn add_pty(&mut self, id: ObjectId, pty: Arc<Mutex<PTY>>, signal: Signal) {
         self.ptys.lock().unwrap().insert(id, (pty, signal));
     }
 
     #[inline]
     #[cfg(not(target_os = "windows"))]
-    pub fn add_pty(&mut self, id: u16, pty: Arc<Mutex<Fork>>, signal: Signal) {
+    pub fn add_pty(&mut self, id: ObjectId, pty: Arc<Mutex<Fork>>, signal: Signal) {
         self.ptys.lock().unwrap().insert(id, (pty, signal));
     }
 
     #[inline]
-    pub fn remove_pty(&mut self, id: u16) {
+    pub fn remove_pty(&mut self, id: ObjectId) {
         self.ptys.lock().unwrap().remove(&id);
     }
 }

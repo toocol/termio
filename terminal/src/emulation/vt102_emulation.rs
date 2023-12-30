@@ -247,7 +247,7 @@ pub struct VT102Emulation {
 }
 impl_as_any!(VT102Emulation);
 impl ObjectOperation for VT102Emulation {
-    fn id(&self) -> u16 {
+    fn id(&self) -> ObjectId {
         self.emulation().id()
     }
 
@@ -319,7 +319,6 @@ impl VT102Emulation {
         vt102_emulation.emulation = Some(base_emulation);
 
         vt102_emulation.init_tokenizer();
-        vt102_emulation.reset();
 
         vt102_emulation
     }

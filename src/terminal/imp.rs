@@ -1,7 +1,7 @@
 use super::Terminal;
 use tmui::{
     tlib::object::{ObjectImpl, ObjectSubclass, ObjectImplExt},
-    widget::{WidgetImpl, WidgetExt},
+    widget::{WidgetImpl, WidgetExt}, shared_widget::SharedWidgetImpl,
 };
 
 impl ObjectSubclass for Terminal {
@@ -22,3 +22,5 @@ impl ObjectImpl for Terminal {
 }
 
 impl WidgetImpl for Terminal {}
+
+impl SharedWidgetImpl for Terminal {}
