@@ -195,8 +195,8 @@ pub struct TerminalView {
 
     #[derivative(Default(value = "TerminalImageFilterChain::new()"))]
     filter_chain: Box<TerminalImageFilterChain>,
-    #[derivative(Default(value = "Some(FRegion::new())"))]
-    mouse_over_hotspot_area: Option<FRegion>,
+    #[derivative(Default(value = "Some(CoordRegion::new())"))]
+    mouse_over_hotspot_area: Option<CoordRegion>,
 
     cursor_shape: KeyboardCursorShape,
     cursor_color: Color,
@@ -289,15 +289,15 @@ impl WidgetImpl for TerminalView {
             self.cal_draw_text_addition_height(&mut painter);
         }
 
-        let region = self.redraw_region_f().clone();
+        let region = self.redraw_region().clone();
         if region.is_empty() {
             let rect = self.contents_rect_f(Some(Coordinate::Widget));
             self.draw_background(&mut painter, rect, self.background(), true);
             self.draw_contents(&mut painter, rect);
         } else {
             for rect in region.into_iter() {
-                self.draw_background(&mut painter, rect, self.background(), true);
-                self.draw_contents(&mut painter, rect);
+                self.draw_background(&mut painter, rect.rect(), self.background(), true);
+                self.draw_contents(&mut painter, rect.rect());
             }
         }
 
@@ -419,7 +419,7 @@ impl WidgetImpl for TerminalView {
             if spot.type_() == HotSpotType::Link {
                 let mut previous_hotspot_area = self
                     .mouse_over_hotspot_area
-                    .replace(FRegion::new())
+                    .replace(CoordRegion::new())
                     .unwrap();
                 let mouse_over_hotspot_area = self.mouse_over_hotspot_area.as_mut().unwrap();
 
@@ -432,7 +432,7 @@ impl WidgetImpl for TerminalView {
                         spot.end_column() as f32 * self.font_width + self.left_base_margin,
                         (spot.end_line() + 1) as f32 * self.font_height - 1. + self.top_base_margin,
                     );
-                    mouse_over_hotspot_area.add_rect(r);
+                    mouse_over_hotspot_area.add_rect(CoordRect::new(r, Coordinate::Widget));
                 } else {
                     r.set_coords(
                         spot.start_column() as f32 * self.font_width + self.left_base_margin,
@@ -440,7 +440,7 @@ impl WidgetImpl for TerminalView {
                         self.columns as f32 * self.font_width - 1. + self.left_base_margin,
                         (spot.start_line() + 1) as f32 * self.font_height + self.top_base_margin,
                     );
-                    mouse_over_hotspot_area.add_rect(r);
+                    mouse_over_hotspot_area.add_rect(CoordRect::new(r, Coordinate::Widget));
 
                     for line in spot.start_line() + 1..spot.end_line() {
                         r.set_coords(
@@ -449,7 +449,7 @@ impl WidgetImpl for TerminalView {
                             self.columns as f32 * self.font_width + self.left_base_margin,
                             (line + 1) as f32 * self.font_height + self.top_base_margin,
                         );
-                        mouse_over_hotspot_area.add_rect(r);
+                        mouse_over_hotspot_area.add_rect(CoordRect::new(r, Coordinate::Widget));
                     }
 
                     r.set_coords(
@@ -458,19 +458,19 @@ impl WidgetImpl for TerminalView {
                         spot.end_column() as f32 * self.font_width + self.left_base_margin,
                         (spot.end_line() + 1) as f32 * self.font_height + self.top_base_margin,
                     );
-                    mouse_over_hotspot_area.add_rect(r);
+                    mouse_over_hotspot_area.add_rect(CoordRect::new(r, Coordinate::Widget));
                 }
 
                 // update
                 previous_hotspot_area.add_region(mouse_over_hotspot_area);
-                self.update_region_f(&previous_hotspot_area);
+                self.update_region(&previous_hotspot_area);
             }
         } else if !self.mouse_over_hotspot_area.as_ref().unwrap().is_empty() {
             let mouse_over_hotspot_area = self
                 .mouse_over_hotspot_area
-                .replace(FRegion::new())
+                .replace(CoordRegion::new())
                 .unwrap();
-            self.update_region_f(&mouse_over_hotspot_area);
+            self.update_region(&mouse_over_hotspot_area);
         }
 
         if !event.mouse_button().has(MouseButton::LeftButton) {
@@ -811,7 +811,7 @@ impl TerminalView {
         text: WideString,
         style: &Character,
     ) {
-        painter.save();
+        painter.save_pen();
 
         let foreground_color = style.foreground_color.color(&self.color_table);
         let background_color = style.background_color.color(&self.color_table);
@@ -829,7 +829,7 @@ impl TerminalView {
             self.draw_cursor(painter, rect, foreground_color, &mut invert_character_color);
         }
 
-        painter.restore();
+        painter.restore_pen();
     }
     /// draws the background for a text fragment
     /// if useOpacitySetting is true then the color's alpha value will be set to
@@ -1334,7 +1334,7 @@ impl TerminalView {
         // Should only update the region in pre_update_hotspots|post_update_hotspots
         pre_update_hotspots.or(&post_update_hotspots);
         if pre_update_hotspots.is_valid() {
-            self.update_rect_f(pre_update_hotspots);
+            self.update_rect(CoordRect::new(pre_update_hotspots, Coordinate::Widget));
         }
     }
 
@@ -2304,7 +2304,7 @@ performance degradation and display/alignment errors."
 
         // update the parts of the view which have changed
         if dirty_region.width() > 0. && dirty_region.height() > 0. {
-            self.update_rect_f(dirty_region);
+            self.update_rect(CoordRect::new(dirty_region, Coordinate::Widget));
         }
 
         if self.has_blinker && !self.blink_timer.is_active() {
@@ -3096,7 +3096,7 @@ performance degradation and display/alignment errors."
         }
         scroll_rect.set_height(lines_to_move as f32 * self.font_height);
 
-        self.update_rect_f(scroll_rect);
+        self.update_rect(CoordRect::new(scroll_rect, Coordinate::Widget));
     }
 
     /// shows the multiline prompt
@@ -3256,7 +3256,7 @@ performance degradation and display/alignment errors."
     fn update_cursor(&mut self) {
         let rect = FRect::from_point_size(self.cursor_position().into(), Size::new(1, 1).into());
         let cursor_rect = self.image_to_widget(&rect);
-        self.update_rect_f(cursor_rect);
+        self.update_rect(CoordRect::new(cursor_rect, Coordinate::Widget));
     }
 
     fn handle_shortcut_override_event(&mut self, event: KeyEvent) {
