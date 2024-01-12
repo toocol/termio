@@ -1,8 +1,14 @@
-use super::Terminal;
-use tmui::{
-    tlib::object::{ObjectImpl, ObjectSubclass, ObjectImplExt},
-    widget::{WidgetImpl, WidgetExt}, shared_widget::SharedWidgetImpl,
-};
+use tmui::{prelude::*, tlib::object::ObjectSubclass};
+
+#[extends(SharedWidget, id = "terminal")]
+pub struct Terminal {}
+
+impl Terminal {
+    #[inline]
+    pub fn new() -> Box<Self> {
+        Object::new(&[])
+    }
+}
 
 impl ObjectSubclass for Terminal {
     const NAME: &'static str = "Terminal";

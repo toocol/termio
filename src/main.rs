@@ -1,7 +1,5 @@
-mod terminal;
-
 use libs::constant::IPC_NAME;
-use terminal::Terminal;
+use platform::ui::termio_view::TermioView;
 use tmui::{
    prelude::*,
    application::Application,
@@ -14,6 +12,7 @@ fn main() {
    let app = Application::<(), ()>::shared_builder(IPC_NAME)
        .width(1280)
        .height(800)
+       .transparent(true)
        .title("Termio")
        .build();
 
@@ -23,5 +22,5 @@ fn main() {
 }
 
 fn build_ui(window: &mut ApplicationWindow) {
-    window.child(Terminal::new())
+    window.child(TermioView::new())
 }

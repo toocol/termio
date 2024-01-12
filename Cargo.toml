@@ -1,5 +1,5 @@
 [workspace]
-members = ["libs", "cli", "mosh", "terminal"]
+members = ["libs", "cli", "platform", "mosh", "terminal"]
 
 [package]
 name = "termio"
@@ -13,6 +13,7 @@ tmui = { git = "https://github.com/toocol/tmui" }
 
 libs = { path = "libs/" }
 cli = { path = "cli/" }
+platform = { path = "platform/" }
 
 log = "0.4"
 log4rs = "1.1.1"

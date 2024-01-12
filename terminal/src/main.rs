@@ -15,7 +15,7 @@ mod tools;
 fn main() {
     log4rs::init_file("terminal/log4rs.yaml", Default::default()).unwrap();
 
-    let app = if false {
+    let app = if true {
         Application::<(), ()>::shared_builder(IPC_NAME)
             .platform(PlatformType::Ipc)
             .shared_widget_id("terminal")

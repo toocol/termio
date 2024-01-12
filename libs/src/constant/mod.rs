@@ -1,1 +1,1 @@
-pub const IPC_NAME: &'static str = "termio_imem";
+pub const IPC_NAME: &'static str = "termio_mem";

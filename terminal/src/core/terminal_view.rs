@@ -2412,9 +2412,10 @@ performance degradation and display/alignment errors."
         // produce a horrible noise
         if self.allow_bell {
             self.allow_bell = false;
-            let mut timer = Timer::once();
-            connect!(timer, timeout(), self, enable_bell());
-            timer.start(Duration::from_millis(500));
+            Timer::once(|mut timer| {
+                connect!(timer, timeout(), self, enable_bell());
+                timer.start(Duration::from_millis(500));
+            });
 
             match self.bell_mode {
                 BellMode::SystemBeepBell => {
@@ -2425,9 +2426,10 @@ performance degradation and display/alignment errors."
                 }
                 BellMode::VisualBell => {
                     self.swap_color_table();
-                    let mut timer = Timer::once();
-                    connect!(timer, timeout(), self, swap_color_table());
-                    timer.start(Duration::from_millis(200));
+                    Timer::once(|mut timer| {
+                        connect!(timer, timeout(), self, swap_color_table());
+                        timer.start(Duration::from_millis(200));
+                    });
                 }
                 _ => {}
             }
@@ -3485,25 +3487,25 @@ fn draw_other_char(painter: &mut Painter, x: f32, y: f32, w: f32, h: f32, code: 
                 // BOX DRAWINGS LIGHT ARC DOWN AND RIGHT
                 painter.draw_line_f(cx, cy + r, cx, ey);
                 painter.draw_line_f(cx + r, cy, ex, cy);
-                painter.draw_arc_f(cx, cy, d, d, 90. * 16., 90. * 16.);
+                painter.draw_arc_f(cx, cy, d, d, 90. * 16., 90. * 16., false);
             }
             0x6E => {
                 // BOX DRAWINGS LIGHT ARC DOWN AND LEFT
                 painter.draw_line_f(cx, cy + r, cx, ey);
                 painter.draw_line_f(x, cy, cx - r, cy);
-                painter.draw_arc_f(cx - d, cy, d, d, 0. * 16., 90. * 16.);
+                painter.draw_arc_f(cx - d, cy, d, d, 0. * 16., 90. * 16., false);
             }
             0x6F => {
                 // BOX DRAWINGS LIGHT ARC UP AND LEFT
                 painter.draw_line_f(cx, y, cx, cy - r);
                 painter.draw_line_f(x, cy, cx - r, cy);
-                painter.draw_arc_f(cx - d, cy - d, d, d, 270. * 16., 90. * 16.);
+                painter.draw_arc_f(cx - d, cy - d, d, d, 270. * 16., 90. * 16., false);
             }
             0x70 => {
                 // BOX DRAWINGS LIGHT ARC UP AND RIGHT
                 painter.draw_line_f(cx, y, cx, cy - r);
                 painter.draw_line_f(cx + r, cy, ex, cy);
-                painter.draw_arc_f(cx, cy - d, d, d, 180. * 16., 90. * 16.);
+                painter.draw_arc_f(cx, cy - d, d, d, 180. * 16., 90. * 16., false);
             }
             _ => {}
         }
