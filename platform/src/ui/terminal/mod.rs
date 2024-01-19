@@ -15,15 +15,12 @@ impl ObjectSubclass for Terminal {
 }
 
 impl ObjectImpl for Terminal {
-    fn construct(&mut self) {
-        self.parent_construct();
-
+    fn initialize(&mut self) {
         self.set_vexpand(true);
         self.set_hexpand(true);
 
         self.set_focus(true);
         self.set_mouse_tracking(true);
-        self.set_rerender_difference(true);
     }
 }
 

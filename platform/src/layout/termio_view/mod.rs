@@ -1,10 +1,9 @@
+use super::{central_panel::CentralPanel, status_bar::StatusBar, title_bar::TitleBar};
 use tmui::{
-   prelude::*,
-   tlib::object::{ObjectImpl, ObjectSubclass},
-   widget::WidgetImpl,
+    prelude::*,
+    tlib::object::{ObjectImpl, ObjectSubclass},
+    widget::WidgetImpl,
 };
-
-use super::{title_bar::TitleBar, central_panel::CentralPanel};
 
 #[extends(Widget, Layout(VBox))]
 #[derive(Childrenable)]
@@ -14,16 +13,17 @@ pub struct TermioView {
 
     #[children]
     central_panel: Box<CentralPanel>,
+
+    #[children]
+    status_bar: Box<StatusBar>,
 }
 
 impl ObjectSubclass for TermioView {
-   const NAME: &'static str = "TermioView";
+    const NAME: &'static str = "TermioView";
 }
 
 impl ObjectImpl for TermioView {
-    fn construct(&mut self) {
-        self.parent_construct();
-
+    fn initialize(&mut self) {
         self.set_hexpand(true);
         self.set_vexpand(true);
     }

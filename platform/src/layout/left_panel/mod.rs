@@ -1,0 +1,35 @@
+use tmui::{
+    prelude::*,
+    tlib::object::{ObjectImpl, ObjectSubclass},
+    widget::WidgetImpl,
+};
+
+use crate::ui::activity_bar::ActivityBar;
+
+#[extends(Widget, Layout(HBox))]
+#[derive(Childrenable)]
+pub struct LeftPanel {
+    #[children]
+    activity_bar: Box<ActivityBar>,
+}
+
+impl ObjectSubclass for LeftPanel {
+    const NAME: &'static str = "LeftPanel";
+}
+
+impl ObjectImpl for LeftPanel {
+    fn initialize(&mut self) {
+        self.set_vexpand(true);
+        self.width_request(300);
+        self.set_background(Color::GREY);
+    }
+}
+
+impl WidgetImpl for LeftPanel {}
+
+impl LeftPanel {
+    #[inline]
+    pub fn new() -> Box<Self> {
+        Object::new(&[])
+    }
+}

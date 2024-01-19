@@ -1823,18 +1823,11 @@ impl TerminalView {
     }
 
     pub fn set_size(&mut self, _cols: i32, _lins: i32) {
-        let scroll_bar = nonnull_mut!(self.scroll_bar);
-        let scroll_bar_width = if !scroll_bar.visible() {
-            0
-        } else {
-            scroll_bar.size_hint().1.unwrap().width()
-        };
-
         let horizontal_margin = 2 * self.left_base_margin as i32;
         let vertical_margin = 2 * self.top_base_margin as i32;
 
         let new_size = Size::new(
-            horizontal_margin + scroll_bar_width + (self.columns * self.font_width.ceil() as i32),
+            horizontal_margin + (self.columns * self.font_width.ceil() as i32),
             vertical_margin + (self.lines * self.font_height.ceil() as i32),
         );
 

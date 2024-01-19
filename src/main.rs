@@ -1,5 +1,5 @@
 use libs::constant::IPC_NAME;
-use platform::ui::termio_view::TermioView;
+use platform::layout::termio_view::TermioView;
 use tmui::{
    prelude::*,
    application::Application,

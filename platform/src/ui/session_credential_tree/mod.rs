@@ -1,4 +1,7 @@
-use tmui::{tree_view::TreeView, tlib::Object};
+pub mod session_credential;
+pub mod session_group;
+
+use tmui::{tlib::Object, tree_view::TreeView};
 
 pub struct SessionCredentialTree;
 
@@ -7,10 +10,4 @@ impl SessionCredentialTree {
     pub fn view() -> Box<TreeView> {
         Object::new(&[])
     }
-}
-
-pub struct SessionGroup {
-}
-
-pub struct SessionCredential {
 }

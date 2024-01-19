@@ -7,3 +7,5 @@ edition = "2021"
 
 [dependencies]
 tmui = { git = "https://github.com/toocol/tmui" }
+
+log = "0.4"
