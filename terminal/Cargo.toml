@@ -3,38 +3,11 @@ name = "terminal"
 version = "0.1.0"
 edition = "2021"
 
-build = "build.rs"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
 tmui = { git = "https://github.com/toocol/tmui" }
-libs = { path = "../libs/" }
 
-lazy_static = "1.4.0"
-page_size = "0.5.0"
+libs = { path = "../libs/" }
+termulator = { path = "../termulator/" }
+
 log = "0.4"
 log4rs = "1.1.1"
-libc = "0.2.138"
-wchar = "0.11.0"
-widestring = "1.0.2"
-bitvec = "1.0.1"
-regex = "1.7.0"
-hex = "0.4.3"
-derivative = "2.2.0"
-once_cell = "1.17.0"
-unicode-width = "0.1.10"
-rust-embed = { version = "6.4.2", features = [
-    "debug-embed",
-    "include-exclude",
-] }
-
-[target.'cfg(target_os = "windows")'.dependencies]
-winpty-rs = "0.3.11"
-
-[target.'cfg(not(target_os = "windows"))'.dependencies]
-pty = "0.2.2"
-termios = "0.3.3"
-
-[dev-dependencies]
-criterion = "0.4.0"

@@ -8,4 +8,6 @@ edition = "2021"
 [dependencies]
 tmui = { git = "https://github.com/toocol/tmui" }
 
+termulator = { path = "../termulator/" }
+
 log = "0.4"

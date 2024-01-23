@@ -1,5 +1,6 @@
-use super::left_panel::LeftPanel;
 use crate::ui::terminal::Terminal;
+use super::left_panel::LeftPanel;
+use termulator::core::terminal_emulator::TerminalEmulator;
 use tmui::{
     prelude::*,
     tlib::object::{ObjectImpl, ObjectSubclass},

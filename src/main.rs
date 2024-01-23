@@ -16,6 +16,13 @@ fn main() {
        .title("Termio")
        .build();
 
+//    let app = Application::builder()
+//        .width(1280)
+//        .height(800)
+//        .transparent(true)
+//        .title("Termio")
+//        .build();
+
    app.connect_activate(build_ui);
 
    app.run();
