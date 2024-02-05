@@ -1,5 +1,4 @@
 pub mod asset;
-pub mod constant;
 pub mod util;
 pub mod event;
 pub mod international;

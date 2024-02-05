@@ -242,7 +242,6 @@ impl ObjectImpl for TerminalView {
         self.set_hexpand(true);
         self.set_vexpand(true);
         self.set_focus(true);
-
         self.set_rerender_difference(true);
     }
 

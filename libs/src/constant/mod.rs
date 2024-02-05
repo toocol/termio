@@ -1,1 +1,0 @@
-pub const IPC_NAME: &'static str = "termio_memo";

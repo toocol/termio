@@ -7,7 +7,7 @@ edition = "2021"
 tmui = { git = "https://github.com/toocol/tmui" }
 
 libs = { path = "../libs/" }
-termulator = { path = "../termulator/" }
+emulator = { path = "../emulator/" }
 
 log = "0.4"
 log4rs = "1.1.1"

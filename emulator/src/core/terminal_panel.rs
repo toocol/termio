@@ -1,7 +1,6 @@
 use super::session::Session;
 use crate::{
-    config::Config,
-    tools::{event::ToKeyPressedEvent, history::HistoryTypeBuffer},
+    config::Config, tools::{event::ToKeyPressedEvent, history::HistoryTypeBuffer}
 };
 use derivative::Derivative;
 use std::{rc::Rc, cell::RefCell};
@@ -30,7 +29,6 @@ impl ObjectImpl for TerminalPanel {
 
         self.set_hexpand(true);
         self.set_vexpand(true);
-        self.set_rerender_difference(true);
 
         let session = self.create_session();
         let scrolled_view = session.create_terminal_view();
@@ -73,5 +71,12 @@ impl TerminalPanel {
             .unwrap()
             .emulation_mut()
             .send_text(text);
+    }
+}
+
+impl TerminalPanel {
+    #[inline]
+    pub fn new() -> Box<Self> {
+        Object::new(&[])
     }
 }

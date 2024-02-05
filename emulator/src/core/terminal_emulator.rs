@@ -32,7 +32,6 @@ impl ObjectImpl for TerminalEmulator {
 
         self.set_vexpand(true);
         self.set_hexpand(true);
-        self.set_rerender_difference(true);
     }
 
     fn initialize(&mut self) {

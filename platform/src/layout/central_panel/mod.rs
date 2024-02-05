@@ -1,6 +1,5 @@
-use crate::ui::terminal::Terminal;
 use super::left_panel::LeftPanel;
-use termulator::core::terminal_emulator::TerminalEmulator;
+use emulator::core::terminal_emulator::TerminalEmulator;
 use tmui::{
     prelude::*,
     tlib::object::{ObjectImpl, ObjectSubclass},
@@ -14,7 +13,7 @@ pub struct CentralPanel {
     left_panel: Box<LeftPanel>,
 
     #[children]
-    terminal: Box<Terminal>,
+    terminal: Box<TerminalEmulator>,
 }
 
 impl ObjectSubclass for CentralPanel {
@@ -25,6 +24,7 @@ impl ObjectImpl for CentralPanel {
     fn initialize(&mut self) {
         self.set_hexpand(true);
         self.set_vexpand(true);
+        self.set_strict_children_layout(true);
     }
 }
 

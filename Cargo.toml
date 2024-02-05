@@ -1,5 +1,5 @@
 [workspace]
-members = ["libs", "cli", "platform", "mosh", "terminal", "termulator"]
+members = ["libs", "cli", "platform", "mosh", "terminal", "emulator"]
 
 [package]
 name = "termio"
