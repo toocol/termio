@@ -9,5 +9,6 @@ edition = "2021"
 tmui = { git = "https://github.com/toocol/tmui" }
 
 emulator = { path = "../emulator/" }
+cli = { path = "../cli/" }
 
 log = "0.4"
