@@ -13,7 +13,7 @@ impl ObjectSubclass for StatusBar {
 
 impl ObjectImpl for StatusBar {
     fn initialize(&mut self) {
-        self.set_background(Color::GREY);
+        self.set_background(Color::GREY_MEDIUM);
 
         self.set_hexpand(true);
         self.height_request(20);

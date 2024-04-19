@@ -2,6 +2,7 @@ use super::left_panel::LeftPanel;
 use emulator::core::terminal_emulator::TerminalEmulator;
 use tmui::{
     prelude::*,
+    tlib::namespace::Orientation,
     tlib::object::{ObjectImpl, ObjectSubclass},
     widget::WidgetImpl,
 };

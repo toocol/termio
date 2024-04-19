@@ -21,7 +21,7 @@ impl ObjectImpl for LeftPanel {
     fn initialize(&mut self) {
         self.set_vexpand(true);
         self.width_request(300);
-        self.set_background(Color::GREY);
+        self.set_background(Color::GREY_LIGHT);
         self.set_size_hint(SizeHint::new().with_min_width(300).with_max_width(900));
     }
 }

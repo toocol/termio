@@ -39,7 +39,12 @@ impl ObjectImpl for TerminalEmulator {
     }
 }
 
-impl WidgetImpl for TerminalEmulator {}
+impl WidgetImpl for TerminalEmulator {
+    #[inline]
+    fn font_changed(&mut self) {
+        self.terminal_panel.set_terminal_font(self.font().clone())
+    }
+}
 
 impl TerminalEmulator {
     #[inline]

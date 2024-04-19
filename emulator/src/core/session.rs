@@ -179,7 +179,6 @@ impl Session {
             session,
             on_emulation_size_change(Size)
         );
-        connect!(emulation, image_size_changed(), session, on_view_size_change(i32:0, i32:1));
 
         // Bind connections between `session` and it's `shell_process`:
         session.shell_process.set_utf8_mode(true);
@@ -364,7 +363,7 @@ impl Session {
             return;
         }
 
-        self.view_mut().set_size(size.width(), size.height());
+        self.view_mut().set_size();
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////

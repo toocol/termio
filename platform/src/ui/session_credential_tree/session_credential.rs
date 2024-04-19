@@ -1,18 +1,17 @@
 use cli::ProtocolType;
 use tmui::{
-    tlib::utils::TimeStamp,
-    tree_view::{
+    tlib::utils::Timestamp, tree_view::{
         cell::{cell_render::TextCellRender, Cell},
         node_render::NodeRender,
         tree_view_object::TreeViewObject,
-    },
+    }
 };
 
 pub struct SessionCredential {
     protocol: ProtocolType,
     name: String,
     address: String,
-    create_time: u64,
+    create_time: Timestamp,
 }
 
 impl TreeViewObject for SessionCredential {
@@ -53,7 +52,7 @@ impl SessionCredential {
             protocol,
             name,
             address,
-            create_time: TimeStamp::timestamp(),
+            create_time: Timestamp::now(),
         }
     }
 }

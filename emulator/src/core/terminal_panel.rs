@@ -32,7 +32,7 @@ impl ObjectImpl for TerminalPanel {
 
         let session = self.create_session();
         let scrolled_view = session.create_terminal_view();
-        session.view_mut().set_vt_font(Config::font().into());
+        session.view_mut().set_vt_font(&mut Config::font().to_skia_fonts()[0]);
 
         self.add_child(scrolled_view);
     }
@@ -54,7 +54,7 @@ impl TerminalPanel {
     pub fn set_terminal_font(&mut self, font: Font) {
         self.sessions
             .iter_mut()
-            .for_each(|session| session.view_mut().set_vt_font(font.into()))
+            .for_each(|session| session.view_mut().set_vt_font(&mut font.to_skia_fonts()[0]))
     }
 
     pub fn send_key_event(&mut self, event: KeyEvent) {

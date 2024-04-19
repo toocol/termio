@@ -13,7 +13,7 @@ impl ObjectSubclass for ActivityBar {
 
 impl ObjectImpl for ActivityBar {
     fn initialize(&mut self) {
-        self.set_background(Color::GREY);
+        self.set_background(Color::GREY_DARK);
 
         self.set_vexpand(true);
         self.width_request(50);

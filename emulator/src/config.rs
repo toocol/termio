@@ -16,13 +16,13 @@ impl Config {
     #[inline]
     fn new() -> Self {
         Config { 
-            font: Font::with_family("Courier New"),
+            font: Font::with_families(&["Courier New"]),
         }
     }
 
     #[inline]
     pub fn font() -> Font {
-        instance().font
+        instance().font.clone()
     }
     #[inline]
     pub fn set_font(font: Font) {

@@ -159,9 +159,6 @@ pub trait EmulationSignal: ActionExt {
         /// @param newTitle Specifies the new title
         title_changed();
 
-        /// Emitted when the program running in the terminal changes the screen size.
-        image_size_changed();
-
         /// Emitted when the setImageSize() is called on this emulation for the first time.
         image_size_initialized();
 
@@ -574,8 +571,6 @@ impl Emulation for BaseEmulation {
 
         self.screen[0].resize_image(lines, columns);
         self.screen[1].resize_image(lines, columns);
-
-        emit!(self.image_size_changed(), (lines, columns));
 
         self.buffered_update();
     }
