@@ -8,7 +8,7 @@ pub struct Config {
 
 #[inline]
 fn instance() -> &'static mut Config {
-    static mut CONFIG: Lazy<Config> = Lazy::new(|| Config::new());
+    static mut CONFIG: Lazy<Config> = Lazy::new(Config::new);
     unsafe { &mut CONFIG }
 }
 

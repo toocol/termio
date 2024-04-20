@@ -22,15 +22,7 @@ use derivative::Derivative;
 use log::warn;
 use std::{ptr::NonNull, sync::atomic::Ordering, time::Duration};
 use tmui::{
-    application::{self},
-    clipboard::ClipboardLevel,
-    graphics::painter::Painter,
-    label::Label,
-    prelude::*,
-    scroll_bar::ScrollBar,
-    skia_safe::{self},
-    system::System,
-    tlib::{
+    application, clipboard::ClipboardLevel, graphics::painter::Painter, label::Label, opti::tracker::Tracker, prelude::*, scroll_bar::ScrollBar, skia_safe, system::System, tlib::{
         connect, emit,
         events::{KeyEvent, MouseEvent},
         figure::{Color, FPoint, FRect, Size},
@@ -39,8 +31,7 @@ use tmui::{
         object::{ObjectImpl, ObjectSubclass},
         signals,
         timer::Timer,
-    },
-    widget::WidgetImpl,
+    }, widget::WidgetImpl
 };
 
 #[extends(Widget, Layout(Stack))]
@@ -243,6 +234,7 @@ impl WidgetImpl for TerminalView {
 
     #[inline]
     fn on_mouse_move(&mut self, event: &MouseEvent) {
+        let _tracker = Tracker::start("terminal_view_mouse_move");
         self.handle_mouse_move(event)
     }
 }
@@ -343,9 +335,7 @@ impl TerminalView {
     /// Sets the terminal color palette used by the view.
     #[inline]
     pub fn set_color_table(&mut self, table: &[ColorEntry]) {
-        for i in 0..TABLE_COLORS {
-            self.color_table[i] = table[i];
-        }
+        self.color_table[..TABLE_COLORS].copy_from_slice(&table[..TABLE_COLORS]);
 
         self.set_background_color(self.color_table[DEFAULT_BACK_COLOR as usize].color)
     }
@@ -370,6 +360,7 @@ impl TerminalView {
     }
 
     /// Sets the background image of the terminal view.
+    #[allow(clippy::if_same_then_else)]
     pub fn set_background_image(&mut self, image: &str) {
         if !image.is_empty() {
             // TODO: load background image to Pixmap
@@ -632,8 +623,9 @@ impl TerminalView {
     }
 
     /// Returns the font used to draw characters in the view.
+    #[inline]
     pub fn get_vt_font(&self) -> &Font {
-        &self.font()
+        self.font()
     }
     /// Sets the font used to draw the display.  Has no effect if @p [`font`]
     /// is larger than the size of the display itself.

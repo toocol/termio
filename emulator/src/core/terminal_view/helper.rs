@@ -234,16 +234,17 @@ impl TerminalView {
                 return;
             }
 
-            text = text.replace("\r\n", "\n").replace("\n", "\r");
+            text = text.replace("\r\n", "\n").replace('\n', "\r");
 
             if self.trim_pasted_trailing_new_lines {
                 text = REGULAR_EXPRESSION.replace(&text, "").to_string();
             }
 
-            if self.confirm_multiline_paste && text.contains('\r') {
-                if !self.multiline_confirmation(&text) {
-                    return;
-                }
+            if self.confirm_multiline_paste
+                && text.contains('\r')
+                && !self.multiline_confirmation(&text)
+            {
+                return;
             }
 
             self.bracket_text(&mut text);
@@ -341,11 +342,10 @@ impl TerminalView {
         }
         emit!(
             self.copy_avaliable(),
-            self.screen_window()
+            !self.screen_window()
                 .unwrap()
                 .selected_text(false)
                 .is_empty()
-                == false
         );
     }
 
@@ -1024,7 +1024,7 @@ impl TerminalView {
                     // We also take the next one into account to handle the situation
                     // where characters exceed their cell width.
                     if dirty_mask[x] {
-                        let c = new_line[x + 0].character_union.data();
+                        let c = new_line[x].character_union.data();
                         if c == 0 {
                             continue;
                         }
@@ -1198,9 +1198,7 @@ impl TerminalView {
     }
 
     pub(super) fn swap_color_table(&mut self) {
-        let color = self.color_table[1];
-        self.color_table[1] = self.color_table[0];
-        self.color_table[0] = color;
+        self.color_table.swap(1, 0);
         self.colors_inverted = !self.colors_inverted;
         self.update();
     }

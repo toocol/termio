@@ -221,7 +221,7 @@ impl Session {
         view.set_triple_click_mode(TripleClickMode::SelectWholeLine);
         view.set_terminal_size_startup(true);
         view.set_blinking_cursor(true);
-        view.set_random_seed(view.id() as u32);
+        view.set_random_seed(view.id());
 
         let mut scroll_area: Box<ScrollArea> = Object::new(&[]);
         scroll_area.set_scroll_bar_position(ScrollBarPosition::End);

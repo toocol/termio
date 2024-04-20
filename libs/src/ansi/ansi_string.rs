@@ -42,7 +42,15 @@ pub struct AnsiString {
     fg_b: i16,
 }
 
+impl Default for AnsiString {
+    #[inline]
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl AnsiString {
+    #[inline]
     pub fn new() -> Self {
         AnsiString {
             builder: String::new(),
@@ -57,16 +65,23 @@ impl AnsiString {
         }
     }
 
+    #[inline]
     pub fn as_str(&self) -> &str {
         self.builder.as_str()
     }
 
+    #[inline]
     pub fn len(&self) -> usize {
         self.builder.len()
     }
 
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.builder.len() == 0
+    }
+
     pub fn foreground_256(&mut self, color: i16) -> &mut Self {
-        if color < 0 || color > 255 {
+        if !check_range(&color) {
             return self;
         }
         self.fg_r = -1;
@@ -77,7 +92,7 @@ impl AnsiString {
     }
 
     pub fn background_256(&mut self, color: i16) -> &mut Self {
-        if color < 0 || color > 255 {
+        if !check_range(&color) {
             return self;
         }
         self.bg_r = -1;
@@ -88,7 +103,7 @@ impl AnsiString {
     }
 
     pub fn foreground_rgb(&mut self, r: i16, g: i16, b: i16) -> &mut Self {
-        if r < 0 || r > 255 || g < 0 || g > 255 || b < 0 || b > 255 {
+        if !check_range(&r) || !check_range(&g) || !check_range(&b) {
             return self;
         }
         self.fg_r = r;
@@ -99,7 +114,7 @@ impl AnsiString {
     }
 
     pub fn background_rgb(&mut self, r: i16, g: i16, b: i16) -> &mut Self {
-        if r < 0 || r > 255 || g < 0 || g > 255 || b < 0 || b > 255 {
+        if !check_range(&r) || !check_range(&g) || !check_range(&b) {
             return self;
         }
         self.bg_r = r;
@@ -148,7 +163,7 @@ impl AnsiString {
     }
 
     pub fn append(&mut self, str: &str) -> &mut Self {
-        if str == "" {
+        if str.is_empty() {
             return self;
         }
         self.builder.push_str(self.fill_color(str).as_str());
@@ -156,7 +171,7 @@ impl AnsiString {
     }
 
     pub fn cursor_move_to(&mut self, line: i32, column: i32) -> &mut Self {
-        let changed = CursorPositionHelper::cursor_move( line, column);
+        let changed = CursorPositionHelper::cursor_move(line, column);
         self.builder.push_str(changed.as_str());
         self
     }
@@ -333,6 +348,11 @@ impl CursorPositionHelper {
     }
 }
 
+#[inline]
+fn check_range(color: &i16) -> bool {
+    (0..=255).contains(color)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -386,7 +406,7 @@ mod tests {
             .space()
             .append_u64(32)
             .save_cursor_position()
-            .cursor_move_to( 0, 0)
+            .cursor_move_to(0, 0)
             .append("Home")
             .restore_cursor_position()
             .append_i32(0xffffff)

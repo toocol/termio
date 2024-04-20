@@ -22,10 +22,7 @@ pub struct Token {
 impl Token {
     #[inline]
     fn new(type_: TokenType, text: String) -> Self {
-        Self {
-            type_: type_,
-            text: text,
-        }
+        Self { type_, text }
     }
 }
 
@@ -88,13 +85,13 @@ impl KeyboardTranslatorReader {
         // if 'result' is the name of a command then the entry result will be that
         // command, otherwise the result will be treated as a string to echo when the
         // key sequence specified by 'condition' is pressed
-        let mut command = Command::NoCommand;
+        let mut command = Command::None;
         if Self::parse_as_command(&result, &mut command) {
             entry_string.push_str(&result);
         } else {
             let mut str = "\"".to_string();
             str.push_str(&result);
-            str.push_str("\"");
+            str.push('\"');
             entry_string.push_str(&str);
         }
 
@@ -128,7 +125,7 @@ impl KeyboardTranslatorReader {
     }
 
     //////////////////////////////////////////////////////////////////////// private function
-    fn parse_as_modifier(item: &String, modifier: &mut KeyboardModifier) -> bool {
+    fn parse_as_modifier(item: &str, modifier: &mut KeyboardModifier) -> bool {
         if item.to_lowercase() == "shift" {
             *modifier = KeyboardModifier::ShiftModifier
         } else if item.to_lowercase() == "ctrl" || item.to_lowercase() == "control" {
@@ -146,19 +143,19 @@ impl KeyboardTranslatorReader {
         true
     }
 
-    fn parse_as_state_flag(item: &String, state: &mut State) -> bool {
+    fn parse_as_state_flag(item: &str, state: &mut State) -> bool {
         if item.to_lowercase() == "appcukeys" || item.to_lowercase() == "appcursorkeys" {
-            *state = State::CursorKeysState
+            *state = State::CursorKeys
         } else if item.to_lowercase() == "ansi" {
-            *state = State::AnsiState
+            *state = State::Ansi
         } else if item.to_lowercase() == "newline" {
-            *state = State::NewLineState
+            *state = State::NewLine
         } else if item.to_lowercase() == "appscreen" {
-            *state = State::AlternateScreenState
+            *state = State::AlternateScreen
         } else if item.to_lowercase() == "anymod" || item.to_lowercase() == "anymodifier" {
-            *state = State::AnyModifierState
+            *state = State::AnyModifier
         } else if item.to_lowercase() == "appkeypad" {
-            *state = State::ApplicationKeypadState
+            *state = State::ApplicationKeypad
         } else {
             return false;
         }
@@ -168,7 +165,7 @@ impl KeyboardTranslatorReader {
 
     fn parse_as_key_code(item: &String, key_code: &mut u32) -> bool {
         let code = KeyCode::from(item);
-        if !(code == KeyCode::Unknown) {
+        if code != KeyCode::Unknown {
             let code: u32 = code.into();
             *key_code = code;
         } else if item.to_lowercase() == "prior" {
@@ -183,23 +180,23 @@ impl KeyboardTranslatorReader {
         true
     }
 
-    fn parse_as_command(text: &String, command: &mut Command) -> bool {
+    fn parse_as_command(text: &str, command: &mut Command) -> bool {
         if text.to_lowercase() == "erase" {
-            *command = Command::EraseCommand
+            *command = Command::Erase
         } else if text.to_lowercase() == "scrollpageup" {
-            *command = Command::ScrollPageUpCommand
+            *command = Command::ScrollPageUp
         } else if text.to_lowercase() == "scrollpagedown" {
-            *command = Command::ScrollPageDownCommand
+            *command = Command::ScrollPageDown
         } else if text.to_lowercase() == "scrolllineup" {
-            *command = Command::ScrollLineUpCommand
+            *command = Command::ScrollLineUp
         } else if text.to_lowercase() == "scrolllinedown" {
-            *command = Command::ScrollLineDownCommand
+            *command = Command::ScrollLineDown
         } else if text.to_lowercase() == "scrolllock" {
-            *command = Command::ScrollLockCommand
+            *command = Command::ScrollLock
         } else if text.to_lowercase() == "scrolluptotop" {
-            *command = Command::ScrollUpToTopCommand
+            *command = Command::ScrollUpToTop
         } else if text.to_lowercase() == "scrolldowntobottom" {
-            *command = Command::ScrollDownToBottomCommand
+            *command = Command::ScrollDownToBottom
         } else {
             return false;
         }
@@ -291,8 +288,8 @@ impl KeyboardTranslatorReader {
         while let Some(line) = self.source.next() {
             let tokens = self.tokenize(line);
             if !tokens.is_empty() && tokens.first().unwrap().type_ == TokenType::KeyKeyword {
-                let mut flags = State::NoState;
-                let mut flag_mask = State::NoState;
+                let mut flags = State::None;
+                let mut flag_mask = State::None;
                 let mut modifiers = KeyboardModifier::NoModifier;
                 let mut modifier_mask = KeyboardModifier::NoModifier;
                 let mut key_code = 0u32;
@@ -306,15 +303,15 @@ impl KeyboardTranslatorReader {
                     &mut flag_mask,
                 );
 
-                let mut command = Command::NoCommand;
+                let mut command = Command::None;
                 let mut text = vec![];
 
                 if tokens[2].type_ == TokenType::OutputText {
                     text = tokens[2].text.as_bytes().to_vec();
-                } else if tokens[2].type_ == TokenType::Command {
-                    if !Self::parse_as_command(&tokens[2].text, &mut command) {
-                        warn!("Command `{}` parse failed.", tokens[2].text);
-                    }
+                } else if tokens[2].type_ == TokenType::Command
+                    && !Self::parse_as_command(&tokens[2].text, &mut command)
+                {
+                    warn!("Command `{}` parse failed.", tokens[2].text);
                 }
 
                 let mut new_entry = Entry::new();
@@ -348,10 +345,10 @@ impl KeyboardTranslatorReader {
         let mut is_wanted = true;
         let mut buffer = String::new();
 
-        let mut temp_modifiers = modifiers.clone();
-        let mut temp_modifier_mask = modifier_mask.clone();
-        let mut temp_flags = flags.clone();
-        let mut temp_flag_mask = flag_mask.clone();
+        let mut temp_modifiers = *modifiers;
+        let mut temp_modifier_mask = *modifier_mask;
+        let mut temp_flags = *flags;
+        let mut temp_flag_mask = *flag_mask;
 
         for i in 0..text.len() {
             let ch = text[i];
@@ -369,7 +366,7 @@ impl KeyboardTranslatorReader {
             if (end_of_item || is_last_letter) && !buffer.is_empty() {
                 let mut item_modifier = KeyboardModifier::NoModifier;
                 let mut item_key_code = 0u32;
-                let mut item_flag = State::NoState;
+                let mut item_flag = State::None;
 
                 if Self::parse_as_modifier(&buffer, &mut item_modifier) {
                     temp_modifier_mask = temp_modifier_mask.or(item_modifier);

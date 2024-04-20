@@ -12,13 +12,22 @@ pub struct TimeRecorder {
     start: u64,
 }
 
+impl Default for TimeRecorder {
+    #[inline]
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl TimeRecorder {
+    #[inline]
     pub fn new() -> TimeRecorder {
         TimeRecorder {
             start: TimeStamp::timestamp(),
         }
     }
 
+    #[inline]
     pub fn end(&self) -> u64 {
         let end = TimeStamp::timestamp();
         end - self.start

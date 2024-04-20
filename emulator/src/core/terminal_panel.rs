@@ -14,6 +14,7 @@ use tmui::{
 ///
 /// Every TerminalPanel has an tab page, it drawed in the main program, not in the terminal program.
 #[extends(Widget, Layout(SplitPane))]
+#[allow(clippy::vec_box)]
 pub struct TerminalPanel {
     /// All the terminal sessions.
     sessions: Vec<Box<Session>>,

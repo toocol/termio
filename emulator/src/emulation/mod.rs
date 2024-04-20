@@ -11,12 +11,13 @@ use crate::{
         screen_window::{ScreenWindow, ScreenWindowSignals},
     },
     tools::{
+        event::KeyPressedEvent,
         history::HistoryType,
         terminal_character_decoder::TerminalCharacterDecoder,
-        translators::{KeyboardTranslator, KeyboardTranslatorManager}, event::KeyPressedEvent,
+        translators::{KeyboardTranslator, KeyboardTranslatorManager},
     },
 };
-use std::{ptr::NonNull, rc::Rc, time::Duration, cell::RefCell};
+use std::{cell::RefCell, ptr::NonNull, rc::Rc, time::Duration};
 use tmui::{
     prelude::*,
     tlib::{
@@ -34,6 +35,7 @@ const BULK_TIMEOUT2: u64 = 40;
 
 #[repr(u8)]
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
+#[allow(clippy::enum_variant_names)]
 pub enum EmulationState {
     /// The emulation is currently receiving user input.
     NotifyNormal = 0,
@@ -61,6 +63,7 @@ pub enum EmulationCodec {
 /// Every running [`Session`] has one specified Emulation.
 /// The common abstract to use in dyn trait object was the [`EmulationWrapper`]
 #[extends(Object)]
+#[allow(clippy::vec_box)]
 pub struct BaseEmulation {
     /// The manager of keyboard translator.
     pub translator_manager: Option<NonNull<KeyboardTranslatorManager>>,
@@ -342,7 +345,7 @@ impl BaseEmulation {
     }
 
     /// Wrap trait `Emulation` to `EmulationWrapper`.
-    fn wrap(self: Self) -> Box<dyn Emulation> {
+    fn wrap(self) -> Box<dyn Emulation> {
         let mut wrapper: Box<dyn Emulation> = Box::new(self);
         wrapper.init();
         wrapper
@@ -372,7 +375,7 @@ impl Emulation for BaseEmulation {
     fn create_window(&mut self) -> Option<NonNull<ScreenWindow>> {
         let mut window = ScreenWindow::new();
 
-        window.set_screen(self.current_screen.clone());
+        window.set_screen(self.current_screen);
 
         let window_ptr = NonNull::new(window.as_mut() as *mut ScreenWindow);
         self.windows.push(window);
@@ -523,11 +526,11 @@ impl Emulation for BaseEmulation {
         unsafe {
             let old = self.current_screen.as_ref().unwrap().as_ref().id();
             let current = NonNull::new(self.screen[(index & 1) as usize].as_mut() as *mut Screen);
-            self.current_screen = current.clone();
+            self.current_screen = current;
             if old != current.as_ref().unwrap().as_ref().id() {
                 // Tell all windows onto this emulation to switch to the newly active screen.
                 for window in self.windows.iter_mut() {
-                    window.set_screen(current.clone())
+                    window.set_screen(current)
                 }
             }
         }
@@ -606,18 +609,18 @@ impl Emulation for BaseEmulation {
 
         // Send characters to terminal emulator
         let text_slice = utf16_text.as_slice();
-        for i in 0..text_slice.len() {
-            self.receive_char(text_slice[i] as wchar_t);
+        for &ts in text_slice.iter() {
+            self.receive_char(ts as wchar_t);
         }
 
         // Look for z-modem indicator
         for i in 0..len as usize {
-            if buffer[i] == '\u{0030}' as u8 {
-                if len as usize - i - 1 > 3
-                    && String::from_utf8(buffer[i + 1..i + 4].to_vec()).unwrap() == "B00"
-                {
-                    emit!(self.zmodem_detected())
-                }
+            #[allow(clippy::char_lit_as_u8)]
+            if buffer[i] == '\u{0030}' as u8
+                && len as usize - i - 1 > 3
+                && String::from_utf8(buffer[i + 1..i + 4].to_vec()).unwrap() == "B00"
+            {
+                emit!(self.zmodem_detected())
             }
         }
     }

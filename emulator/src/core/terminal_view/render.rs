@@ -31,16 +31,16 @@ impl TerminalView {
         let tly = tl.y();
 
         let lux = (self.used_columns - 1).min(
-            0.max(((rect.left() as f32 - tlx as f32 - self.left_margin) / self.font_width) as i32),
+            0.max(((rect.left() - tlx as f32 - self.left_margin) / self.font_width) as i32),
         );
         let luy = (self.used_lines - 1).min(
-            0.max(((rect.top() as f32 - tly as f32 - self.top_margin) / self.font_height) as i32),
+            0.max(((rect.top() - tly as f32 - self.top_margin) / self.font_height) as i32),
         );
         let rlx = (self.used_columns - 1).min(
-            0.max(((rect.right() as f32 - tlx as f32 - self.left_margin) / self.font_width) as i32),
+            0.max(((rect.right() - tlx as f32 - self.left_margin) / self.font_width) as i32),
         );
         let rly = (self.used_lines - 1).min(0.max(
-            ((rect.bottom() as f32 - tly as f32 - self.top_margin) / self.font_height) as i32,
+            ((rect.bottom() - tly as f32 - self.top_margin) / self.font_height) as i32,
         ));
 
         let buffer_size = self.used_columns as usize;
@@ -73,9 +73,10 @@ impl TerminalView {
                             &mut extended_char_length,
                         )
                         .unwrap();
-                    for index in 0..extended_char_length as usize {
+
+                    for c in chars.iter().take(extended_char_length as usize) {
                         assert!(p < buffer_size);
-                        unistr[p] = chars[index];
+                        unistr[p] = *c;
                         p += 1;
                     }
                 } else {
@@ -137,7 +138,7 @@ impl TerminalView {
                 if line_draw {
                     self.fixed_font = false;
                 }
-                unistr.resize(p as usize, 0);
+                unistr.resize(p, 0);
 
                 // Create a text scaling matrix for double width and double height lines.
                 let mut text_scale = Matrix::new_identity();
@@ -173,6 +174,7 @@ impl TerminalView {
 
                 // paint text fragment
                 let style = self.image()[self.loc(x, y) as usize];
+                #[allow(clippy::useless_transmute)]
                 let slice: Vec<uwchar_t> = unsafe { std::mem::transmute(unistr.clone()) };
                 self.draw_text_fragment(painter, text_area, WideString::from_vec(slice), &style);
 
@@ -256,8 +258,8 @@ impl TerminalView {
         invert_colors: &mut bool,
     ) {
         painter.set_antialiasing(false);
-        let mut cursor_rect: FRect = rect.into();
-        cursor_rect.set_height(self.font_height as f32 - self.line_spacing as f32 - 1.);
+        let mut cursor_rect: FRect = rect;
+        cursor_rect.set_height(self.font_height - self.line_spacing as f32 - 1.);
 
         if !self.cursor_blinking {
             if self.cursor_color.valid {
@@ -367,9 +369,9 @@ impl TerminalView {
                 painter.fill_rect(rect, style.background_color.color(&self.color_table));
                 painter.draw_paragraph(
                     &text,
-                    (rect.x() as f32, rect.y() as f32),
+                    (rect.x(), rect.y()),
                     0.,
-                    rect.width() as f32,
+                    rect.width(),
                     Some(1),
                     false,
                 );
@@ -389,18 +391,18 @@ impl TerminalView {
                 );
 
                 if use_underline {
-                    let y = draw_rect.bottom() as f32 - 0.5;
-                    painter.draw_line_f(draw_rect.left() as f32, y, draw_rect.right() as f32, y)
+                    let y = draw_rect.bottom() - 0.5;
+                    painter.draw_line_f(draw_rect.left(), y, draw_rect.right(), y)
                 }
 
                 if use_strike_out {
-                    let y = (draw_rect.top() as f32 + draw_rect.bottom() as f32) / 2.;
-                    painter.draw_line_f(draw_rect.left() as f32, y, draw_rect.right() as f32, y)
+                    let y = (draw_rect.top() + draw_rect.bottom()) / 2.;
+                    painter.draw_line_f(draw_rect.left(), y, draw_rect.right(), y)
                 }
 
                 if use_overline {
-                    let y = draw_rect.top() as f32 + 0.5;
-                    painter.draw_line_f(draw_rect.left() as f32, y, draw_rect.right() as f32, y)
+                    let y = draw_rect.top() + 0.5;
+                    painter.draw_line_f(draw_rect.left(), y, draw_rect.right(), y)
                 }
             }
         }
@@ -422,8 +424,8 @@ impl TerminalView {
         }
 
         let wchar_t_bytes = str.as_vec();
-        for i in 0..wchar_t_bytes.len() {
-            let code = (wchar_t_bytes[i] & 0xff) as u8;
+        for (i, b) in wchar_t_bytes.iter().enumerate() {
+            let code = (*b & 0xff) as u8;
             if LINE_CHARS[code as usize] != 0 {
                 draw_line_char(
                     painter,
@@ -639,7 +641,7 @@ pub(super) fn draw_other_char(painter: &mut Painter, x: f32, y: f32, w: f32, h: 
     let ey = y + h - 1.;
 
     // Double dashes
-    if 0x4C <= code && code <= 0x4F {
+    if (0x4C..=0x4F).contains(&code) {
         let x_half_gap = 1f32.max(w / 15.);
         let y_half_gap = 1f32.max(h / 15.);
 
@@ -672,7 +674,7 @@ pub(super) fn draw_other_char(painter: &mut Painter, x: f32, y: f32, w: f32, h: 
         }
 
     // Rounded corner characters
-    } else if 0x6D <= code && code <= 0x70 {
+    } else if (0x6D..=0x70).contains(&code) {
         let r = w * 3. / 8.;
         let d = 2. * r;
 
@@ -705,7 +707,7 @@ pub(super) fn draw_other_char(painter: &mut Painter, x: f32, y: f32, w: f32, h: 
         }
 
     // Diagonals
-    } else if 0x71 <= code && code <= 0x73 {
+    } else if (0x71..=0x73).contains(&code) {
         match code {
             0x71 => {
                 // BOX DRAWINGS LIGHT DIAGONAL UPPER RIGHT TO LOWER LEFT

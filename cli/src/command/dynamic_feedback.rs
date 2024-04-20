@@ -1,3 +1,5 @@
+use std::cmp::Ordering;
+
 use crate::{Command, InputCommandState, COMMANDS};
 
 pub struct CommandFeedback {
@@ -37,21 +39,17 @@ impl DynamicFeedback {
 
     pub fn dynamic_feedback(&self, input: &str) -> Vec<CommandFeedback> {
         let mut feedbacks = vec![];
-        if input.len() == 0 {
+        if input.is_empty() {
             // TODO: Load recent used command's feedback.
-        } else {
-            if let Ok(guard) = COMMANDS.lock() {
-                for (key, val) in guard.iter() {
-                    if key.contains(input) || input.contains(key) {
-                        let state = if key.len() > input.len() {
-                            InputCommandState::Less
-                        } else if key.len() == input.len() {
-                            InputCommandState::Equal
-                        } else {
-                            InputCommandState::More
-                        };
-                        feedbacks.append(&mut self.generate_command_feedback(val, state));
-                    }
+        } else if let Ok(guard) = COMMANDS.lock() {
+            for (key, val) in guard.iter() {
+                if key.contains(input) || input.contains(key) {
+                    let state = match input.len().cmp(&key.len()) {
+                        Ordering::Greater => InputCommandState::More,
+                        Ordering::Equal => InputCommandState::Equal,
+                        Ordering::Less => InputCommandState::Less,
+                    };
+                    feedbacks.append(&mut self.generate_command_feedback(val, state));
                 }
             }
         }

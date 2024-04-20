@@ -11,7 +11,7 @@ pub(super) static ANTIALIAS_TEXT: AtomicBool = AtomicBool::new(true);
 pub(super) static HAVE_TRANSPARENCY: AtomicBool = AtomicBool::new(true);
 pub(super) static TEXT_BLINK_DELAY: AtomicU64 = AtomicU64::new(500);
 
-pub(super) const REPCHAR: &'static str = concat!(
+pub(super) const REPCHAR: &str = concat!(
     "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
     "abcdefgjijklmnopqrstuvwxyz",
     "0123456789./+@"

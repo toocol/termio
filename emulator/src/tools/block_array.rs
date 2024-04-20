@@ -7,7 +7,7 @@ use log::error;
 use std::{
     ffi::CString,
     mem::size_of,
-    ptr::{null, null_mut},
+    ptr::null,
     sync::atomic::{AtomicI32, Ordering},
 };
 
@@ -74,7 +74,7 @@ impl BlockArray {
     ///
     /// Note, that the block may be dropped completely if history is turned off.
     pub fn append(&mut self) -> i32 {
-        if self.size <= 0 {
+        if self.size == 0 {
             return -1;
         }
 
@@ -133,7 +133,7 @@ impl BlockArray {
     /// operation on this class.
     pub fn at(&mut self, i: usize) -> Option<&Block> {
         if i == self.index as usize + 1 {
-            return Some(&self.last_block.as_ref().unwrap());
+            return Some(self.last_block.as_ref().unwrap());
         }
 
         if i == self.last_map_index as usize {
@@ -219,7 +219,7 @@ impl BlockArray {
     }
 
     pub fn new_block(&mut self) -> i32 {
-        if self.size <= 0 {
+        if self.size == 0 {
             return -1;
         }
         self.append();
@@ -300,7 +300,7 @@ impl BlockArray {
 
         let mode = CString::new("w+b").unwrap();
         let fion = unsafe { fdopen(dup(self.ion), mode.as_ptr()) };
-        if fion == null_mut() {
+        if fion.is_null() {
             error!("`fdopen/dup` failed.");
             return;
         }
@@ -395,17 +395,16 @@ impl BlockArray {
 
         let mode = CString::new("w+b").unwrap();
         let fion = unsafe { fdopen(dup(self.ion), mode.as_ptr()) };
-        if fion == null_mut() {
+        if fion.is_null() {
             error!("`fdopen/dup` failed.");
             return;
         }
 
-        let first_block;
-        if self.current <= new_size as i32 {
-            first_block = self.current + 1;
+        let first_block = if self.current <= new_size as i32 {
+            self.current + 1
         } else {
-            first_block = 0;
-        }
+            0
+        };
 
         let mut old_pos;
         let mut cursor = first_block;

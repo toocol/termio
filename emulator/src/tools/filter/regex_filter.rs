@@ -129,10 +129,8 @@ impl Filter for RegexFilter {
                 let mut spot =
                     RegexFilterHotSpot::new(start_line, start_column, end_line, end_column);
                 let mut captured_texts = vec![];
-                for matched in cap.iter() {
-                    if let Some(m) = matched {
-                        captured_texts.push(m.as_str().to_string());
-                    }
+                for matched in cap.iter().flatten() {
+                    captured_texts.push(matched.as_str().to_string());
                 }
                 spot.set_captured_texts(captured_texts);
 

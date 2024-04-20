@@ -7,7 +7,7 @@ use libc::{c_void, close, dup, fileno, lseek, read, tmpfile, write, FILE};
 use log::error;
 use std::{
     mem::size_of,
-    ptr::{null, null_mut},
+    ptr::null,
     rc::Rc,
     slice, cell::RefCell,
 };
@@ -44,7 +44,7 @@ impl HistoryFile {
     }
 
     pub fn add(&mut self, bytes: *const u8, len: i32) {
-        if self.file_map != null() {
+        if !self.file_map.is_null() {
             self.unmap()
         }
 
@@ -76,11 +76,11 @@ impl HistoryFile {
         // calls (decided by using MAP_THRESHOLD) then mmap the log
         // file to improve performance.
         self.read_write_balance -= 1;
-        if self.file_map == null() && self.read_write_balance < MAP_THRESHOLD {
+        if self.file_map.is_null() && self.read_write_balance < MAP_THRESHOLD {
             self.map();
         }
 
-        if self.file_map != null() {
+        if !self.file_map.is_null() {
             unsafe {
                 slice::from_raw_parts_mut(bytes, len as usize)[0..len as usize].copy_from_slice(
                     &self.file_map_bytes.as_ref().unwrap()
@@ -107,7 +107,6 @@ impl HistoryFile {
             let rc = unsafe { read(self.ion, bytes as *mut c_void, len as u32) };
             if rc < 0 {
                 error!("`HistoryFile` get(): lseek failed.");
-                return;
             }
         }
     }
@@ -118,7 +117,7 @@ impl HistoryFile {
 
     /// mmaps the file in read-only mode
     pub fn map(&mut self) {
-        assert!(self.file_map == null());
+        assert!(self.file_map.is_null());
 
         self.file_map = mmap(null(), self.length, PROT_READ, MAP_PRIVATE, self.ion, 0);
 
@@ -142,16 +141,16 @@ impl HistoryFile {
 
     /// returns true if the file is mmap'ed
     pub fn is_mapped(&self) -> bool {
-        self.file_map != null()
+        !self.file_map.is_null()
     }
 }
 
 impl Drop for HistoryFile {
     fn drop(&mut self) {
-        if self.file_map != null() {
+        if !self.file_map.is_null() {
             self.unmap();
         }
-        if self.tempfile != null_mut() {
+        if !self.tempfile.is_null() {
             unsafe { close(self.ion) };
         }
     }
@@ -183,7 +182,7 @@ impl HistoryScrollFile {
     pub fn new(log_file_name: String) -> Self {
         Self {
             history_type: Rc::new(RefCell::new(HistoryTypeFile::new(log_file_name.clone()))),
-            log_file_name: log_file_name,
+            log_file_name,
             index: Box::new(HistoryFile::new()),
             cells: Box::new(HistoryFile::new()),
             line_flags: Box::new(HistoryFile::new()),

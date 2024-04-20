@@ -20,12 +20,13 @@ use crate::{
             COLOR_SPACE_256, COLOR_SPACE_DEFAULT, COLOR_SPACE_RGB, COLOR_SPACE_SYSTEM,
             VT100_GRAPHICS,
         },
+        event::KeyPressedEvent,
         history::HistoryType,
         terminal_character_decoder::TerminalCharacterDecoder,
-        translators::{Command, KeyboardTranslatorManager, State, CTRL_MODIFIER}, event::KeyPressedEvent,
+        translators::{Command, KeyboardTranslatorManager, State, CTRL_MODIFIER},
     },
 };
-use std::{collections::HashMap, ptr::NonNull, rc::Rc, cell::RefCell};
+use std::{cell::RefCell, collections::HashMap, ptr::NonNull, rc::Rc};
 use tmui::{
     prelude::*,
     tlib::{
@@ -45,7 +46,7 @@ use widestring::WideString;
 ///
 /// This section deals with decoding the incoming character stream.
 /// Decoding means here, that the stream is first separated into `tokens'
-//// which are then mapped to a `meaning' provided as operations by the`Screen' class or by the emulation class itself.
+/// which are then mapped to a `meaning' provided as operations by the`Screen' class or by the emulation class itself.
 ///
 /// The pipeline proceeds as follows:
 ///
@@ -167,7 +168,7 @@ const MAX_TOKEN_LENGTH: usize = 256;
 const MAXARGS: usize = 15;
 
 /// Mode #1.
-const MODE_APP_SCREEN: usize = MODES_SCREEN + 0;
+const MODE_APP_SCREEN: usize = MODES_SCREEN;
 /// Application cursor key (DECCKM).
 const MODE_APP_CURSOR_KEY: usize = MODES_SCREEN + 1;
 /// Application key pad.
@@ -247,23 +248,28 @@ pub struct VT102Emulation {
 }
 impl_as_any!(VT102Emulation);
 impl ObjectOperation for VT102Emulation {
+    #[inline]
     fn id(&self) -> ObjectId {
         self.emulation().id()
     }
 
+    #[inline]
     fn set_property(&mut self, name: &str, value: Value) {
         self.emulation_mut().set_property(name, value)
     }
 
+    #[inline]
     fn get_property(&self, name: &str) -> Option<&Value> {
         self.emulation().get_property(name)
     }
 
+    #[inline]
     fn constructed(&self) -> bool {
         self.emulation().constructed()
     }
 }
 impl Default for VT102Emulation {
+    #[inline]
     fn default() -> Self {
         Self {
             emulation: Default::default(),
@@ -284,12 +290,15 @@ impl Default for VT102Emulation {
 }
 impl ActionExt for VT102Emulation {}
 impl Reflect for VT102Emulation {
+    #[inline]
     fn as_reflect(&self) -> &dyn Reflect {
         self
     }
+    #[inline]
     fn as_reflect_mut(&mut self) -> &mut dyn Reflect {
         self
     }
+    #[inline]
     fn as_reflect_boxed(self: Box<Self>) -> Box<dyn Reflect> {
         self
     }
@@ -313,6 +322,7 @@ const CPS: i32 = 64;
 
 impl VT102Emulation {
     /// Constructer to create a new Emulation.
+    #[allow(clippy::field_reassign_with_default)]
     pub fn new(translator_manager: Option<NonNull<KeyboardTranslatorManager>>) -> Self {
         let base_emulation = BaseEmulation::new(translator_manager);
         let mut vt102_emulation: VT102Emulation = Default::default();
@@ -324,7 +334,7 @@ impl VT102Emulation {
     }
 
     /// Wrap trait `Emulation` to `EmulationWrapper`.
-    pub fn wrap(self: Self) -> Box<dyn Emulation> {
+    pub fn wrap(self) -> Box<dyn Emulation> {
         let mut wrapper: Box<dyn Emulation> = Box::new(self);
         wrapper.init();
         wrapper
@@ -378,6 +388,7 @@ impl VT102Emulation {
         self.prev_cc = 0;
     }
 
+    #[allow(clippy::if_same_then_else)]
     fn process_token(&mut self, token: i32, p: wchar_t, q: i32) {
         let current_screen = unsafe {
             self.emulation
@@ -846,7 +857,7 @@ impl VT102Emulation {
             current_screen.set_cursor_x(p as i32);
         } else if token == ty_csi_pn!('H') {
             // VT100
-            current_screen.set_cursor_yx(p as i32, q as i32);
+            current_screen.set_cursor_yx(p as i32, q);
         } else if token == ty_csi_pn!('I') {
             current_screen.tab(p as i32);
         } else if token == ty_csi_pn!('L') {
@@ -873,10 +884,10 @@ impl VT102Emulation {
             current_screen.set_cursor_y(p as i32);
         } else if token == ty_csi_pn!('f') {
             // VT100
-            current_screen.set_cursor_yx(p as i32, q as i32);
+            current_screen.set_cursor_yx(p as i32, q);
         } else if token == ty_csi_pn!('r') {
             // VT100
-            self.set_margins(p as i32, q as i32);
+            self.set_margins(p as i32, q);
         } else if token == ty_csi_pn!('y') {
             // IGNORED: Confidence test.
             // VT100
@@ -1229,7 +1240,7 @@ impl VT102Emulation {
             current_screen.clear_to_end_of_line();
         } else if token == ty_vt52!('Y') {
             // VT52
-            current_screen.set_cursor_yx(p as i32 - 31, q as i32 - 31);
+            current_screen.set_cursor_yx(p as i32 - 31, q - 31);
         } else if token == ty_vt52!('Z') {
             // VT52
             self.report_terminal_type();
@@ -1279,9 +1290,7 @@ impl VT102Emulation {
         // ignored, only the second char in ST ("\e\\") is appended to tokenBuffer.
         let mut new_value = WideString::new();
         let slice: &[uwchar_t] = unsafe {
-            std::mem::transmute(
-                &self.token_buffer[i as usize + 1..(self.token_buffer_pos - i - 2) as usize],
-            )
+            std::mem::transmute(&self.token_buffer[i + 1..(self.token_buffer_pos - i - 2)])
         };
         new_value.push_slice(slice);
 
@@ -1356,7 +1365,7 @@ impl VT102Emulation {
     }
 
     fn apply_charset(&mut self, c: wchar_t) -> wchar_t {
-        if self.charset().graphic && 0x5f <= c && c <= 0x7e {
+        if self.charset().graphic && (0x5f..=0x7e).contains(&c) {
             return VT100_GRAPHICS[(c - 0x5f) as usize];
         }
         if self.charset().pound && c == wch!('#') {
@@ -1380,14 +1389,14 @@ impl VT102Emulation {
     }
 
     fn set_charset(&mut self, n: i32, cs: u8) {
-        self.charset[0].charset[(n & 3) as usize] = cs as u8;
+        self.charset[0].charset[(n & 3) as usize] = cs;
         self.use_charset(self.charset[0].current_charset);
-        self.charset[1].charset[(n & 3) as usize] = cs as u8;
+        self.charset[1].charset[(n & 3) as usize] = cs;
         self.use_charset(self.charset[1].current_charset);
     }
 
     fn use_charset(&mut self, n: i32) {
-        let mut charset = self.charset();
+        let charset = self.charset();
         charset.current_charset = n & 3;
         charset.graphic = charset.charset[(n & 3) as usize] == b'0';
         // This mode is obsolete.
@@ -1400,7 +1409,7 @@ impl VT102Emulation {
     }
 
     fn save_cursor(&mut self) {
-        let mut charset = self.charset();
+        let charset = self.charset();
         charset.saved_graphic = charset.graphic;
         charset.saved_pound = charset.pound;
         // we are not clear about these
@@ -1419,7 +1428,7 @@ impl VT102Emulation {
     }
 
     fn restore_cursor(&mut self) {
-        let mut charset = self.charset();
+        let charset = self.charset();
         charset.graphic = charset.saved_graphic;
         charset.pound = charset.saved_pound;
         unsafe {
@@ -1512,9 +1521,7 @@ impl VT102Emulation {
     fn report_decoding_error(&self) {
         if self.token_buffer_pos == 0
             || self.token_buffer_pos == 1 && self.token_buffer[0] & 0xff >= 32
-        {
-            return;
-        }
+        {}
     }
 
     fn report_terminal_type(&self) {
@@ -1787,12 +1794,12 @@ impl Emulation for VT102Emulation {
                 .find_entry(
                     KeyCode::KeyBackspace as u32,
                     KeyboardModifier::NoModifier,
-                    Some(State::NoState),
+                    Some(State::None),
                 )
         };
 
         let text = entry.text(None, None);
-        if text.len() > 0 {
+        if !text.is_empty() {
             text[0] as char
         } else {
             '\u{b}'
@@ -2109,22 +2116,22 @@ impl Emulation for VT102Emulation {
     #[inline]
     fn send_key_event(&mut self, event: KeyPressedEvent, from_paste: bool) {
         let modifiers = event.modifier();
-        let mut states = State::NoState;
+        let mut states = State::None;
 
         if self.get_mode(MODE_NEWLINE) {
-            states = states.or(State::NewLineState)
+            states = states.or(State::NewLine)
         }
         if self.get_mode(MODE_ANSI) {
-            states = states.or(State::AnsiState)
+            states = states.or(State::Ansi)
         }
         if self.get_mode(MODE_APP_CURSOR_KEY) {
-            states = states.or(State::CursorKeysState)
+            states = states.or(State::CursorKeys)
         }
         if self.get_mode(MODE_APP_SCREEN) {
-            states = states.or(State::AlternateScreenState)
+            states = states.or(State::AlternateScreen)
         }
         if self.get_mode(MODE_APP_KEY_PAD) && modifiers.has(KeyboardModifier::KeypadModifier) {
-            states = states.or(State::ApplicationKeypadState)
+            states = states.or(State::ApplicationKeypad)
         }
 
         if modifiers.has(KeyboardModifier::ControlModifier) {
@@ -2161,7 +2168,7 @@ impl Emulation for VT102Emulation {
                 .has(KeyboardModifier::MetaModifier);
             let wants_any_modifier = (entry.state().as_u8() as u32
                 & entry.modifier_mask().as_u32()
-                & State::AnyModifierState.as_u8() as u32)
+                & State::AnyModifier.as_u8() as u32)
                 != 0;
 
             if modifiers.has(KeyboardModifier::AltModifier)
@@ -2177,13 +2184,13 @@ impl Emulation for VT102Emulation {
                 text_to_send.splice(0..0, b"\x1B@s".to_owned());
             }
 
-            if entry.command() != Command::NoCommand {
-                if entry.command().has(Command::EraseCommand) {
+            if entry.command() != Command::None {
+                if entry.command().has(Command::Erase) {
                     text_to_send.push(self.erase_char() as u8);
                 } else {
                     emit!(self.handle_command_from_keyboard(), entry.command());
                 }
-            } else if entry.text(None, None).len() > 0 {
+            } else if !entry.text(None, None).is_empty() {
                 text_to_send.extend_from_slice(
                     String::from_utf8(entry.text(Some(true), Some(modifiers)))
                         .unwrap()
@@ -2198,19 +2205,19 @@ impl Emulation for VT102Emulation {
             } else if event.key_code() == KeyCode::KeyTab {
                 text_to_send.push(0x09);
             } else if event.key_code() == KeyCode::KeyPageUp {
-                text_to_send.extend_from_slice(&b"\x1B[5~".to_owned());
+                text_to_send.extend_from_slice(b"\x1B[5~".as_ref());
             } else if event.key_code() == KeyCode::KeyPageDown {
-                text_to_send.extend_from_slice(&b"\x1B[6~".to_owned());
+                text_to_send.extend_from_slice(b"\x1B[6~".as_ref());
             } else {
                 text_to_send.extend_from_slice(event.text().as_bytes());
             }
 
-            if !from_paste && text_to_send.len() > 0 {
+            if !from_paste && !text_to_send.is_empty() {
                 emit!(self.output_from_keypress_event())
             }
 
-            if text_to_send.len() == 0 {
-                return
+            if text_to_send.is_empty() {
+                return;
             }
 
             let text_to_send = String::from_utf8(text_to_send).unwrap();
@@ -2318,18 +2325,18 @@ is missing."#;
 
         // Send characters to terminal emulator
         let text_slice = utf16_text.as_slice();
-        for i in 0..text_slice.len() {
-            self.receive_char(text_slice[i] as wchar_t);
+        for &ts in text_slice.iter() {
+            self.receive_char(ts as wchar_t);
         }
 
         // Look for z-modem indicator
         for i in 0..len as usize {
-            if buffer[i] == '\u{0030}' as u8 {
-                if len as usize - i - 1 > 3
-                    && String::from_utf8(buffer[i + 1..i + 4].to_vec()).unwrap() == "B00"
-                {
-                    emit!(self.zmodem_detected())
-                }
+            #[allow(clippy::char_lit_as_u8)]
+            if buffer[i] == '\u{0030}' as u8
+                && len as usize - i - 1 > 3
+                && String::from_utf8(buffer[i + 1..i + 4].to_vec()).unwrap() == "B00"
+            {
+                emit!(self.zmodem_detected())
             }
         }
     }

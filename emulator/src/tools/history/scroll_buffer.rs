@@ -2,7 +2,7 @@ use super::{HistoryScroll, HistoryTypeBuffer};
 use crate::tools::character::Character;
 use bitvec::vec::BitVec;
 use libc::{c_void, memcpy, memset};
-use std::{mem::size_of, rc::Rc, cell::RefCell};
+use std::{cell::RefCell, mem::size_of, rc::Rc};
 
 ////////////////////////////////////////////////////////////////////////
 // Buffer-based history (limited to a fixed nb of lines)
@@ -19,11 +19,7 @@ pub struct HistoryScrollBuffer {
 }
 impl HistoryScrollBuffer {
     pub fn new(max_nb_lines: Option<usize>) -> Self {
-        let max_nb_lines = if max_nb_lines.is_some() {
-            max_nb_lines.unwrap()
-        } else {
-            1000
-        };
+        let max_nb_lines = max_nb_lines.unwrap_or(1000);
 
         let mut scroll = Self {
             history_type: Rc::new(RefCell::new(HistoryTypeBuffer::new(max_nb_lines))),
@@ -60,13 +56,13 @@ impl HistoryScroll for HistoryScrollBuffer {
     }
 
     fn get_lines(&self) -> i32 {
-        self.used_lines as i32
+        self.used_lines
     }
 
     fn get_line_len(&mut self, lineno: i32) -> i32 {
-        assert!(lineno >= 0 && lineno < self.max_line_count as i32);
+        assert!(lineno >= 0 && lineno < self.max_line_count);
 
-        if lineno < self.used_lines as i32 {
+        if lineno < self.used_lines {
             let buffer_index = self.buffer_index(lineno);
             self.history_buffer[buffer_index].len() as i32
         } else {
@@ -79,9 +75,9 @@ impl HistoryScroll for HistoryScrollBuffer {
             return;
         }
 
-        assert!(lineno < self.max_line_count as i32);
+        assert!(lineno < self.max_line_count);
 
-        if lineno >= self.used_lines as i32 {
+        if lineno >= self.used_lines {
             unsafe {
                 memset(
                     res as *mut [Character] as *mut c_void,
@@ -107,9 +103,9 @@ impl HistoryScroll for HistoryScrollBuffer {
     }
 
     fn is_wrapped_line(&mut self, lineno: i32) -> bool {
-        assert!(lineno >= 0 && lineno < self.max_line_count as i32);
+        assert!(lineno >= 0 && lineno < self.max_line_count);
 
-        if lineno < self.used_lines as i32 {
+        if lineno < self.used_lines {
             let buffer_index = self.buffer_index(lineno);
             let opt = self.wrapped_line.get(buffer_index);
             if let Some(bit) = opt {
@@ -129,10 +125,10 @@ impl HistoryScroll for HistoryScrollBuffer {
 
     fn add_cells_list(&mut self, list: Vec<Character>) {
         self.head += 1;
-        if self.used_lines < self.max_line_count as i32 {
+        if self.used_lines < self.max_line_count {
             self.used_lines += 1;
         }
-        if self.head >= self.max_line_count as i32 {
+        if self.head >= self.max_line_count {
             self.head = 0;
         }
 
@@ -154,8 +150,15 @@ impl HistoryScroll for HistoryScrollBuffer {
         let old_buffer = &self.history_buffer;
         let mut new_buffer = vec![vec![]; nb_lines];
 
-        for i in 0..(self.used_lines as usize).min(nb_lines) {
-            new_buffer[i] = old_buffer.get(self.buffer_index(i as i32)).unwrap().to_owned()
+        for (i, nb) in new_buffer
+            .iter_mut()
+            .enumerate()
+            .take((self.used_lines as usize).min(nb_lines))
+        {
+            *nb = old_buffer
+                .get(self.buffer_index(i as i32))
+                .unwrap()
+                .to_owned()
         }
 
         self.used_lines = self.used_lines.min(nb_lines as i32);

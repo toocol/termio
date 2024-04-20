@@ -1,10 +1,11 @@
 use cli::ProtocolType;
 use tmui::{
-    tlib::utils::Timestamp, tree_view::{
+    tlib::utils::Timestamp,
+    tree_view::{
         cell::{cell_render::TextCellRender, Cell},
         node_render::NodeRender,
         tree_view_object::TreeViewObject,
-    }
+    },
 };
 
 pub struct SessionCredential {
@@ -47,7 +48,7 @@ impl TreeViewObject for SessionCredential {
 impl SessionCredential {
     #[inline]
     pub fn new(protocol: ProtocolType, address: String, name: Option<String>) -> Self {
-        let name = name.or(Some(address.clone())).unwrap();
+        let name = name.unwrap_or(address.clone());
         Self {
             protocol,
             name,

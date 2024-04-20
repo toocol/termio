@@ -4,8 +4,8 @@ use log::warn;
 use once_cell::sync::Lazy;
 use std::{collections::HashMap, ptr::NonNull};
 
-const LAYOUT_PATH_PREFIX: &'static str = "kb-layouts/";
-const LAYOUT_PATH_SUFFIX: &'static str = ".keytab";
+const LAYOUT_PATH_PREFIX: &str = "kb-layouts/";
+const LAYOUT_PATH_SUFFIX: &str = ".keytab";
 
 /// Manages the keyboard translations available for use by terminal sessions
 /// and loads the list of available keyboard translations.
@@ -33,7 +33,7 @@ impl KeyboardTranslatorManager {
     #[inline]
     pub fn instance() -> &'static mut KeyboardTranslatorManager {
         static mut KEYBOARD_TRANSLATOR_MANAGER: Lazy<KeyboardTranslatorManager> =
-            Lazy::new(|| KeyboardTranslatorManager::new());
+            Lazy::new(KeyboardTranslatorManager::new);
         unsafe { &mut KEYBOARD_TRANSLATOR_MANAGER }
     }
 

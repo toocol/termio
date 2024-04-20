@@ -229,8 +229,7 @@ impl BaseFilterImpl for BaseFilter {
         self.hostspots_list.push(spot.clone());
 
         for i in spot.start_line()..spot.end_line() {
-            let values = self.hotspots.entry(i).or_insert(vec![]);
-            values.push(spot.clone());
+            self.hotspots.entry(i).or_default().push(spot.clone());
         }
         &***self.hostspots_list.last().unwrap()
     }
@@ -244,14 +243,14 @@ impl BaseFilterImpl for BaseFilter {
         for i in 0..self.line_positions.deref().borrow().len() {
             let mut next_line = 0;
 
-            if i as usize == self.line_positions.deref().borrow().len() - 1 {
+            if i == self.line_positions.deref().borrow().len() - 1 {
                 next_line = self.buffer.deref().borrow().len() + 1;
             } else {
                 next_line = *self
                     .line_positions
                     .deref()
                     .borrow()
-                    .get(i as usize + 1)
+                    .get(i + 1)
                     .unwrap() as usize;
             }
 
@@ -362,7 +361,7 @@ impl FilterObject {
     pub fn activate(&self) {
         let filter_ref = self.filter.as_ref();
         if let Some(filter) = filter_ref {
-            let copy = NonNull::new(filter.clone());
+            let copy = NonNull::new(*filter);
             self.connect(
                 self.action_open(),
                 self.id(),
@@ -373,7 +372,7 @@ impl FilterObject {
                 }),
             );
 
-            let copy = NonNull::new(filter.clone());
+            let copy = NonNull::new(*filter);
             self.connect(
                 self.action_copy(),
                 self.id(),

@@ -5,6 +5,10 @@ pub mod con_pty;
 pub mod posix_pty;
 
 use once_cell::sync::Lazy;
+#[cfg(not(target_os = "windows"))]
+use pty::prelude::Fork;
+#[cfg(not(target_os = "windows"))]
+use std::io::Read;
 use std::{
     collections::HashMap,
     path::PathBuf,
@@ -18,10 +22,6 @@ use tmui::{
 };
 #[cfg(target_os = "windows")]
 use winptyrs::PTY;
-#[cfg(not(target_os = "windows"))]
-use pty::prelude::Fork;
-#[cfg(not(target_os = "windows"))]
-use std::io::Read;
 
 #[repr(u8)]
 #[derive(Default)]
@@ -89,7 +89,7 @@ pub trait Pty: PtySignals {
 
 pub trait PtySignals: ActionExt {
     signals! {
-        PtySignals: 
+        PtySignals:
 
         /// Emitted when a new block of data was received from the teletype.
         ///
@@ -104,18 +104,19 @@ pub trait PtySignals: ActionExt {
     }
 }
 
+#[cfg(target_os = "windows")]
+type PtyMap = HashMap<ObjectId, (Arc<Mutex<PTY>>, Signal)>;
+#[cfg(not(target_os = "windows"))]
+type PtyMap = HashMap<ObjectId, (Arc<Mutex<Fork>>, Signal)>;
+
 #[derive(Default)]
 pub struct PtyReceivePool {
-    #[cfg(target_os = "windows")]
-    ptys: Arc<Mutex<HashMap<ObjectId, (Arc<Mutex<PTY>>, Signal)>>>,
-
-    #[cfg(not(target_os = "windows"))]
-    ptys: Arc<Mutex<HashMap<ObjectId, (Arc<Mutex<Fork>>, Signal)>>>,
+    ptys: Arc<Mutex<PtyMap>>,
 }
 
 #[inline]
 pub fn pty_receive_pool() -> &'static mut PtyReceivePool {
-    static mut PTY_RECEIVE_POOL: Lazy<PtyReceivePool> = Lazy::new(|| PtyReceivePool::default());
+    static mut PTY_RECEIVE_POOL: Lazy<PtyReceivePool> = Lazy::new(PtyReceivePool::default);
     unsafe { &mut PTY_RECEIVE_POOL }
 }
 
@@ -127,11 +128,10 @@ impl PtyReceivePool {
             let ptys = self.ptys.clone();
 
             thread::spawn(move || loop {
-
                 #[cfg(target_os = "windows")]
                 ptys.lock().unwrap().iter().for_each(|(_, (pty, signal))| {
                     if let Ok(data) = pty.lock().unwrap().read(u32::MAX, false) {
-                        if data.len() > 0 {
+                        if !data.is_empty() {
                             emit!(signal.clone(), data.to_str().unwrap())
                         }
                     }
@@ -146,7 +146,7 @@ impl PtyReceivePool {
                                 let mut data = String::new();
                                 // Is that blocked read?
                                 master.read_to_string(&mut data).unwrap();
-                                if data.len() > 0 {
+                                if !data.is_empty() {
                                     emit!(signal.clone(), data);
                                 }
                             }

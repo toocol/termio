@@ -72,17 +72,17 @@ impl Default for CharacterUnion {
         Self::Character(wch!(' '))
     }
 }
-impl Into<wchar_t> for CharacterUnion {
-    fn into(self) -> wchar_t {
-        match self {
-            Self::Character(ch) => ch,
-            Self::CharSequence(seq) => seq,
+impl From<CharacterUnion> for wchar_t {
+    fn from(val: CharacterUnion) -> Self {
+        match val {
+            CharacterUnion::Character(ch) => ch,
+            CharacterUnion::CharSequence(seq) => seq,
         }
     }
 }
 impl From<wchar_t> for CharacterUnion {
     fn from(x: wchar_t) -> Self {
-        Self::Character(x.into())
+        Self::Character(x)
     }
 }
 
@@ -125,7 +125,6 @@ impl Character {
     pub fn is_transparent(&self, palette: &[ColorEntry]) -> bool {
         ((self.background_color.color_space == COLOR_SPACE_DEFAULT)
             && palette[self.background_color.u as usize
-                + 0
                 + (if self.background_color.v > 0 {
                     BASE_COLORS
                 } else {
@@ -149,25 +148,24 @@ impl Character {
     #[inline]
     pub fn font_weight(&self, palette: &[ColorEntry]) -> FontWeight {
         if self.background_color.color_space == COLOR_SPACE_DEFAULT {
-            return palette[self.background_color.u as usize
-                + 0
+            palette[self.background_color.u as usize
                 + (if self.background_color.v > 0 {
                     BASE_COLORS
                 } else {
                     0
                 })]
-            .font_weight;
+            .font_weight
         } else if self.background_color.color_space == COLOR_SPACE_SYSTEM {
-            return palette[self.background_color.u as usize
+            palette[self.background_color.u as usize
                 + 2
                 + (if self.background_color.v > 0 {
                     BASE_COLORS
                 } else {
                     0
                 })]
-            .font_weight;
+            .font_weight
         } else {
-            return FontWeight::UseCurrentFormat;
+            FontWeight::UseCurrentFormat
         }
     }
 
@@ -236,14 +234,18 @@ impl ExtendedCharTable {
     /// @param length This variable is set to the length of the character sequence.
     ///
     /// @return A unicode character sequence of size @p length.
-    pub fn lookup_extended_char(&self, hash: wchar_t, length: &mut wchar_t) -> Option<Vec<wchar_t>> {
+    pub fn lookup_extended_char(
+        &self,
+        hash: wchar_t,
+        length: &mut wchar_t,
+    ) -> Option<Vec<wchar_t>> {
         // lookup index in table and if found, set the length
         // argument and return a reference to the character sequence
         let map = self.0.borrow();
         let buffer = map.get(&hash);
         if let Some(buffer) = buffer {
             *length = buffer[0];
-            let mut ret = vec![016; buffer.len() - 1];
+            let mut ret = vec![0u16; buffer.len() - 1];
             ret.copy_from_slice(&buffer[1..]);
             Some(ret)
         } else {
@@ -255,15 +257,20 @@ impl ExtendedCharTable {
     /// calculates the hash key of a sequence of unicode points of size 'length'
     fn extended_char_hash(&self, unicode_points: &[wchar_t], length: wchar_t) -> wchar_t {
         let mut hash = 0 as wchar_t;
-        for i in 0..length as usize {
-            hash = 31 * hash + unicode_points[i];
+        for &up in unicode_points.iter().take(length as usize) {
+            hash = 31 * hash + up;
         }
         hash
     }
 
     /// tests whether the entry in the table specified by 'hash' matches the
     /// character sequence 'unicodePoints' of size 'length'
-    fn extended_char_match(&self, hash: wchar_t, unicode_points: &[wchar_t], length: wchar_t) -> bool {
+    fn extended_char_match(
+        &self,
+        hash: wchar_t,
+        unicode_points: &[wchar_t],
+        length: wchar_t,
+    ) -> bool {
         let map = self.0.borrow();
         let entry = map.get(&hash);
         if let Some(entry) = entry {
@@ -279,7 +286,7 @@ impl ExtendedCharTable {
                     return false;
                 }
             }
-            return true;
+            true
         } else {
             false
         }

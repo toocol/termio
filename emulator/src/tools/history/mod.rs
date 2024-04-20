@@ -248,8 +248,8 @@ impl HistoryType for HistoryTypeFile {
     ) -> Rc<Box<dyn HistoryScrollWrapper>> {
         let mut scroll = HistoryScrollFile::new(self.file_name.clone());
         let mut line = [Character::default(); LINE_SIZE];
-        let lines = if old.is_some() {
-            old.as_ref().unwrap().get_lines() as usize
+        let lines = if let Some(old) = old.as_ref() {
+            old.get_lines() as usize
         } else {
             0
         };

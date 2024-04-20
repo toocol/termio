@@ -18,7 +18,7 @@ impl Color {
 
     pub fn from_hexcode(hexcode: &str) -> (f64, f64, f64, f64) {
         let hex_color = HexColor::parse(hexcode)
-            .expect(format!("Parse hex color failed, {}", hexcode).as_str());
+            .unwrap_or_else(|_| panic!("Parse hex color failed, {}", hexcode));
         (
             hex_color.r as f64 / 255.,
             hex_color.g as f64 / 255.,

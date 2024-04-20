@@ -34,7 +34,7 @@ impl<'a> TextStream<'a> {
 
     /// Get the current buffer string reference.
     pub fn text(&self) -> &str {
-        &self.buffer
+        self.buffer
     }
 }
 
@@ -48,12 +48,12 @@ pub struct LineReader {
 impl LineReader {
     pub fn new(source: String) -> Self {
         let mut lines = vec![];
-        for line in source.split("\n") {
+        for line in source.split('\n') {
             lines.push(line.to_string());
         }
         Self {
-            source: source,
-            lines: lines,
+            source,
+            lines,
             pos: Cell::new(0),
         }
     }

@@ -9,17 +9,13 @@ use crate::{
 };
 use std::time::Duration;
 use tmui::{
-    application::cursor_blinking_time,
-    prelude::*,
-    skia_safe::textlayout::{
+    application::cursor_blinking_time, opti::tracker::Tracker, prelude::*, skia_safe::textlayout::{
         FontCollection, ParagraphBuilder, ParagraphStyle, TextStyle, TypefaceFontProvider,
-    },
-    tlib::{
+    }, tlib::{
         connect,
         events::{KeyEvent, MouseEvent},
         namespace::{Align, KeyboardModifier, MouseButton},
-    },
-    widget::widget_ext::WidgetExt,
+    }, widget::widget_ext::WidgetExt
 };
 use wchar::wch;
 
@@ -299,6 +295,7 @@ impl TerminalView {
             return;
         }
 
+        let _tracker = Tracker::start("terminal_view_extend_selection");
         self.extend_selection(event.position().into());
     }
 
@@ -584,7 +581,7 @@ impl TerminalView {
         let mut style = ParagraphStyle::new();
         let mut text_style = TextStyle::new();
         text_style.set_font_size(font.size());
-        text_style.set_font_families(&vec![family]);
+        text_style.set_font_families(&[family]);
         text_style.set_letter_spacing(0.);
         style.set_text_style(&text_style);
 
@@ -606,8 +603,8 @@ impl TerminalView {
         let mut widths = vec![0f32; wchar_t_repchar.len()];
         font.get_widths(&wchar_t_repchar, &mut widths);
         let fw = widths[0];
-        for i in 1..widths.len() {
-            if fw != widths[i] {
+        for w in widths.iter().skip(1) {
+            if fw != *w {
                 self.fixed_font = false;
                 break;
             }

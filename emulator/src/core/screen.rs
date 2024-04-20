@@ -180,8 +180,8 @@ impl Screen {
     /// Fills the buffer @p dest with @p count instances of the default (ie. blank) Character style.
     #[inline]
     pub fn fill_with_default_char(character: &mut [Character], count: i32) {
-        for i in 0..count as usize {
-            character[i] = Character::default()
+        for c in character.iter_mut().take(count as usize) {
+            *c = Character::default()
         }
     }
 
@@ -546,6 +546,7 @@ impl Screen {
     }
 
     /// Resets (clears) the specified screen @p mode.
+    #[allow(clippy::single_match)]
     pub fn reset_mode(&mut self, mode: usize) {
         self.current_modes[mode] = false;
         match mode {
@@ -558,6 +559,7 @@ impl Screen {
     }
 
     /// Sets (enables) the specified screen @p mode.
+    #[allow(clippy::single_match)]
     pub fn set_mode(&mut self, mode: usize) {
         self.current_modes[mode] = true;
         match mode {
@@ -767,11 +769,8 @@ impl Screen {
     /// If @p clearScreen is true then the screen contents are erased entirely,
     /// otherwise they are unaltered.
     pub fn reset(&mut self, clear_screen: Option<bool>) {
-        let clear_screen = if clear_screen.is_none() {
-            true
-        } else {
-            clear_screen.unwrap()
-        };
+        let clear_screen = clear_screen.unwrap_or(true);
+
         self.set_mode(MODE_WRAP);
         self.save_mode(MODE_WRAP);
 
@@ -813,8 +812,7 @@ impl Screen {
 
         if self.cursor_x + w > self.columns {
             if self.get_mode(MODE_WRAP) {
-                self.line_properties[self.cursor_y as usize] =
-                    self.line_properties[self.cursor_y as usize] | LINE_WRAPPED;
+                self.line_properties[self.cursor_y as usize] |= LINE_WRAPPED;
                 self.next_line();
             } else {
                 self.cursor_x = self.columns - w;
@@ -892,20 +890,25 @@ impl Screen {
         }
 
         let mut new_screen_lines = vec![vec![]; new_lines as usize + 1];
-        for i in 0..self.lines.min(new_lines + 1) as usize {
-            new_screen_lines[i] = self.screen_lines[i].clone();
-        }
-        for i in self.lines as usize..(new_lines + 1) as usize {
-            if i <= 0 {
+        new_screen_lines[..(self.lines.min(new_lines + 1) as usize)]
+            .clone_from_slice(&self.screen_lines[..(self.lines.min(new_lines + 1) as usize)]);
+
+        for (i, cs) in new_screen_lines
+            .iter_mut()
+            .enumerate()
+            .take((new_lines + 1) as usize)
+            .skip(self.lines as usize)
+        {
+            if i == 0 {
                 break;
             }
-            new_screen_lines[i].resize(new_columns as usize, Character::default());
+            cs.resize(new_columns as usize, Character::default());
         }
 
         self.line_properties
             .resize(new_lines as usize + 1, LINE_DEFAULT);
         for i in self.lines as usize..(new_lines + 1) as usize {
-            if i <= 0 {
+            if i == 0 {
                 break;
             }
             self.line_properties[i] = LINE_DEFAULT;
@@ -958,9 +961,12 @@ impl Screen {
 
         // Invert display when in screen mode.
         if self.get_mode(MODE_SCREEN) {
-            for i in 0..merged_lines as usize * self.columns as usize {
+            for d in dest
+                .iter_mut()
+                .take(merged_lines as usize * self.columns as usize)
+            {
                 // For reverse display
-                self.reverse_rendition(&mut dest[i]);
+                self.reverse_rendition(d);
             }
         }
 
@@ -988,7 +994,7 @@ impl Screen {
         // Copy properties for lines in history.
         for line in start_line..start_line + lines_in_history {
             if self.history.is_wrapped_line(line) {
-                result[index] = result[index] | LINE_WRAPPED;
+                result[index] |= LINE_WRAPPED;
             }
             index += 1;
         }
@@ -1026,11 +1032,7 @@ impl Screen {
         history_type: Rc<RefCell<dyn HistoryType>>,
         copy_previous_scroll: Option<bool>,
     ) {
-        let copy_previous_scroll = if copy_previous_scroll.is_none() {
-            true
-        } else {
-            copy_previous_scroll.unwrap()
-        };
+        let copy_previous_scroll = copy_previous_scroll.unwrap_or(true);
 
         if copy_previous_scroll {
             self.history = history_type.borrow().scroll(Some(self.history.clone()));
@@ -1236,11 +1238,9 @@ impl Screen {
     /// @param enable true to apply the attribute to the current line or false to remove it
     pub fn set_line_property(&mut self, property: LineProperty, enable: bool) {
         if enable {
-            self.line_properties[self.cursor_y as usize] =
-                self.line_properties[self.cursor_y as usize] | property;
+            self.line_properties[self.cursor_y as usize] |= property;
         } else {
-            self.line_properties[self.cursor_y as usize] =
-                self.line_properties[self.cursor_y as usize] & !property;
+            self.line_properties[self.cursor_y as usize] &= !property;
         }
     }
 
@@ -1351,6 +1351,7 @@ impl Screen {
             let length = self.screen_lines[screen_line as usize].len();
 
             // retrieve line from screen image.
+            #[allow(clippy::needless_range_loop)]
             for i in start as usize..(start as usize + count as usize).min(length) {
                 self.character_buffer.borrow_mut()[i - start as usize] = data[i];
             }
@@ -1506,10 +1507,8 @@ impl Screen {
 
             if self.select_bottom_right < 0 {
                 self.clear_selection();
-            } else {
-                if self.select_top_left < 0 {
-                    self.select_top_left = 0;
-                }
+            } else if self.select_top_left < 0 {
+                self.select_top_left = 0;
             }
 
             if begin_is_tl {
@@ -1597,11 +1596,9 @@ impl Screen {
             }
 
             // Adjust selection for the new point of reference
-            if new_history_lines > old_history_lines {
-                if self.select_begin != -1 {
-                    self.select_top_left += self.columns;
-                    self.select_bottom_right += self.columns;
-                }
+            if new_history_lines > old_history_lines && self.select_begin != -1 {
+                self.select_top_left += self.columns;
+                self.select_bottom_right += self.columns;
             }
 
             if self.select_begin != -1 {
@@ -1703,11 +1700,8 @@ impl Screen {
         end_index: i32,
         preserve_line_breaks: Option<bool>,
     ) {
-        let preserve_line_breaks = if preserve_line_breaks.is_none() {
-            true
-        } else {
-            preserve_line_breaks.unwrap()
-        };
+        let preserve_line_breaks = preserve_line_breaks.unwrap_or(true);
+
         let top = start_index / self.columns;
         let left = start_index % self.columns;
 
@@ -1762,7 +1756,7 @@ impl Screen {
                 let src_index = (src_line_start_index + column) as usize;
                 let dest_index = (dest_line_start_index + column) as usize;
 
-                dest[dest_index as usize] = self.screen_lines[src_index / self.columns as usize]
+                dest[dest_index] = self.screen_lines[src_index / self.columns as usize]
                     .get(src_index % self.columns as usize)
                     .cloned()
                     .unwrap_or(Character::default());

@@ -16,7 +16,7 @@ pub use translator_reader::*;
 
 use lazy_static::lazy_static;
 use regex::Regex;
-use std::{collections::HashMap, rc::Rc, mem::size_of};
+use std::{collections::HashMap, mem::size_of, rc::Rc};
 
 lazy_static! {
     pub static ref TITLE_REGEX: Regex = Regex::new("keyboard\\s+\"(.*)\"").unwrap();
@@ -49,17 +49,17 @@ fn one_or_zero(value: bool) -> u8 {
 
 #[inline]
 fn is_printable_char(ch: u8) -> bool {
-    ch >= 32 && ch < 127
+    (32..127).contains(&ch)
 }
 
 #[inline]
 fn is_letter_or_number(ch: u8) -> bool {
-    (ch >= b'a' && ch <= b'z') || (ch >= b'A' && ch <= b'Z') || (ch >= b'0' && ch <= b'9')
+    ch.is_ascii_lowercase() || ch.is_ascii_uppercase() || ch.is_ascii_digit()
 }
 
 #[inline]
 fn is_xdigit(ch: u8) -> bool {
-    (ch >= b'0' && ch <= b'9') || (ch >= b'A' && ch <= b'F') || (ch >= b'a' && ch <= b'f')
+    ch.is_ascii_digit() || (b'A'..=b'F').contains(&ch) || (b'a'..=b'f').contains(&ch)
 }
 
 /// A convertor which maps between key sequences pressed by the user and the
@@ -76,30 +76,32 @@ fn is_xdigit(ch: u8) -> bool {
 pub enum State {
     /// Indicates that no special state is active.
     #[default]
-    NoState,
+    None,
     /// Indicates that terminal is in new line state.
-    NewLineState,
+    NewLine,
     /// Indicates that the terminal is in 'Ansi' mode.
-    AnsiState,
+    Ansi,
     /// Indicates that the terminal is in cursor key state.
-    CursorKeysState,
+    CursorKeys,
     /// Indicates that the alternate screen ( typically used by interactive
     /// programs such as screen or vim ) is active
-    AlternateScreenState,
+    AlternateScreen,
     /// Indicates that any of the modifier keys is active.
-    AnyModifierState,
+    AnyModifier,
     /// Indicates that the numpad is in application mode.
-    ApplicationKeypadState,
+    ApplicationKeypad,
     /// State combinations.
     Combination(u8),
 }
 impl State {
+    #[inline]
     pub fn or(&self, other: Self) -> Self {
         let one = self.as_u8();
         let other = other.as_u8();
         Self::Combination(one | other)
     }
 
+    #[inline]
     pub fn has(&self, has: Self) -> bool {
         match self {
             Self::Combination(state) => state & has.as_u8() != 0,
@@ -107,43 +109,36 @@ impl State {
         }
     }
 
+    #[inline]
     pub fn as_u8(&self) -> u8 {
         match self {
-            Self::NoState => 0,
-            Self::NewLineState => 1,
-            Self::AnsiState => 2,
-            Self::CursorKeysState => 4,
-            Self::AlternateScreenState => 8,
-            Self::AnyModifierState => 16,
-            Self::ApplicationKeypadState => 32,
+            Self::None => 0,
+            Self::NewLine => 1,
+            Self::Ansi => 2,
+            Self::CursorKeys => 4,
+            Self::AlternateScreen => 8,
+            Self::AnyModifier => 16,
+            Self::ApplicationKeypad => 32,
             Self::Combination(state) => *state,
         }
     }
 }
-impl Into<u8> for State {
-    fn into(self) -> u8 {
-        match self {
-            Self::NoState => 0,
-            Self::NewLineState => 1,
-            Self::AnsiState => 2,
-            Self::CursorKeysState => 4,
-            Self::AlternateScreenState => 8,
-            Self::AnyModifierState => 16,
-            Self::ApplicationKeypadState => 32,
-            Self::Combination(state) => state,
-        }
+impl From<State> for u8 {
+    #[inline]
+    fn from(val: State) -> Self {
+        val.as_u8()
     }
 }
 impl From<u8> for State {
     fn from(value: u8) -> Self {
         match value {
-            0 => Self::NoState,
-            1 => Self::NewLineState,
-            2 => Self::AnsiState,
-            4 => Self::CursorKeysState,
-            8 => Self::AlternateScreenState,
-            16 => Self::AnyModifierState,
-            32 => Self::ApplicationKeypadState,
+            0 => Self::None,
+            1 => Self::NewLine,
+            2 => Self::Ansi,
+            4 => Self::CursorKeys,
+            8 => Self::AlternateScreen,
+            16 => Self::AnyModifier,
+            32 => Self::ApplicationKeypad,
             _ => Self::Combination(value),
         }
     }
@@ -155,34 +150,36 @@ impl From<u8> for State {
 pub enum Command {
     /// Indicates that no command is associated with this command sequence.
     #[default]
-    NoCommand,
+    None,
     /// Send command.
-    SendComand,
+    Send,
     /// Scroll the terminal display up one page.
-    ScrollPageUpCommand,
+    ScrollPageUp,
     /// Scroll the terminal display down one page.
-    ScrollPageDownCommand,
+    ScrollPageDown,
     /// Scroll the terminal display up one line.
-    ScrollLineUpCommand,
+    ScrollLineUp,
     /// Scroll the terminal display down one line.
-    ScrollLineDownCommand,
+    ScrollLineDown,
     /// Toggles scroll lock mode.
-    ScrollLockCommand,
+    ScrollLock,
     /// Scroll the terminal display up to the start of history.
-    ScrollUpToTopCommand,
+    ScrollUpToTop,
     /// Scroll the terminal display down to the end of history.
-    ScrollDownToBottomCommand,
+    ScrollDownToBottom,
     /// Echos the operating system specific erase character.
-    EraseCommand,
+    Erase,
     Combination(u16),
 }
 impl Command {
+    #[inline]
     pub fn or(&self, other: Self) -> Self {
         let one = self.as_u16();
         let other = other.as_u16();
         Self::Combination(one | other)
     }
 
+    #[inline]
     pub fn has(&self, has: Self) -> bool {
         match self {
             Self::Combination(cmd) => cmd & has.as_u16() != 0,
@@ -190,52 +187,42 @@ impl Command {
         }
     }
 
+    #[inline]
     pub fn as_u16(&self) -> u16 {
         match self {
-            Self::NoCommand => 0,
-            Self::SendComand => 1,
-            Self::ScrollPageUpCommand => 2,
-            Self::ScrollPageDownCommand => 4,
-            Self::ScrollLineUpCommand => 8,
-            Self::ScrollLineDownCommand => 16,
-            Self::ScrollLockCommand => 32,
-            Self::ScrollUpToTopCommand => 64,
-            Self::ScrollDownToBottomCommand => 128,
-            Self::EraseCommand => 256,
+            Self::None => 0,
+            Self::Send => 1,
+            Self::ScrollPageUp => 2,
+            Self::ScrollPageDown => 4,
+            Self::ScrollLineUp => 8,
+            Self::ScrollLineDown => 16,
+            Self::ScrollLock => 32,
+            Self::ScrollUpToTop => 64,
+            Self::ScrollDownToBottom => 128,
+            Self::Erase => 256,
             Self::Combination(x) => *x,
         }
     }
 }
-impl Into<u16> for Command {
-    fn into(self) -> u16 {
-        match self {
-            Self::NoCommand => 0,
-            Self::SendComand => 1,
-            Self::ScrollPageUpCommand => 2,
-            Self::ScrollPageDownCommand => 4,
-            Self::ScrollLineUpCommand => 8,
-            Self::ScrollLineDownCommand => 16,
-            Self::ScrollLockCommand => 32,
-            Self::ScrollUpToTopCommand => 64,
-            Self::ScrollDownToBottomCommand => 128,
-            Self::EraseCommand => 256,
-            Self::Combination(x) => x,
-        }
+impl From<Command> for u16 {
+    #[inline]
+    fn from(val: Command) -> Self {
+        val.as_u16()
     }
 }
 impl From<u16> for Command {
     fn from(x: u16) -> Self {
         match x {
-            0 => Self::NoCommand,
-            1 => Self::SendComand,
-            2 => Self::ScrollPageUpCommand,
-            4 => Self::ScrollPageDownCommand,
-            8 => Self::ScrollLineUpCommand,
-            16 => Self::ScrollLineDownCommand,
-            32 => Self::ScrollLockCommand,
-            64 => Self::ScrollUpToTopCommand,
-            128 => Self::ScrollDownToBottomCommand,
-            256 => Self::EraseCommand,
+            0 => Self::None,
+            1 => Self::Send,
+            2 => Self::ScrollPageUp,
+            4 => Self::ScrollPageDown,
+            8 => Self::ScrollLineUp,
+            16 => Self::ScrollLineDown,
+            32 => Self::ScrollLock,
+            64 => Self::ScrollUpToTop,
+            128 => Self::ScrollDownToBottom,
+            256 => Self::Erase,
             _ => Self::Combination(x),
         }
     }
@@ -271,9 +258,9 @@ impl Entry {
             key_code: 0,
             modifiers: KeyboardModifier::NoModifier,
             modifier_mask: KeyboardModifier::NoModifier,
-            state: State::NoState,
-            state_mask: State::NoState,
-            command: Command::NoCommand,
+            state: State::None,
+            state_mask: State::None,
+            command: Command::None,
             text: vec![],
             is_null: true,
         }
@@ -314,11 +301,7 @@ impl Entry {
         modifiers: Option<KeyboardModifier>,
     ) -> Vec<u8> {
         let expand_wild_cards = expand_wild_cards.is_some();
-        let modifiers = if modifiers.is_some() {
-            modifiers.unwrap()
-        } else {
-            KeyboardModifier::NoModifier
-        };
+        let modifiers = modifiers.unwrap_or(KeyboardModifier::NoModifier);
         let mut expand_text = self.text.clone();
 
         if expand_wild_cards {
@@ -327,9 +310,10 @@ impl Entry {
             modifier_value += one_or_zero(modifiers.has(KeyboardModifier::AltModifier)) << 1;
             modifier_value += one_or_zero(modifiers.has(CTRL_MODIFIER)) << 2;
 
-            for i in 0..self.text.len() {
-                if expand_text[i] == b'*' {
-                    expand_text[i] = b'0' + modifier_value
+            // for i in 0..self.text.len() {
+            for et in expand_text.iter_mut().take(self.text.len()) {
+                if *et == b'*' {
+                    *et = b'0' + modifier_value
                 }
             }
         }
@@ -470,7 +454,7 @@ impl Entry {
 
     /// Returns this entry's conditions ( ie. its key code, modifier and state criteria ) as a string.
     pub fn condition_to_string(&mut self) -> String {
-        let mut result = KeyCode::from(self.key_code as u32).name().to_string();
+        let mut result = KeyCode::from(self.key_code).name().to_string();
 
         self.insert_modifier(&mut result, KeyboardModifier::ShiftModifier);
         self.insert_modifier(&mut result, KeyboardModifier::ControlModifier);
@@ -478,12 +462,12 @@ impl Entry {
         self.insert_modifier(&mut result, KeyboardModifier::MetaModifier);
         self.insert_modifier(&mut result, KeyboardModifier::KeypadModifier);
 
-        self.insert_state(&mut result, State::AlternateScreenState);
-        self.insert_state(&mut result, State::NewLineState);
-        self.insert_state(&mut result, State::AnsiState);
-        self.insert_state(&mut result, State::CursorKeysState);
-        self.insert_state(&mut result, State::AnyModifierState);
-        self.insert_state(&mut result, State::ApplicationKeypadState);
+        self.insert_state(&mut result, State::AlternateScreen);
+        self.insert_state(&mut result, State::NewLine);
+        self.insert_state(&mut result, State::Ansi);
+        self.insert_state(&mut result, State::CursorKeys);
+        self.insert_state(&mut result, State::AnyModifier);
+        self.insert_state(&mut result, State::ApplicationKeypad);
 
         result
     }
@@ -500,21 +484,21 @@ impl Entry {
         if !self.text.is_empty() {
             String::from_utf8(self.escaped_text(expand_wild_cards, modifiers))
                 .expect("Parse `text` to `String` failed.")
-        } else if self.command == Command::EraseCommand {
+        } else if self.command == Command::Erase {
             "Erase".to_string()
-        } else if self.command == Command::ScrollPageUpCommand {
+        } else if self.command == Command::ScrollPageUp {
             "ScrollPageUpCommand".to_string()
-        } else if self.command == Command::ScrollPageDownCommand {
+        } else if self.command == Command::ScrollPageDown {
             "ScrollPageDownCommand".to_string()
-        } else if self.command == Command::ScrollLineUpCommand {
+        } else if self.command == Command::ScrollLineUp {
             "ScrollLineUp".to_string()
-        } else if self.command == Command::ScrollLineDownCommand {
+        } else if self.command == Command::ScrollLineDown {
             "ScrollLineDown".to_string()
-        } else if self.command == Command::ScrollLockCommand {
+        } else if self.command == Command::ScrollLock {
             "ScrollLock".to_string()
-        } else if self.command == Command::ScrollUpToTopCommand {
+        } else if self.command == Command::ScrollUpToTop {
             "ScrollUpToTop".to_string()
-        } else if self.command == Command::ScrollDownToBottomCommand {
+        } else if self.command == Command::ScrollDownToBottom {
             "ScrollDownToBottom".to_string()
         } else {
             String::new()
@@ -546,7 +530,7 @@ impl Entry {
 
         // if modifiers is non-zero, the 'any modifier' state is implicit
         if modifiers.as_u32() & !KeyboardModifier::KeypadModifier.as_u32() != 0 {
-            flags = State::from(flags.as_u8() | State::AnyModifierState.as_u8());
+            flags = State::from(flags.as_u8() | State::AnyModifier.as_u8());
         }
 
         if flags.as_u8() & self.state_mask.as_u8() != self.state.as_u8() & self.state_mask.as_u8() {
@@ -555,11 +539,11 @@ impl Entry {
 
         let any_modifiers_set = modifiers != KeyboardModifier::NoModifier
             && modifiers != KeyboardModifier::KeypadModifier;
-        let want_any_modifier = self.state.as_u8() & State::AnyModifierState.as_u8() != 0;
-        if self.state_mask.as_u8() & State::AnyModifierState.as_u8() != 0 {
-            if want_any_modifier != any_modifiers_set {
-                return false;
-            }
+        let want_any_modifier = self.state.as_u8() & State::AnyModifier.as_u8() != 0;
+        if self.state_mask.as_u8() & State::AnyModifier.as_u8() != 0
+            && want_any_modifier != any_modifiers_set
+        {
+            return false;
         }
         true
     }
@@ -599,17 +583,17 @@ impl Entry {
             item.push('-');
         }
 
-        if state == State::AlternateScreenState {
+        if state == State::AlternateScreen {
             item.push_str("AppScreen")
-        } else if state == State::NewLineState {
+        } else if state == State::NewLine {
             item.push_str("NewLine")
-        } else if state == State::AnsiState {
+        } else if state == State::Ansi {
             item.push_str("Ansi")
-        } else if state == State::CursorKeysState {
+        } else if state == State::CursorKeys {
             item.push_str("AppCursorKeys")
-        } else if state == State::AnyModifierState {
+        } else if state == State::AnyModifier {
             item.push_str("AnyModifier")
-        } else if state == State::ApplicationKeypadState {
+        } else if state == State::ApplicationKeypad {
             item.push_str("AppKaypad")
         }
     }
@@ -728,11 +712,7 @@ impl KeyboardTranslator {
         modifiers: KeyboardModifier,
         state: Option<State>,
     ) -> Rc<Entry> {
-        let state = if state.is_some() {
-            state.unwrap()
-        } else {
-            State::NoState
-        };
+        let state = state.unwrap_or(State::None);
         for it in self.entries.iter() {
             if *it.0 == key_code {
                 for en in it.1.iter() {
@@ -749,8 +729,10 @@ impl KeyboardTranslator {
     /// up according to their key sequence using findEntry()
     pub fn add_entry(&mut self, entry: Entry) {
         let key_code = entry.key_code();
-        let entries = self.entries.entry(key_code).or_insert(vec![]);
-        entries.push(Rc::new(entry));
+        self.entries
+            .entry(key_code)
+            .or_default()
+            .push(Rc::new(entry));
     }
 
     /// Replaces an entry in the translator.  If the @p existing entry is null,

@@ -45,11 +45,7 @@ impl ColorEntry {
     /// @param `tr` Specifies that the color should be transparent when used as a background color.
     /// @param `weight` Specifies the font weight to use when drawing text with this color.
     pub fn new(c: Color, tr: bool, weight: Option<FontWeight>) -> Self {
-        let weight = if weight.is_some() {
-            weight.unwrap()
-        } else {
-            FontWeight::UseCurrentFormat
-        };
+        let weight = weight.unwrap_or(FontWeight::UseCurrentFormat);
 
         ColorEntry {
             color: c,
@@ -58,21 +54,23 @@ impl ColorEntry {
         }
     }
 }
-impl Into<ColorEntry> for (Color, bool) {
-    fn into(self) -> ColorEntry {
+impl From<(Color, bool)> for ColorEntry {
+    #[inline]
+    fn from(val: (Color, bool)) -> Self {
         ColorEntry {
-            color: self.0,
-            transparent: self.1,
+            color: val.0,
+            transparent: val.1,
             font_weight: FontWeight::UseCurrentFormat,
         }
     }
 }
-impl Into<ColorEntry> for (Color, bool, FontWeight) {
-    fn into(self) -> ColorEntry {
+impl From<(Color, bool, FontWeight)> for ColorEntry {
+    #[inline]
+    fn from(val: (Color, bool, FontWeight)) -> Self {
         ColorEntry {
-            color: self.0,
-            transparent: self.1,
-            font_weight: self.2,
+            color: val.0,
+            transparent: val.1,
+            font_weight: val.2,
         }
     }
 }
@@ -214,7 +212,7 @@ impl CharacterColor {
     pub fn color(&self, palette: &[ColorEntry]) -> Color {
         match self.color_space {
             COLOR_SPACE_DEFAULT => {
-                palette[self.u as usize + 0 + if self.v > 0 { BASE_COLORS } else { 0 }].color
+                palette[self.u as usize + if self.v > 0 { BASE_COLORS } else { 0 }].color
             }
             COLOR_SPACE_SYSTEM => {
                 palette[self.u as usize + 2 + if self.v > 0 { BASE_COLORS } else { 0 }].color
@@ -251,8 +249,8 @@ impl CharacterColor {
                 } else {
                     0
                 },
-                if (u / 1) % 6 > 0 {
-                    40 * ((u / 1) % 6) + 55
+                if u % 6 > 0 {
+                    40 * (u % 6) + 55
                 } else {
                     0
                 },
@@ -266,7 +264,9 @@ impl CharacterColor {
     }
 }
 
-//// Colors
+////////////////////////////////////////////////////////////////////
+//////////////////// Colors
+////////////////////////////////////////////////////////////////////
 pub const BASE_COLORS: usize = 10;
 pub const INTENSITIES: usize = 2;
 pub const TABLE_COLORS: usize = INTENSITIES * BASE_COLORS;

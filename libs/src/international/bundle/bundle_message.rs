@@ -15,7 +15,7 @@ impl BundleMessage {
         };
 
         let asset = Asset::get(properties_file_path)
-            .expect(format!("Get embed asset `{}` failed.", properties_file_path).as_str());
+            .unwrap_or_else(|| panic!("Get embed asset `{}` failed.", properties_file_path));
 
         PropertiesIter::new_with_encoding(
             BufReader::new(asset.data.as_ref()),
@@ -24,7 +24,7 @@ impl BundleMessage {
         .read_into(|k, v| {
             bundle_message.insert(k, v);
         })
-        .expect(format!("Read properties {} failed.", properties_file_path).as_str());
+        .unwrap_or_else(|_| panic!("Read properties {} failed.", properties_file_path));
 
         bundle_message
     }

@@ -8,8 +8,8 @@ use std::ptr::NonNull;
 use tmui::{
     prelude::*,
     tlib::{
-        figure::Rect,
         emit,
+        figure::Rect,
         object::{ObjectImpl, ObjectSubclass},
         signals,
     },
@@ -38,7 +38,7 @@ pub enum RelativeScrollMode {
 #[extends(Object)]
 pub struct ScreenWindow {
     screen: Option<NonNull<Screen>>,
-    window_buffer: Option<Box<Vec<Character>>>,
+    window_buffer: Option<Vec<Character>>,
     window_buffer_size: i32,
     buffer_needs_update: bool,
 
@@ -118,12 +118,12 @@ impl ScreenWindow {
         let size = self.window_lines() * self.window_columns();
         if self.window_buffer.is_none() || self.window_buffer_size != size {
             self.window_buffer_size = size;
-            self.window_buffer = Some(Box::new(vec![Character::default(); size as usize]));
+            self.window_buffer = Some(vec![Character::default(); size as usize]);
             self.buffer_needs_update = true;
         }
 
         if !self.buffer_needs_update {
-            return self.window_buffer.as_deref_mut().unwrap();
+            return self.window_buffer.as_ref().unwrap();
         }
 
         let current_line = self.current_line();
@@ -142,7 +142,7 @@ impl ScreenWindow {
         self.fill_unused_area();
 
         self.buffer_needs_update = false;
-        self.window_buffer.as_deref_mut().unwrap()
+        self.window_buffer.as_ref().unwrap()
     }
 
     /// Returns the line attributes associated with the lines of characters which
@@ -189,7 +189,7 @@ impl ScreenWindow {
         let equal_to_screen_size = self.window_lines() == self.screen().get_lines();
 
         if self.at_end_of_output() && equal_to_screen_size {
-            self.screen().last_scrolled_region().clone()
+            *self.screen().last_scrolled_region()
         } else {
             Rect::new(0, 0, self.window_columns(), self.window_lines)
         }
@@ -375,7 +375,7 @@ impl ScreenWindow {
         let chars_to_fill = unused_lines * self.window_columns();
 
         if chars_to_fill <= 0 {
-            return
+            return;
         }
         let buffer_slice = &mut self.window_buffer.as_deref_mut().unwrap()
             [(self.window_buffer_size - chars_to_fill) as usize..];
@@ -415,27 +415,27 @@ impl ScreenWindow {
         let mut update = false;
 
         // EraseCommand is handled in Vt102Emulation.
-        if command.has(Command::ScrollPageUpCommand) {
+        if command.has(Command::ScrollPageUp) {
             self.scroll_by(RelativeScrollMode::ScrollPages, -1);
             update = true;
         }
-        if command.has(Command::ScrollPageDownCommand) {
+        if command.has(Command::ScrollPageDown) {
             self.scroll_by(RelativeScrollMode::ScrollPages, 1);
             update = true;
         }
-        if command.has(Command::ScrollLineUpCommand) {
+        if command.has(Command::ScrollLineUp) {
             self.scroll_by(RelativeScrollMode::ScrollLines, -1);
             update = true;
         }
-        if command.has(Command::ScrollLineDownCommand) {
+        if command.has(Command::ScrollLineDown) {
             self.scroll_by(RelativeScrollMode::ScrollLines, 1);
             update = true;
         }
-        if command.has(Command::ScrollDownToBottomCommand) {
+        if command.has(Command::ScrollDownToBottom) {
             emit!(self.scroll_to_end());
             update = true;
         }
-        if command.has(Command::ScrollUpToTopCommand) {
+        if command.has(Command::ScrollUpToTop) {
             self.scroll_to(0);
             update = true;
         }

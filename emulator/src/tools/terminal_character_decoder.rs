@@ -16,8 +16,7 @@ use libc::wchar_t;
 use wchar::wch;
 use widestring::WideString;
 
-const TRANSMIT_U16STRING_ERROR: &'static str =
-    "Trasmit `U16String` to `String` failed, unvalid u16 datas.";
+const TRANSMIT_U16STRING_ERROR: &str = "Trasmit `U16String` to `String` failed, unvalid u16 datas.";
 
 /// Base struct for terminal character decoders
 ///
@@ -236,32 +235,32 @@ impl<'a> TerminalCharacterDecoder<'a> for HtmlDecoder<'a> {
 
         let space_count = 0;
 
-        for i in 0..count as usize {
-            let ch = character[i].character_union.data();
+        for cref in character.iter().take(count as usize) {
+            let ch = cref.character_union.data();
 
             // check if appearance of character is different from previous char
-            if character[i].rendition != self.last_rendition
+            if cref.rendition != self.last_rendition
                 || (self.last_fore_color.is_none()
-                    || character[i].foreground_color != self.last_fore_color.unwrap())
+                    || cref.foreground_color != self.last_fore_color.unwrap())
                 || (self.last_back_color.is_none()
-                    || character[i].background_color != self.last_back_color.unwrap())
+                    || cref.background_color != self.last_back_color.unwrap())
             {
                 if self.inner_span_open {
                     HtmlDecoder::close_span(&mut text)
                 }
 
-                self.last_rendition = character[i].rendition;
-                self.last_fore_color = Some(character[i].foreground_color);
-                self.last_back_color = Some(character[i].background_color);
+                self.last_rendition = cref.rendition;
+                self.last_fore_color = Some(cref.foreground_color);
+                self.last_back_color = Some(cref.background_color);
 
                 let mut style = String::new();
-                let use_bold;
-                let weight = character[i].font_weight(self.color_table);
-                if weight == FontWeight::UseCurrentFormat {
-                    use_bold = self.last_rendition & RE_BOLD != 0;
+
+                let weight = cref.font_weight(self.color_table);
+                let use_bold = if weight == FontWeight::UseCurrentFormat {
+                    self.last_rendition & RE_BOLD != 0
                 } else {
-                    use_bold = weight == FontWeight::Bold;
-                }
+                    weight == FontWeight::Bold
+                };
 
                 if use_bold {
                     style.push_str("font-weight:bold;")
@@ -276,8 +275,7 @@ impl<'a> TerminalCharacterDecoder<'a> for HtmlDecoder<'a> {
                     style.push_str(&format!("color:{};", color.hexcode()))
                 }
 
-                if !character[i].is_transparent(self.color_table) && self.last_back_color.is_some()
-                {
+                if !cref.is_transparent(self.color_table) && self.last_back_color.is_some() {
                     let color = self.last_back_color.unwrap().color(self.color_table);
                     style.push_str(&format!("background-color:{};", color.hexcode()))
                 }

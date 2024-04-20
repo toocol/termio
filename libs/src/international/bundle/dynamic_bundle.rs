@@ -85,7 +85,7 @@ pub trait DynamicBundle: 'static {
 
 fn initialize(
     bundles: &mut MutexGuard<DynamicBundleStorage>,
-    locales: &Vec<Locale>,
+    locales: &[Locale],
     property_name: &'static str,
 ) {
     let prefix = PROPERTIES_PATH_PREFIX.to_string();
@@ -103,8 +103,8 @@ fn initialize(
         bundles
             .bundle_message
             .entry(property_name)
-            .or_insert(HashMap::new())
-            .insert(locale.clone(), bundle_message);
+            .or_default()
+            .insert(*locale, bundle_message);
     });
 }
 

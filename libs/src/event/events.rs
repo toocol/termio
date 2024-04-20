@@ -19,7 +19,7 @@ use std::{any::Any, vec};
 ///     }
 ///     
 ///     fn as_any(&self) -> &dyn Any { self }
-/// 
+///
 ///     fn as_trait(self: Box<Self>) -> Box<dyn SyncEvent> { self }
 /// }
 /// ```
@@ -59,7 +59,7 @@ pub trait SyncEvent {
 ///     }
 ///     
 ///     fn as_any(&self) -> &dyn Any { self }
-/// 
+///
 ///     fn as_trait(self: Box<Self>) -> Box<dyn AsyncEvent> { self }
 /// }
 /// ```
@@ -97,13 +97,12 @@ pub fn as_sync_event<T>(event: &dyn SyncEvent) -> &T
 where
     T: SyncEvent + 'static,
 {
-    event.as_any().downcast_ref::<T>().expect(
-        format!(
+    event.as_any().downcast_ref::<T>().unwrap_or_else(|| {
+        panic!(
             "Sync event listener act failed on event type transfer, event = {}",
             event.type_of()
         )
-        .as_str(),
-    )
+    })
 }
 
 /// Transfer the 'AsyncEvent' trait object to the struct AsyncEvent impletion 'T'
@@ -119,12 +118,11 @@ pub fn as_async_event<T>(event: &dyn AsyncEvent) -> &T
 where
     T: AsyncEvent + 'static,
 {
-    event.as_any().downcast_ref::<T>().expect(
-        format!(
+    event.as_any().downcast_ref::<T>().unwrap_or_else(|| 
+        panic!(
             "Async event listener act failed on event type transfer, event = {}",
             event.type_of()
         )
-        .as_str(),
     )
 }
 

@@ -191,12 +191,8 @@ impl TerminalImageFilterChain {
             // terminal image to avoid adding this imaginary character for wrapped
             // lines
             let get = line_propeerties.get(i);
-            let line_property = if get.is_some() {
-                *get.unwrap()
-            } else {
-                LINE_WRAPPED
-            };
-            if line_property & LINE_WRAPPED <= 0 {
+            let line_property = get.copied().unwrap_or(LINE_WRAPPED);
+            if line_property & LINE_WRAPPED == 0 {
                 decoder.new_line();
             }
         }

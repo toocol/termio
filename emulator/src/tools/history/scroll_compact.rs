@@ -72,7 +72,7 @@ impl CompactHistoryBlock {
         ) as *mut u8;
         assert!(ptr as *const c_void != MAP_FAILED);
         Self {
-            block_length: block_length,
+            block_length,
             head: ptr,
             tail: ptr,
             block_start: ptr,
@@ -170,6 +170,7 @@ pub struct CompactHistoryLine {
     wrapped: bool,
 }
 impl CompactHistoryLine {
+    #[allow(clippy::new_ret_no_self)]
     pub fn new(size: usize, block_list: &mut CompactHistoryBlockList) -> *mut c_void {
         block_list.allocate(size)
     }
@@ -199,14 +200,14 @@ impl CompactHistoryLine {
             format_array = block_list
                 .allocate(size_of::<CharacterFormat>() * format_length)
                 .cast::<CharacterFormat>();
-            assert!(format_array != null_mut());
+            assert!(!format_array.is_null());
             format_array_ref =
                 Some(unsafe { slice::from_raw_parts_mut(format_array, format_length) });
 
             text = block_list
                 .allocate(size_of::<wchar_t>() * line.len())
                 .cast::<wchar_t>();
-            assert!(text != null_mut());
+            assert!(!text.is_null());
             text_ref = Some(unsafe { slice::from_raw_parts_mut(text, line.len()) });
 
             // record formats and their positions in the format array
@@ -226,8 +227,8 @@ impl CompactHistoryLine {
                 k += 1;
             }
 
-            for i in 0..line.len() {
-                text_ref.as_mut().unwrap()[i] = line[i].character_union.into();
+            for (i, l) in line.iter().enumerate() {
+                text_ref.as_mut().unwrap()[i] = l.character_union.into();
             }
         }
 
@@ -353,7 +354,7 @@ impl HistoryScroll for CompactHistoryScroll {
 
     fn is_wrapped_line(&mut self, lineno: i32) -> bool {
         assert!(lineno < self.lines.len() as i32);
-        (&self.lines[lineno as usize]).is_wrapped()
+        self.lines[lineno as usize].is_wrapped()
     }
 
     fn add_cells(&mut self, character: &[Character], count: i32) {
@@ -375,7 +376,7 @@ impl HistoryScroll for CompactHistoryScroll {
     fn set_max_nb_lines(&mut self, nb_lines: usize) {
         self.max_line_count = nb_lines as u32;
 
-        while self.lines.len() > nb_lines as usize {
+        while self.lines.len() > nb_lines {
             self.lines.remove(0);
         }
     }
