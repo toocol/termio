@@ -8,6 +8,7 @@ edition = "2021"
 [dependencies]
 tmui = { git = "https://github.com/toocol/tmui" }
 
+asset = { path = "../asset/" }
 emulator = { path = "../emulator/" }
 cli = { path = "../cli/" }
 

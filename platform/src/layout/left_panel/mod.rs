@@ -6,11 +6,16 @@ use tmui::{
 
 use crate::ui::activity_bar::ActivityBar;
 
+use super::workspace_panel::WorkspacePanel;
+
 #[extends(Widget, Layout(HBox))]
 #[derive(Childrenable)]
 pub struct LeftPanel {
     #[children]
     activity_bar: Box<ActivityBar>,
+
+    #[children]
+    workspace: Box<WorkspacePanel>
 }
 
 impl ObjectSubclass for LeftPanel {

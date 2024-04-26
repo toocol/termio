@@ -1,5 +1,5 @@
 [workspace]
-members = ["libs", "cli", "platform", "mosh", "terminal", "emulator"]
+members = ["libs", "cli", "platform", "mosh", "terminal", "emulator", "asset"]
 
 [package]
 name = "termio"
@@ -9,7 +9,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-tmui = { git = "https://github.com/toocol/tmui" }
+tmui = { git = "https://github.com/toocol/tmui", features = ["svg"]}
 
 libs = { path = "libs/" }
 cli = { path = "cli/" }

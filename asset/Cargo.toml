@@ -1,0 +1,12 @@
+[package]
+name = "asset"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+rust-embed = { version = "8.3.0", features = [
+    "debug-embed",
+    "include-exclude",
+] }

@@ -30,18 +30,14 @@ impl TerminalView {
         let tlx = tl.x();
         let tly = tl.y();
 
-        let lux = (self.used_columns - 1).min(
-            0.max(((rect.left() - tlx as f32 - self.left_margin) / self.font_width) as i32),
-        );
-        let luy = (self.used_lines - 1).min(
-            0.max(((rect.top() - tly as f32 - self.top_margin) / self.font_height) as i32),
-        );
-        let rlx = (self.used_columns - 1).min(
-            0.max(((rect.right() - tlx as f32 - self.left_margin) / self.font_width) as i32),
-        );
-        let rly = (self.used_lines - 1).min(0.max(
-            ((rect.bottom() - tly as f32 - self.top_margin) / self.font_height) as i32,
-        ));
+        let lux = (self.used_columns - 1)
+            .min(0.max(((rect.left() - tlx as f32 - self.left_margin) / self.font_width) as i32));
+        let luy = (self.used_lines - 1)
+            .min(0.max(((rect.top() - tly as f32 - self.top_margin) / self.font_height) as i32));
+        let rlx = (self.used_columns - 1)
+            .min(0.max(((rect.right() - tlx as f32 - self.left_margin) / self.font_width) as i32));
+        let rly = (self.used_lines - 1)
+            .min(0.max(((rect.bottom() - tly as f32 - self.top_margin) / self.font_height) as i32));
 
         let buffer_size = self.used_columns as usize;
         let mut unistr = vec![0 as wchar_t; buffer_size];
@@ -221,12 +217,12 @@ impl TerminalView {
 
         let mut invert_character_color = false;
 
-        // draw text
-        self.draw_characters(painter, rect, &text, style, invert_character_color);
-
         if style.rendition & RE_CURSOR != 0 {
             self.draw_cursor(painter, rect, foreground_color, &mut invert_character_color);
         }
+
+        // draw text
+        self.draw_characters(painter, rect, &text, style, invert_character_color);
 
         painter.restore_pen();
     }
@@ -257,62 +253,56 @@ impl TerminalView {
         foreground_color: Color,
         invert_colors: &mut bool,
     ) {
+        if self.cursor_blinking {
+            return;
+        }
+        if !self.is_focus() {
+            return;
+        }
+
         painter.set_antialiasing(false);
         let mut cursor_rect: FRect = rect;
         cursor_rect.set_height(self.font_height - self.line_spacing as f32 - 1.);
 
-        if !self.cursor_blinking {
-            if self.cursor_color.valid {
-                painter.set_color(self.cursor_color);
-            } else {
-                painter.set_color(foreground_color);
-            }
+        if self.cursor_shape == KeyboardCursorShape::BlockCursor {
+            // draw the cursor outline, adjusting the area so that
+            // it is draw entirely inside 'rect'
+            let line_width = painter.line_width().max(1.);
+            let adjusted_cursor_rect = cursor_rect.adjusted(
+                line_width * 0.7,
+                line_width * 0.,
+                -line_width * 0.7,
+                -line_width * 0.,
+            );
 
-            if self.cursor_shape == KeyboardCursorShape::BlockCursor {
-                // draw the cursor outline, adjusting the area so that
-                // it is draw entirely inside 'rect'
-                let line_width = painter.line_width().max(1.);
-                let adjusted_cursor_rect = cursor_rect.adjusted(
-                    line_width * 0.7,
-                    line_width * 0.,
-                    -line_width * 0.7,
-                    -line_width * 0.,
-                );
+            painter.fill_rect(
+                adjusted_cursor_rect,
+                if self.cursor_color.valid {
+                    self.cursor_color
+                } else {
+                    foreground_color
+                },
+            );
 
-                painter.draw_rect(adjusted_cursor_rect);
-
-                if self.is_focus() {
-                    painter.fill_rect(
-                        adjusted_cursor_rect,
-                        if self.cursor_color.valid {
-                            self.cursor_color
-                        } else {
-                            foreground_color
-                        },
-                    );
-
-                    if !self.cursor_color.valid {
-                        // invert the colour used to draw the text to ensure that the
-                        // character at the cursor position is readable
-                        *invert_colors = true;
-                    }
-                }
-            } else if self.cursor_shape == KeyboardCursorShape::UnderlineCursor {
-                painter.draw_line_f(
-                    cursor_rect.left(),
-                    cursor_rect.bottom(),
-                    cursor_rect.right(),
-                    cursor_rect.bottom(),
-                )
-            } else if self.cursor_shape == KeyboardCursorShape::IBeamCursor {
-                painter.draw_line_f(
-                    cursor_rect.left(),
-                    cursor_rect.top(),
-                    cursor_rect.left(),
-                    cursor_rect.bottom(),
-                )
-            }
+            // invert the colour used to draw the text to ensure that the
+            // character at the cursor position is readable
+            *invert_colors = true;
+        } else if self.cursor_shape == KeyboardCursorShape::UnderlineCursor {
+            painter.draw_line_f(
+                cursor_rect.left(),
+                cursor_rect.bottom(),
+                cursor_rect.right(),
+                cursor_rect.bottom(),
+            )
+        } else if self.cursor_shape == KeyboardCursorShape::IBeamCursor {
+            painter.draw_line_f(
+                cursor_rect.left(),
+                cursor_rect.top(),
+                cursor_rect.left(),
+                cursor_rect.bottom(),
+            )
         }
+
         painter.set_antialiasing(true);
     }
 
@@ -320,7 +310,7 @@ impl TerminalView {
     pub(super) fn draw_characters(
         &mut self,
         painter: &mut Painter,
-        rect: FRect,
+        mut rect: FRect,
         text: &WideString,
         style: &Character,
         invert_character_color: bool,
@@ -366,7 +356,9 @@ impl TerminalView {
                 .expect("`draw_characters()` transfer wchar_t text to utf-8 failed.");
 
             if self.bidi_enable {
-                painter.fill_rect(rect, style.background_color.color(&self.color_table));
+                if !invert_character_color {
+                    painter.fill_rect(rect, style.background_color.color(&self.color_table));
+                }
                 painter.draw_paragraph(
                     &text,
                     (rect.x(), rect.y()),
@@ -376,10 +368,10 @@ impl TerminalView {
                     false,
                 );
             } else {
-                let mut draw_rect = FRect::new(rect.x(), rect.y(), rect.width(), rect.height());
-                draw_rect.set_height(draw_rect.height() + self.draw_text_addition_height);
-
-                painter.fill_rect(draw_rect, style.background_color.color(&self.color_table));
+                rect.set_height(rect.height() + self.draw_text_addition_height);
+                if !invert_character_color {
+                    painter.fill_rect(rect, style.background_color.color(&self.color_table));
+                }
                 // Draw the text start at the left-bottom.
                 painter.draw_paragraph(
                     &text,
@@ -391,18 +383,18 @@ impl TerminalView {
                 );
 
                 if use_underline {
-                    let y = draw_rect.bottom() - 0.5;
-                    painter.draw_line_f(draw_rect.left(), y, draw_rect.right(), y)
+                    let y = rect.bottom() - 0.5;
+                    painter.draw_line_f(rect.left(), y, rect.right(), y)
                 }
 
                 if use_strike_out {
-                    let y = (draw_rect.top() + draw_rect.bottom()) / 2.;
-                    painter.draw_line_f(draw_rect.left(), y, draw_rect.right(), y)
+                    let y = (rect.top() + rect.bottom()) / 2.;
+                    painter.draw_line_f(rect.left(), y, rect.right(), y)
                 }
 
                 if use_overline {
-                    let y = draw_rect.top() + 0.5;
-                    painter.draw_line_f(draw_rect.left(), y, draw_rect.right(), y)
+                    let y = rect.top() + 0.5;
+                    painter.draw_line_f(rect.left(), y, rect.right(), y)
                 }
             }
         }
@@ -519,10 +511,10 @@ impl TerminalView {
         // because the check below for the position of the cursor finds it on the border of the target area.
         let mut r = FRect::default();
         r.set_coords(
-            start_column as f32 * self.font_width + 1. + self.left_base_margin,
-            line as f32 * self.font_height + 1. + self.top_base_margin,
-            end_column as f32 * self.font_width - 1. + self.left_base_margin,
-            (line as f32 + 1.) * self.font_height - 1. + self.top_base_margin,
+            start_column as f32 * self.font_width + 1. + self.left_margin,
+            line as f32 * self.font_height + 1. + self.top_margin,
+            end_column as f32 * self.font_width - 1. + self.left_margin,
+            (line as f32 + 1.) * self.font_height - 1. + self.top_margin,
         );
 
         match spot.type_() {
@@ -537,11 +529,6 @@ impl TerminalView {
             HotSpotType::Marker => painter.fill_rect(r, Color::from_rgba(255, 0, 0, 120)),
             _ => {}
         }
-    }
-
-    pub(super) fn cal_draw_text_addition_height(&mut self, painter: &mut Painter) {
-        // let test_rect = Rect::new(1, 1, self.font_width * 4, self.font_height);
-        // painter.draw_text(LTR_OVERRIDE_CHAR, origin)
     }
 }
 

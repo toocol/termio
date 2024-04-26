@@ -19,6 +19,7 @@ use libc::{c_void, memmove, wchar_t};
 use std::{mem::size_of, rc::Rc, sync::atomic::Ordering, time::Duration};
 use tmui::{
     clipboard::ClipboardLevel,
+    font::FontCalculation,
     prelude::*,
     scroll_bar::{ScrollBarPosition, ScrollBarSignal},
     system::System,
@@ -93,35 +94,35 @@ impl TerminalView {
         let mut r = FRect::default();
         if spot.start_line() == spot.end_line() {
             r.set_coords(
-                spot.start_column() as f32 * self.font_width + 1. + self.left_base_margin,
-                spot.start_line() as f32 * self.font_height + 1. + self.top_base_margin,
-                spot.end_column() as f32 * self.font_width - 1. + self.left_base_margin,
-                (spot.end_line() as f32 + 1.) * self.font_height - 1. + self.top_base_margin,
+                spot.start_column() as f32 * self.font_width + 1. + self.left_margin,
+                spot.start_line() as f32 * self.font_height + 1. + self.top_margin,
+                spot.end_column() as f32 * self.font_width - 1. + self.left_margin,
+                (spot.end_line() as f32 + 1.) * self.font_height - 1. + self.top_margin,
             );
             region.add_rect(r);
         } else {
             r.set_coords(
-                spot.start_column() as f32 * self.font_width + 1. + self.left_base_margin,
-                spot.start_line() as f32 * self.font_height + 1. + self.top_base_margin,
-                self.columns as f32 * self.font_width - 1. + self.left_base_margin,
-                (spot.start_line() as f32 + 1.) * self.font_height - 1. + self.top_base_margin,
+                spot.start_column() as f32 * self.font_width + 1. + self.left_margin,
+                spot.start_line() as f32 * self.font_height + 1. + self.top_margin,
+                self.columns as f32 * self.font_width - 1. + self.left_margin,
+                (spot.start_line() as f32 + 1.) * self.font_height - 1. + self.top_margin,
             );
             region.add_rect(r);
 
             for line in spot.start_line() + 1..spot.end_line() {
                 r.set_coords(
-                    0. * self.font_width + 1. + self.left_base_margin,
-                    line as f32 * self.font_height + 1. + self.top_base_margin,
-                    self.columns as f32 * self.font_width - 1. + self.left_base_margin,
-                    (line as f32 + 1.) * self.font_height - 1. + self.top_base_margin,
+                    0. * self.font_width + 1. + self.left_margin,
+                    line as f32 * self.font_height + 1. + self.top_margin,
+                    self.columns as f32 * self.font_width - 1. + self.left_margin,
+                    (line as f32 + 1.) * self.font_height - 1. + self.top_margin,
                 );
                 region.add_rect(r);
             }
             r.set_coords(
-                0. * self.font_width + 1. + self.left_base_margin,
-                spot.end_line() as f32 * self.font_height + 1. + self.top_base_margin,
-                spot.end_column() as f32 * self.font_width - 1. + self.left_base_margin,
-                (spot.end_line() as f32 + 1.) * self.font_height - 1. + self.top_base_margin,
+                0. * self.font_width + 1. + self.left_margin,
+                spot.end_line() as f32 * self.font_height + 1. + self.top_margin,
+                spot.end_column() as f32 * self.font_width - 1. + self.left_margin,
+                (spot.end_line() as f32 + 1.) * self.font_height - 1. + self.top_margin,
             );
             region.add_rect(r);
         }
@@ -342,7 +343,8 @@ impl TerminalView {
         }
         emit!(
             self.copy_avaliable(),
-            !self.screen_window()
+            !self
+                .screen_window()
                 .unwrap()
                 .selected_text(false)
                 .is_empty()
@@ -619,8 +621,7 @@ impl TerminalView {
             return 0.;
         }
         let image = self.image();
-        let font = &self.font().to_skia_fonts()[0];
-        let mut result = 0.;
+        let mut str = WideString::new();
         for column in 0..length {
             let c: &[uwchar_t; 1] = unsafe {
                 std::mem::transmute(&[image[self.loc(start_column + column, line) as usize]
@@ -641,12 +642,12 @@ impl TerminalView {
                 ws16.as_slice()
             };
 
-            let mut widths = vec![0.; c.len()];
-            font.get_widths(c, &mut widths);
-            let width: f32 = widths.iter().sum();
-            result += width;
+            str.push_char(char::from_u32(c[0] as u32).unwrap());
         }
-        result
+
+        self.font()
+            .calc_text_dimension(&str.to_string().unwrap(), 0.)
+            .0
     }
 
     /// determine the area that encloses this series of characters.
@@ -679,6 +680,7 @@ impl TerminalView {
     }
 
     /// maps an area in the character image to an area on the widget.
+    #[inline]
     fn image_to_widget(&self, image_area: &FRect) -> FRect {
         let mut result = FRect::default();
         result.set_left(self.left_margin + self.font_width * image_area.left());
@@ -799,9 +801,9 @@ impl TerminalView {
             }
         }
 
-        self.top_margin = self.top_base_margin;
-        self.content_width = contents_rect.width() - 2 * self.left_base_margin as i32;
-        self.content_height = contents_rect.height() - 2 * self.top_base_margin as i32;
+        self.top_margin = self.top_margin;
+        self.content_width = contents_rect.width() - 2 * self.left_margin as i32;
+        self.content_height = contents_rect.height() - 2 * self.top_margin as i32;
 
         if !self.is_fixed_size {
             // ensure that display is always at least one column wide
@@ -926,6 +928,7 @@ impl TerminalView {
     }
 
     /// returns the position of the cursor in columns and lines.
+    #[inline]
     pub(super) fn cursor_position(&self) -> Point {
         if let Some(sw) = self.screen_window() {
             sw.cursor_position()
@@ -935,10 +938,20 @@ impl TerminalView {
     }
 
     /// redraws the cursor.
+    #[inline]
     pub(super) fn update_cursor(&mut self) {
         let rect = FRect::from_point_size(self.cursor_position().into(), Size::new(1, 1).into());
         let cursor_rect = self.image_to_widget(&rect);
         self.update_rect(CoordRect::new(cursor_rect, Coordinate::Widget));
+    }
+
+    #[inline]
+    pub(super) fn terminal_rect(&self) -> FRect {
+        let mut rect = self.contents_rect_f(Some(Coordinate::Widget));
+        rect.offset(self.left_margin, self.top_margin);
+        rect.set_width(self.columns as f32 * self.font_width);
+        rect.set_height(self.lines as f32 * (self.font_height + self.line_spacing as f32));
+        rect
     }
 }
 
@@ -959,7 +972,7 @@ impl TerminalView {
         screen_window.reset_scroll_count();
 
         if self.image.is_none() {
-            // Create _image.
+            // Create image.
             // The emitted changedContentSizeSignal also leads to getImage being
             // recreated, so do this first.
             self.update_image_size()
@@ -970,11 +983,12 @@ impl TerminalView {
 
         self.set_scroll(screen_window.current_line(), screen_window.line_count());
 
+        // Skip the mutable reference borrow check.
         let image = ptr_mut!(self.image.as_mut().unwrap() as *mut Vec<Character>);
         let new_img = screen_window.get_image();
 
-        assert!(self.used_lines <= self.lines);
-        assert!(self.used_columns <= self.columns);
+        debug_assert!(self.used_lines <= self.lines);
+        debug_assert!(self.used_columns <= self.columns);
 
         let tl = self.contents_rect(Some(Coordinate::Widget)).top_left();
         let tlx = tl.x();
@@ -1105,6 +1119,7 @@ impl TerminalView {
                     self.font_width * columns_to_update as f32,
                     self.font_height,
                 );
+
 
                 dirty_region.or(&dirty_rect);
             }

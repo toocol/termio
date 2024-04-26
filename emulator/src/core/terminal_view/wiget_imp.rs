@@ -1,5 +1,5 @@
 use crate::{
-    core::terminal_view::{predefine::REPCHAR, TerminalViewSignals},
+    core::terminal_view::TerminalViewSignals,
     tools::{
         character::LINE_WRAPPED,
         character_color::BASE_COLOR_TABLE,
@@ -9,9 +9,7 @@ use crate::{
 };
 use std::time::Duration;
 use tmui::{
-    application::cursor_blinking_time, opti::tracker::Tracker, prelude::*, skia_safe::textlayout::{
-        FontCollection, ParagraphBuilder, ParagraphStyle, TextStyle, TypefaceFontProvider,
-    }, tlib::{
+    application::cursor_blinking_time, font::FontCalculation, opti::tracker::Tracker, prelude::*, skia_safe::ClipOp, tlib::{
         connect,
         events::{KeyEvent, MouseEvent},
         namespace::{Align, KeyboardModifier, MouseButton},
@@ -64,8 +62,13 @@ impl TerminalView {
 
         // TODO: Process the background image.
 
-        if self.draw_text_test_flag {
-            self.cal_draw_text_addition_height(painter);
+        if self.clear_margin {
+            let rect = self.terminal_rect();
+            painter.save();
+            painter.clip_rect(rect, ClipOp::Difference);
+            painter.fill_rect(self.contents_rect_f(Some(Coordinate::Widget)), self.background());
+            painter.restore();
+            self.clear_margin = false;
         }
 
         let region = self.redraw_region().clone();
@@ -196,36 +199,36 @@ impl TerminalView {
 
                 if spot.start_line() == spot.end_line() {
                     r.set_coords(
-                        spot.start_column() as f32 * self.font_width + self.left_base_margin,
-                        spot.start_line() as f32 * self.font_height + self.top_base_margin,
-                        spot.end_column() as f32 * self.font_width + self.left_base_margin,
-                        (spot.end_line() + 1) as f32 * self.font_height - 1. + self.top_base_margin,
+                        spot.start_column() as f32 * self.font_width + self.left_margin,
+                        spot.start_line() as f32 * self.font_height + self.top_margin,
+                        spot.end_column() as f32 * self.font_width + self.left_margin,
+                        (spot.end_line() + 1) as f32 * self.font_height - 1. + self.top_margin,
                     );
                     mouse_over_hotspot_area.add_rect(CoordRect::new(r, Coordinate::Widget));
                 } else {
                     r.set_coords(
-                        spot.start_column() as f32 * self.font_width + self.left_base_margin,
-                        spot.start_line() as f32 * self.font_height + self.top_base_margin,
-                        self.columns as f32 * self.font_width - 1. + self.left_base_margin,
-                        (spot.start_line() + 1) as f32 * self.font_height + self.top_base_margin,
+                        spot.start_column() as f32 * self.font_width + self.left_margin,
+                        spot.start_line() as f32 * self.font_height + self.top_margin,
+                        self.columns as f32 * self.font_width - 1. + self.left_margin,
+                        (spot.start_line() + 1) as f32 * self.font_height + self.top_margin,
                     );
                     mouse_over_hotspot_area.add_rect(CoordRect::new(r, Coordinate::Widget));
 
                     for line in spot.start_line() + 1..spot.end_line() {
                         r.set_coords(
-                            self.left_base_margin,
-                            line as f32 * self.font_height + self.top_base_margin,
-                            self.columns as f32 * self.font_width + self.left_base_margin,
-                            (line + 1) as f32 * self.font_height + self.top_base_margin,
+                            self.left_margin,
+                            line as f32 * self.font_height + self.top_margin,
+                            self.columns as f32 * self.font_width + self.left_margin,
+                            (line + 1) as f32 * self.font_height + self.top_margin,
                         );
                         mouse_over_hotspot_area.add_rect(CoordRect::new(r, Coordinate::Widget));
                     }
 
                     r.set_coords(
-                        self.left_base_margin,
-                        spot.end_line() as f32 * self.font_height + self.top_base_margin,
-                        spot.end_column() as f32 * self.font_width + self.left_base_margin,
-                        (spot.end_line() + 1) as f32 * self.font_height + self.top_base_margin,
+                        self.left_margin,
+                        spot.end_line() as f32 * self.font_height + self.top_margin,
+                        spot.end_column() as f32 * self.font_width + self.left_margin,
+                        (spot.end_line() + 1) as f32 * self.font_height + self.top_margin,
                     );
                     mouse_over_hotspot_area.add_rect(CoordRect::new(r, Coordinate::Widget));
                 }
@@ -562,53 +565,37 @@ impl TerminalView {
         if size.width() == 0 || size.height() == 0 {
             return;
         }
+        let rect = self.rect_record();
+        if size.width() < rect.width() || size.height() < rect.height() {
+            self.clear_margin = true;
+        }
         self.update_image_size();
         self.process_filters();
     }
 
-    pub(super) fn font_change(&mut self) {
+    pub(super) fn handle_font_change(&mut self) {
         let font = &self.font().to_skia_fonts()[0];
-        let typeface = font.typeface();
 
-        let mut typeface_provider = TypefaceFontProvider::new();
-        let family = typeface.family_name();
-        typeface_provider.register_typeface(typeface, Some(family.as_str()));
+        let (width, height) = self.font().calc_font_dimension();
 
-        let mut font_collection = FontCollection::new();
-        font_collection.set_asset_font_manager(Some(typeface_provider.clone().into()));
+        self.font_width = width;
+        self.font_height = height;
 
-        // define text style
-        let mut style = ParagraphStyle::new();
-        let mut text_style = TextStyle::new();
-        text_style.set_font_size(font.size());
-        text_style.set_font_families(&[family]);
-        text_style.set_letter_spacing(0.);
-        style.set_text_style(&text_style);
-
-        // layout the paragraph
-        let mut paragraph_builder = ParagraphBuilder::new(&style, font_collection);
-        paragraph_builder.add_text(REPCHAR);
-        let mut paragraph = paragraph_builder.build();
-        paragraph.layout(f32::MAX);
-
-        self.font_width = paragraph.max_intrinsic_width() / REPCHAR.len() as f32;
-        self.font_height = paragraph.height();
-
-        self.fixed_font = true;
+        self.fixed_font = font.typeface().is_fixed_pitch();
 
         // "Base character width on widest ASCII character. This prevents too wide
         // characters in the presence of double wide (e.g. Chinese) characters."
         // Get the width from representative normal width characters
-        let wchar_t_repchar: Vec<u16> = REPCHAR.encode_utf16().collect();
-        let mut widths = vec![0f32; wchar_t_repchar.len()];
-        font.get_widths(&wchar_t_repchar, &mut widths);
-        let fw = widths[0];
-        for w in widths.iter().skip(1) {
-            if fw != *w {
-                self.fixed_font = false;
-                break;
-            }
-        }
+        // let wchar_t_repchar: Vec<u16> = REPCHAR.encode_utf16().collect();
+        // let mut widths = vec![0f32; wchar_t_repchar.len()];
+        // font.get_widths(&wchar_t_repchar, &mut widths);
+        // let fw = widths[0];
+        // for w in widths.iter().skip(1) {
+        //     if fw != *w {
+        //         self.fixed_font = false;
+        //         break;
+        //     }
+        // }
 
         if self.font_width < 1. {
             self.font_width = 1.;
@@ -620,10 +607,6 @@ impl TerminalView {
         );
         self.propagate_size();
 
-        // We will run paint event testing procedure.
-        // Although this operation will destroy the original content,
-        // the content will be drawn again after the test.
-        self.draw_text_test_flag = true;
         self.update();
     }
 }

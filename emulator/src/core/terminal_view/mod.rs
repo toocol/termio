@@ -19,10 +19,18 @@ use crate::tools::{
     filter::{FilterChainImpl, TerminalImageFilterChain},
 };
 use derivative::Derivative;
-use log::warn;
 use std::{ptr::NonNull, sync::atomic::Ordering, time::Duration};
 use tmui::{
-    application, clipboard::ClipboardLevel, graphics::painter::Painter, label::Label, opti::tracker::Tracker, prelude::*, scroll_bar::ScrollBar, skia_safe, system::System, tlib::{
+    application,
+    clipboard::ClipboardLevel,
+    font::FontEdging,
+    graphics::painter::Painter,
+    label::Label,
+    opti::tracker::Tracker,
+    prelude::*,
+    scroll_bar::ScrollBar,
+    system::System,
+    tlib::{
         connect, emit,
         events::{KeyEvent, MouseEvent},
         figure::{Color, FPoint, FRect, Size},
@@ -31,7 +39,8 @@ use tmui::{
         object::{ObjectImpl, ObjectSubclass},
         signals,
         timer::Timer,
-    }, widget::WidgetImpl
+    },
+    widget::WidgetImpl,
 };
 
 #[extends(Widget, Layout(Stack))]
@@ -46,8 +55,6 @@ pub struct TerminalView {
     // Whether intense colors should be bold.
     #[derivative(Default(value = "true"))]
     bold_intense: bool,
-    // Whether is test mode.
-    draw_text_test_flag: bool,
 
     // whether has fixed pitch.
     #[derivative(Default(value = "true"))]
@@ -62,10 +69,6 @@ pub struct TerminalView {
     left_margin: f32,
     #[derivative(Default(value = "5."))]
     top_margin: f32,
-    #[derivative(Default(value = "5."))]
-    left_base_margin: f32,
-    #[derivative(Default(value = "5."))]
-    top_base_margin: f32,
 
     // The total number of lines that can be displayed in the view.
     #[derivative(Default(value = "1"))]
@@ -179,6 +182,8 @@ pub struct TerminalView {
     bind_session: ObjectId,
     /// `true` when the session this terminal view binded was finised.
     terminate: bool,
+
+    clear_margin: bool,
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -236,6 +241,20 @@ impl WidgetImpl for TerminalView {
     fn on_mouse_move(&mut self, event: &MouseEvent) {
         let _tracker = Tracker::start("terminal_view_mouse_move");
         self.handle_mouse_move(event)
+    }
+
+    #[inline]
+    fn font_changed(&mut self) {
+        // hint that text should be drawn with/without anti-aliasing.
+        // depending on the user's font configuration, this may not be respected
+        let font = self.font_mut();
+        if ANTIALIAS_TEXT.load(Ordering::SeqCst) {
+            font.set_edging(FontEdging::AntiAlias);
+        } else {
+            font.set_edging(FontEdging::Alias);
+        }
+
+        self.handle_font_change()
     }
 }
 
@@ -456,7 +475,7 @@ impl TerminalView {
         self.line_spacing = spacing;
 
         // line spacing was changed, should recalculate the font_width
-        self.set_vt_font(&mut self.font().to_skia_fonts()[0])
+        self.handle_font_change()
     }
     #[inline]
     pub fn line_spacing(&self) -> u32 {
@@ -465,12 +484,12 @@ impl TerminalView {
 
     #[inline]
     pub fn set_margin(&mut self, margin: i32) {
-        self.top_base_margin = margin as f32;
-        self.left_base_margin = margin as f32;
+        self.top_margin = margin as f32;
+        self.left_margin = margin as f32;
     }
     #[inline]
     pub fn margin(&mut self) -> i32 {
-        self.top_base_margin as i32
+        self.top_margin as i32
     }
 
     #[inline]
@@ -554,8 +573,8 @@ impl TerminalView {
     }
 
     pub fn set_size(&mut self) {
-        let horizontal_margin = 2 * self.left_base_margin as i32;
-        let vertical_margin = 2 * self.top_base_margin as i32;
+        let horizontal_margin = 2 * self.left_margin as i32;
+        let vertical_margin = 2 * self.top_margin as i32;
 
         let new_size = Size::new(
             horizontal_margin + (self.columns * self.font_width.ceil() as i32),
@@ -620,33 +639,6 @@ impl TerminalView {
 
     pub fn copy_selection(&mut self, t: String) {
         System::clipboard().set_text(t, ClipboardLevel::Os);
-    }
-
-    /// Returns the font used to draw characters in the view.
-    #[inline]
-    pub fn get_vt_font(&self) -> &Font {
-        self.font()
-    }
-    /// Sets the font used to draw the display.  Has no effect if @p [`font`]
-    /// is larger than the size of the display itself.
-    pub fn set_vt_font(&mut self, font: &mut skia_safe::Font) {
-        if !font.typeface().is_fixed_pitch() {
-            warn!(
-                "Using a variable-width font in the terminal.  This may cause 
-performance degradation and display/alignment errors."
-            )
-        }
-
-        // hint that text should be drawn with/without anti-aliasing.
-        // depending on the user's font configuration, this may not be respected
-        if ANTIALIAS_TEXT.load(Ordering::SeqCst) {
-            font.set_edging(tmui::skia_safe::font::Edging::AntiAlias);
-        } else {
-            font.set_edging(tmui::skia_safe::font::Edging::Alias);
-        }
-
-        // self.set_font(font.into());
-        self.font_change();
     }
 
     /// Specify whether line chars should be drawn by ourselves or left to

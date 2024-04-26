@@ -5,6 +5,7 @@ use tmui::{
 };
 
 #[extends(Widget, Layout(HBox))]
+#[derive(Childrenable)]
 pub struct WinControlButtons {}
 
 impl ObjectSubclass for WinControlButtons {

@@ -23,8 +23,9 @@ pub enum RelativeScrollMode {
     ScrollPages,
 }
 
-/// Provides a window onto a section of a terminal screen.  A terminal widget can then render the contents of
-/// the window and use the window to change the terminal screen's selection in response to mouse or keyboard input.
+/// Provides a window onto a section of a terminal screen. 
+/// A terminal widget can then render the contents of the window 
+/// and use the window to change the terminal screen's selection in response to mouse or keyboard input.
 ///
 /// A new ScreenWindow for a terminal session can be created by calling Emulation::createWindow()
 ///
