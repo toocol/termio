@@ -1,8 +1,7 @@
+use asset::Asset;
 use encoding::label::encoding_from_whatwg_label;
 use java_properties::PropertiesIter;
 use std::{collections::HashMap, io::BufReader};
-
-use crate::Asset;
 
 pub struct BundleMessage {
     message_map: HashMap<String, String>,
@@ -29,10 +28,12 @@ impl BundleMessage {
         bundle_message
     }
 
+    #[inline]
     pub fn get(&self, key: &str) -> Option<&String> {
         self.message_map.get(key)
     }
 
+    #[inline]
     fn insert(&mut self, key: String, val: String) {
         self.message_map.insert(key, val);
     }

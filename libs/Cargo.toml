@@ -5,13 +5,11 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
+asset = {path = "../asset/"}
+
 lazy_static = "1.4.0"
 log = "0.4"
 java-properties = "1.4.1"
 encoding = "0.2.33"
 pem = "1.1.0"
 hex_color = "2.0.0"
-rust-embed = { version = "6.4.2", features = [
-    "debug-embed",
-    "include-exclude",
-] }

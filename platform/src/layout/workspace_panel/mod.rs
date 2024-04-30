@@ -4,7 +4,7 @@ use tmui::{
     tree_view::TreeView,
     widget::WidgetImpl,
 };
-use crate::ui::session_credential_tree::SessionCredentialTree;
+use crate::ui::sessions::SessionCredentialTree;
 
 #[extends(Widget, Layout(Stack))]
 #[derive(Childrenable)]

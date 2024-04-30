@@ -18,7 +18,6 @@ impl ObjectImpl for SessionBar {
 
         self.set_vexpand(true);
         self.set_hexpand(true);
-        self.set_hscale(0.7);
     }
 }
 

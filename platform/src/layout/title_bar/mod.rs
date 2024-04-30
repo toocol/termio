@@ -1,6 +1,6 @@
 use tmui::{prelude::*, tlib::object::ObjectSubclass};
 
-use crate::ui::{session_bar::SessionBar, win_control_buttons::WinControlButtons};
+use crate::ui::{sessions::SessionBar, win_control_buttons::WinControlButtons};
 
 #[extends(Widget, Layout(HBox))]
 #[derive(Childrenable)]
