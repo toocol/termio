@@ -229,7 +229,7 @@ impl Session {
         scroll_area.set_hexpand(true);
         scroll_area.set_vexpand(true);
 
-        view.set_scroll_bar(scroll_area.get_scroll_bar_mut());
+        view.set_scroll_bar(scroll_area.scroll_bar_mut());
         scroll_area.set_area(view);
 
         self.scrolled_view = NonNull::new(scroll_area.as_mut());

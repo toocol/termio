@@ -291,7 +291,7 @@ impl ScreenWindow {
         bound(
             0,
             self.current_line,
-            self.line_count() - self.window_lines(),
+            (self.line_count() - self.window_lines()).max(0),
         )
     }
 
