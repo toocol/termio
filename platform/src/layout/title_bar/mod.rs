@@ -1,12 +1,11 @@
 use tmui::{prelude::*, tlib::object::ObjectSubclass};
-
-use crate::ui::{sessions::SessionBar, win_control_buttons::WinControlButtons};
+use crate::ui::{app_icon::AppIcon, sessions::SessionBar, win_control_buttons::WinControlButtons};
 
 #[extends(Widget, Layout(HBox))]
 #[derive(Childrenable)]
 pub struct TitleBar {
     #[children]
-    app_icon: Box<Widget>,
+    app_icon: Box<AppIcon>,
 
     #[children]
     session_bar: Box<SessionBar>,

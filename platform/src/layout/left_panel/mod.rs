@@ -15,7 +15,7 @@ pub struct LeftPanel {
     activity_bar: Box<ActivityBar>,
 
     #[children]
-    workspace: Box<WorkspacePanel>
+    workspace: Box<WorkspacePanel>,
 }
 
 impl ObjectSubclass for LeftPanel {
@@ -37,5 +37,14 @@ impl LeftPanel {
     #[inline]
     pub fn new() -> Box<Self> {
         Object::new(&[])
+    }
+
+    #[inline]
+    pub fn toggle_visibility(&mut self) {
+        if self.visible() {
+            self.hide();
+        } else {
+            self.show();
+        }
     }
 }

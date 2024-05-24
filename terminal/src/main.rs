@@ -1,7 +1,5 @@
 use emulator::core::terminal_emulator::TerminalEmulator;
-use tmui::{
-    application::Application, application_window::ApplicationWindow, widget::WidgetImplExt,
-};
+use tmui::{application::Application, application_window::ApplicationWindow, widget::ChildOp};
 
 fn main() {
     log4rs::init_file("terminal/log4rs.yaml", Default::default()).unwrap();
