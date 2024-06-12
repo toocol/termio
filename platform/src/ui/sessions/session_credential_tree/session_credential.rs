@@ -1,6 +1,6 @@
 use cli::ProtocolType;
 use tmui::{
-    tlib::utils::Timestamp,
+    tlib::{figure::Color, utils::Timestamp},
     tree_view::{
         cell::{cell_render::TextCellRender, Cell},
         node_render::NodeRender,
@@ -21,15 +21,15 @@ impl TreeViewObject for SessionCredential {
         vec![
             Cell::string()
                 .value(self.protocol.as_str().to_string())
-                .cell_render(TextCellRender::builder().build())
+                .cell_render(TextCellRender::builder().color(Color::BLACK).build())
                 .build(),
             Cell::string()
-                .value(self.name.as_str().to_string())
-                .cell_render(TextCellRender::builder().build())
+                .value(self.name.clone())
+                .cell_render(TextCellRender::builder().color(Color::BLACK).build())
                 .build(),
             Cell::string()
-                .value(self.address.as_str().to_string())
-                .cell_render(TextCellRender::builder().build())
+                .value(self.address.clone())
+                .cell_render(TextCellRender::builder().color(Color::BLACK).build())
                 .build(),
         ]
     }
@@ -47,8 +47,13 @@ impl TreeViewObject for SessionCredential {
 
 impl SessionCredential {
     #[inline]
-    pub fn new(protocol: ProtocolType, address: String, name: Option<String>) -> Self {
-        let name = name.unwrap_or(address.clone());
+    pub fn new(
+        protocol: ProtocolType,
+        address: impl ToString,
+        name: Option<impl ToString>,
+    ) -> Self {
+        let address = address.to_string();
+        let name = name.map(|n| n.to_string()).unwrap_or(address.clone());
         Self {
             protocol,
             name,

@@ -10,9 +10,7 @@ use crate::{
 use std::time::Duration;
 use tmui::{
     application::cursor_blinking_time, font::FontCalculation, opti::tracker::Tracker, prelude::*, skia_safe::ClipOp, tlib::{
-        connect,
-        events::{KeyEvent, MouseEvent},
-        namespace::{Align, KeyboardModifier, MouseButton},
+        connect, events::{KeyEvent, MouseEvent}, figure::FSize, namespace::{Align, KeyboardModifier, MouseButton}
     }, widget::widget_ext::WidgetExt
 };
 use wchar::wch;
@@ -561,7 +559,8 @@ impl TerminalView {
 
     #[inline]
     pub(super) fn when_resized(&mut self, size: Size) {
-        if size.width() == 0 || size.height() == 0 {
+        let size: FSize = size.into();
+        if size.width() == 0. || size.height() == 0. {
             return;
         }
         let rect = self.rect_record();

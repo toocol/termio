@@ -1,8 +1,7 @@
 use tmui::{
     prelude::*,
     tlib::{
-        object::{ObjectImpl, ObjectSubclass},
-        run_after,
+        connect, object::{ObjectImpl, ObjectSubclass}, run_after
     },
     widget::{WidgetFinder, WidgetImpl},
 };
@@ -24,9 +23,12 @@ impl ObjectImpl for AppIcon {}
 impl WidgetImpl for AppIcon {
     #[inline]
     fn run_after(&mut self) {
-        let finds = self.finds::<LeftPanel>();
-        let left_panel = finds.first().unwrap();
+        let lp_owner = self.window().finds::<LeftPanel>();
+        let left_panel = lp_owner.first().unwrap();
         self.left_panel = left_panel.id();
+        connect!(left_panel, size_changed(), self, linkage_size_change(Size));
+
+        self.linkage_size_change(left_panel.size());
     }
 
     #[inline]
@@ -41,5 +43,14 @@ impl AppIcon {
     #[inline]
     pub fn new() -> Box<Self> {
         Object::new(&[])
+    }
+
+    #[inline]
+    fn linkage_size_change(&mut self, size: Size) {
+        if size.width() > 0 {
+            self.resize(Some(size.width()), None);
+        } else if self.size().width() != 30 {
+            self.resize(Some(30), None);
+        }
     }
 }
