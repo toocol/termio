@@ -2,7 +2,7 @@ use super::{KeyboardTranslator, KeyboardTranslatorReader};
 use crate::asset::Asset;
 use log::warn;
 use once_cell::sync::Lazy;
-use std::{collections::HashMap, ptr::NonNull};
+use std::{collections::HashMap, ptr::{addr_of_mut, NonNull}};
 
 const LAYOUT_PATH_PREFIX: &str = "kb-layouts/";
 const LAYOUT_PATH_SUFFIX: &str = ".keytab";
@@ -34,7 +34,7 @@ impl KeyboardTranslatorManager {
     pub fn instance() -> &'static mut KeyboardTranslatorManager {
         static mut KEYBOARD_TRANSLATOR_MANAGER: Lazy<KeyboardTranslatorManager> =
             Lazy::new(KeyboardTranslatorManager::new);
-        unsafe { &mut KEYBOARD_TRANSLATOR_MANAGER }
+        unsafe { addr_of_mut!(KEYBOARD_TRANSLATOR_MANAGER).as_mut().unwrap() }
     }
 
     /// Returns the default translator.

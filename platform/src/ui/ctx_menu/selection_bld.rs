@@ -1,5 +1,4 @@
-use tmui::tree_view::{tree_node::TreeNode, tree_view_object::TreeViewObject};
-
+use tmui::tree_view::tree_node::TreeNode;
 use super::menu_selection::MenuSelection;
 
 #[derive(Default)]

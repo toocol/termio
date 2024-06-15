@@ -1,4 +1,6 @@
 #![allow(dead_code)]
+use std::ptr::addr_of_mut;
+
 use once_cell::sync::Lazy;
 use tmui::prelude::Font;
 
@@ -9,7 +11,7 @@ pub struct Config {
 #[inline]
 fn instance() -> &'static mut Config {
     static mut CONFIG: Lazy<Config> = Lazy::new(Config::new);
-    unsafe { &mut CONFIG }
+    unsafe { addr_of_mut!(CONFIG).as_mut().unwrap() }
 }
 
 impl Config {

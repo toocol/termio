@@ -1,8 +1,8 @@
-use tmui::tree_view::{
+use tmui::{tlib::figure::Color, tree_view::{
     cell::{cell_render::TextCellRender, Cell, CellStringBuilder},
     node_render::NodeRender,
     tree_view_object::TreeViewObject,
-};
+}};
 
 pub struct MenuSelection {
     val: String,
@@ -13,7 +13,7 @@ impl TreeViewObject for MenuSelection {
     fn cells(&self) -> Vec<Cell> {
         vec![CellStringBuilder::default()
             .value(self.val.clone())
-            .cell_render(TextCellRender::builder().build())
+            .cell_render(TextCellRender::builder().color(Color::BLACK).build())
             .build()]
     }
 

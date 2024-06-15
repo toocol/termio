@@ -10,11 +10,7 @@ use pty::prelude::Fork;
 #[cfg(not(target_os = "windows"))]
 use std::io::Read;
 use std::{
-    collections::HashMap,
-    path::PathBuf,
-    sync::{Arc, Mutex, Once},
-    thread,
-    time::Duration,
+    collections::HashMap, path::PathBuf, ptr::addr_of_mut, sync::{Arc, Mutex, Once}, thread, time::Duration
 };
 use tmui::{
     prelude::*,
@@ -117,7 +113,7 @@ pub struct PtyReceivePool {
 #[inline]
 pub fn pty_receive_pool() -> &'static mut PtyReceivePool {
     static mut PTY_RECEIVE_POOL: Lazy<PtyReceivePool> = Lazy::new(PtyReceivePool::default);
-    unsafe { &mut PTY_RECEIVE_POOL }
+    unsafe { addr_of_mut!(PTY_RECEIVE_POOL).as_mut().unwrap() }
 }
 
 /// Make sure PtyReceivePool::start() only execute once.

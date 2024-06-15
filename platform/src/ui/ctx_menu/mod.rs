@@ -1,7 +1,9 @@
 pub mod menu_selection;
 pub mod selection_bld;
 
+use self::selection_bld::CtxMenuLoc;
 use tmui::{
+    graphics::box_shadow::{BoxShadow, ShadowSide},
     prelude::*,
     scroll_area::LayoutMode,
     tlib::{
@@ -11,7 +13,6 @@ use tmui::{
     tree_view::TreeView,
     widget::WidgetImpl,
 };
-use self::selection_bld::CtxMenuLoc;
 
 #[extends(Popup)]
 #[derive(Childable)]
@@ -29,10 +30,26 @@ impl ObjectSubclass for CtxMenu {
 
 impl ObjectImpl for CtxMenu {
     fn initialize(&mut self) {
+        self.width_request(200);
+        self.height_request(400);
+
+        self.set_borders(1., 1., 1., 1.);
+        self.set_border_color(Color::GREY_LIGHT);
+        self.set_box_shadow(BoxShadow::new(
+            8.,
+            Color::BLACK,
+            None,
+            Some(ShadowSide::new(&[ShadowSide::RIGHT, ShadowSide::BOTTOM])),
+            None,
+        ));
+
+        self.selection_list.set_vexpand(true);
+        self.selection_list.set_hexpand(true);
         self.selection_list.set_layout_mode(LayoutMode::Overlay);
+        self.selection_list.set_mouse_tracking(true);
 
         self.loc
-            .bld_selections(self.selection_list.get_store_mut().root_mut())
+            .bld_selections(self.selection_list.get_store_mut().root_mut());
     }
 }
 

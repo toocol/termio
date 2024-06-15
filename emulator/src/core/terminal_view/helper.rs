@@ -801,7 +801,6 @@ impl TerminalView {
             }
         }
 
-        self.top_margin = self.top_margin;
         self.content_width = contents_rect.width() - 2 * self.left_margin as i32;
         self.content_height = contents_rect.height() - 2 * self.top_margin as i32;
 

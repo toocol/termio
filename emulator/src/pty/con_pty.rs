@@ -1,4 +1,3 @@
-#![cfg(target_os = "windows")]
 use crate::{pty_mut, pty_ref};
 use derivative::Derivative;
 use std::{

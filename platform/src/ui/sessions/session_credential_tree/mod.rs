@@ -49,7 +49,6 @@ fn node_released(node: &mut TreeNode, evt: &MouseEvent) {
 
             if node.is_extensible() {
                 let view = node.get_view();
-                // TODO: endless loop happens here:
                 view.show_popup(view.map_to_global(&evt.position().into()));
             }
         }

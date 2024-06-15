@@ -1,4 +1,3 @@
-#![cfg(not(target_os = "windows"))]
 use crate::{pty_mut, pty_ref};
 
 use super::{ProtocolType, Pty, PtySignals, pty_receive_pool};
