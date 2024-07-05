@@ -1,25 +1,23 @@
-use tmui::{tlib::figure::Color, tree_view::{
-    cell::{cell_render::TextCellRender, Cell, CellStringBuilder},
-    node_render::NodeRender,
-    tree_view_object::TreeViewObject,
-}};
+use tmui::{
+    tlib::figure::Color,
+    views::{
+        cell::{cell_render::TextCellRender, Cell, CellStringBuilder},
+        list_view::list_view_object::ListViewObject,
+        node::node_render::NodeRender,
+    },
+};
 
 pub struct MenuSelection {
     val: String,
 }
 
-impl TreeViewObject for MenuSelection {
+impl ListViewObject for MenuSelection {
     #[inline]
     fn cells(&self) -> Vec<Cell> {
         vec![CellStringBuilder::default()
             .value(self.val.clone())
             .cell_render(TextCellRender::builder().color(Color::BLACK).build())
             .build()]
-    }
-
-    #[inline]
-    fn extensible(&self) -> bool {
-        false
     }
 
     #[inline]

@@ -9,7 +9,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-tmui = { git = "https://github.com/toocol/tmui", features = ["svg"]}
+tmui = { git = "https://github.com/toocol/tmui", features = ["svg", "verbose_logging"]}
 
 libs = { path = "libs/" }
 cli = { path = "cli/" }

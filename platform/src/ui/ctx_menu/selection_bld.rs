@@ -1,4 +1,4 @@
-use tmui::tree_view::tree_node::TreeNode;
+use tmui::views::list_view::ListView;
 use super::menu_selection::MenuSelection;
 
 #[derive(Default)]
@@ -9,10 +9,10 @@ pub enum CtxMenuLoc {
 }
 
 impl CtxMenuLoc {
-    pub(super) fn bld_selections(&self, root: &mut TreeNode) {
+    pub(super) fn bld_selections(&self, view: &mut ListView) {
         match self {
             Self::SessionCredentialTree => {
-                root.add_node(&MenuSelection::new("New Session"));
+                view.add_node(&MenuSelection::new("New Session"));
             },
             _ => {},
         }

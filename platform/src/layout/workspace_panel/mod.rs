@@ -1,7 +1,7 @@
 use tmui::{
     prelude::*,
     tlib::object::{ObjectImpl, ObjectSubclass},
-    tree_view::TreeView,
+    views::tree_view::TreeView,
     widget::WidgetImpl,
 };
 use crate::ui::sessions::SessionCredentialTree;

@@ -1,8 +1,11 @@
-use tmui::{tlib::figure::Color, tree_view::{
-    cell::{cell_render::TextCellRender, Cell},
-    node_render::NodeRender,
-    tree_view_object::TreeViewObject,
-}};
+use tmui::{
+    tlib::figure::Color,
+    views::{
+        cell::{cell_render::TextCellRender, Cell},
+        node::node_render::NodeRender,
+        tree_view::tree_view_object::TreeViewObject,
+    },
+};
 
 pub struct SessionGroup {
     name: String,
@@ -31,6 +34,8 @@ impl TreeViewObject for SessionGroup {
 impl SessionGroup {
     #[inline]
     pub fn new(name: &str) -> Self {
-        Self { name: name.to_string() }
+        Self {
+            name: name.to_string(),
+        }
     }
 }

@@ -6,7 +6,7 @@ use crate::ui::ctx_menu::{selection_bld::CtxMenuLoc, CtxMenu};
 use tmui::{
     popup::Popupable,
     tlib::{events::MouseEvent, figure::Color, namespace::MouseButton, Object},
-    tree_view::{tree_node::TreeNode, TreeView},
+    views::tree_view::{tree_node::TreeNode, TreeView},
     widget::widget_ext::WidgetExt,
 };
 

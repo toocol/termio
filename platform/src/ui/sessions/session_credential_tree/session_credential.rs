@@ -1,10 +1,10 @@
 use cli::ProtocolType;
 use tmui::{
     tlib::{figure::Color, utils::Timestamp},
-    tree_view::{
+    views::{
         cell::{cell_render::TextCellRender, Cell},
-        node_render::NodeRender,
-        tree_view_object::TreeViewObject,
+        node::node_render::NodeRender,
+        tree_view::tree_view_object::TreeViewObject,
     },
 };
 
