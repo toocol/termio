@@ -1,3 +1,4 @@
+use super::selection_enum::SelectionEnum;
 use tmui::{
     tlib::figure::Color,
     views::{
@@ -8,14 +9,14 @@ use tmui::{
 };
 
 pub struct MenuSelection {
-    val: String,
+    val: SelectionEnum,
 }
 
 impl ListViewObject for MenuSelection {
     #[inline]
     fn cells(&self) -> Vec<Cell> {
         vec![CellStringBuilder::default()
-            .value(self.val.clone())
+            .value(self.val.to_string())
             .cell_render(TextCellRender::builder().color(Color::BLACK).build())
             .build()]
     }
@@ -28,9 +29,11 @@ impl ListViewObject for MenuSelection {
 
 impl MenuSelection {
     #[inline]
-    pub fn new(val: impl ToString) -> Self {
-        Self {
-            val: val.to_string(),
-        }
+    pub fn new(val: SelectionEnum) -> Self {
+        Self { val }
     }
+}
+
+pub trait CtxMenuSelectionCreator {
+    fn create_selections() -> Vec<MenuSelection>;
 }

@@ -40,6 +40,16 @@ impl PasswordBundle {
     }
 
     #[inline]
+    pub fn set_required(&mut self, required: bool) {
+        self.password.set_required(required)
+    }
+
+    #[inline]
+    pub fn check_required(&mut self) -> bool {
+        self.password.check_required()
+    }
+
+    #[inline]
     pub fn value(&self) -> String {
         self.password.value()
     }

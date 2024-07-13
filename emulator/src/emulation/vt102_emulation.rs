@@ -267,6 +267,11 @@ impl ObjectOperation for VT102Emulation {
     fn constructed(&self) -> bool {
         self.emulation().constructed()
     }
+
+    #[inline]
+    fn set_name(&mut self, name: &str) {
+        self.emulation_mut().set_name(name)
+    }
 }
 impl Default for VT102Emulation {
     #[inline]

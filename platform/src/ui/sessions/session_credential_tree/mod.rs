@@ -1,14 +1,17 @@
 pub mod session_credential;
 pub mod session_group;
+pub mod service;
 
 use self::session_group::SessionGroup;
-use crate::ui::ctx_menu::{selection_bld::CtxMenuLoc, CtxMenu};
+use crate::ui::ctx_menu::{menu_selection::{CtxMenuSelectionCreator, MenuSelection}, selection_bld::CtxMenuLoc, selection_enum::SelectionEnum, CtxMenu};
 use tmui::{
     popup::Popupable,
-    tlib::{events::MouseEvent, figure::Color, namespace::MouseButton, Object},
+    tlib::{events::MouseEvent, figure::Color, namespace::MouseButton, Object, prelude::*},
     views::tree_view::{tree_node::TreeNode, TreeView},
     widget::widget_ext::WidgetExt,
 };
+
+pub const SESSION_CREDENTIAL_TREE: &'static str = "SessionCredentialTree";
 
 pub struct SessionCredentialTree;
 
@@ -16,6 +19,7 @@ impl SessionCredentialTree {
     #[inline]
     pub fn view() -> Box<TreeView> {
         let mut view: Box<TreeView> = Object::new(&[]);
+        view.set_name(SESSION_CREDENTIAL_TREE);
         view.get_store_mut()
             .root_mut()
             .add_node(&SessionGroup::new(" Sessions"));
@@ -53,5 +57,14 @@ fn node_released(node: &mut TreeNode, evt: &MouseEvent) {
             }
         }
         _ => {}
+    }
+}
+
+impl CtxMenuSelectionCreator for SessionCredentialTree {
+    #[inline]
+    fn create_selections() -> Vec<MenuSelection> {
+        vec![
+            MenuSelection::new(SelectionEnum::NewSession)
+        ]
     }
 }

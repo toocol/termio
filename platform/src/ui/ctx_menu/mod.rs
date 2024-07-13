@@ -1,8 +1,9 @@
 pub mod menu_selection;
 pub mod selection_bld;
+pub mod selection_enum;
 
 use self::selection_bld::CtxMenuLoc;
-use tlib::connect;
+use selection_enum::SelectionEnum;
 use tmui::{
     graphics::box_shadow::{BoxShadow, ShadowSide},
     prelude::*,
@@ -12,7 +13,7 @@ use tmui::{
         object::{ObjectImpl, ObjectSubclass},
     },
     views::list_view::ListView,
-    widget::WidgetImpl,
+    widget::{WidgetFinder, WidgetImpl},
 };
 
 #[extends(Popup)]
@@ -55,6 +56,19 @@ impl ObjectImpl for CtxMenu {
         scroll_bar.set_color(Color::GREY_LIGHT.with_a(155));
         scroll_bar.set_active_color(Some(Color::GREY_MEDIUM.with_a(155)));
         scroll_bar.set_visible_in_valid(true);
+
+        let ctx_menu_id = self.id();
+        self.selection_list.register_node_pressed(move |w, evt| {
+            let selection_str = w.get_value::<String>(0).unwrap();
+            let view = w.get_view();
+            let ctx_menu = ApplicationWindow::window_of(view.window_id())
+                .find_id_mut(ctx_menu_id)
+                .unwrap()
+                .downcast_mut::<CtxMenu>()
+                .unwrap();
+
+            SelectionEnum::from_str(&selection_str).handle_mouse_pressed(ctx_menu, view, evt);
+        });
 
         self.loc.bld_selections(&mut self.selection_list);
     }

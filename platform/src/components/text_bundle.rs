@@ -40,6 +40,16 @@ impl TextBundle {
     }
 
     #[inline]
+    pub fn set_required(&mut self, required: bool) {
+        self.text.set_required(required)
+    }
+
+    #[inline]
+    pub fn check_required(&mut self) -> bool {
+        self.text.check_required()
+    }
+
+    #[inline]
     pub fn value(&self) -> String {
         self.text.value()
     }

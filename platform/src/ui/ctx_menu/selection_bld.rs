@@ -1,5 +1,7 @@
+use crate::ui::sessions::SessionCredentialTree;
 use tmui::views::list_view::ListView;
-use super::menu_selection::MenuSelection;
+
+use super::menu_selection::CtxMenuSelectionCreator;
 
 #[derive(Default)]
 pub enum CtxMenuLoc {
@@ -10,11 +12,13 @@ pub enum CtxMenuLoc {
 
 impl CtxMenuLoc {
     pub(super) fn bld_selections(&self, view: &mut ListView) {
-        match self {
-            Self::SessionCredentialTree => {
-                view.add_node(&MenuSelection::new("New Session"));
-            },
-            _ => {},
+        let selections = match self {
+            Self::SessionCredentialTree => SessionCredentialTree::create_selections(),
+            _ => vec![],
+        };
+
+        for obj in selections.iter() {
+            view.add_node(obj)
         }
     }
 }
