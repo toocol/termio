@@ -1,6 +1,7 @@
 #![allow(dead_code)]
-use super::terminal_panel::TerminalPanel;
+use super::{session::Session, terminal_panel::TerminalPanel};
 use crate::pty::pty_receive_pool;
+use cli::session::SessionId;
 use derivative::Derivative;
 use tmui::{prelude::*, tlib::object::ObjectSubclass};
 
@@ -50,5 +51,9 @@ impl TerminalEmulator {
     #[inline]
     pub fn new() -> Box<Self> {
         Object::new(&[])
+    }
+
+    pub fn start_session(&mut self, session: cli::session::Session) {
+        let session = Session::new();
     }
 }

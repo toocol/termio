@@ -1,3 +1,5 @@
+pub mod paths;
+
 use serde::{Deserialize, Serialize};
 
 pub const PROTOCOL_TYPE_SSH: i32 = 1;
@@ -7,7 +9,7 @@ pub const PROTOCOL_TYPE_RSH: i32 = 4;
 pub const PROTOCOL_LOCAL_SHELL: i32 = 5;
 
 #[repr(i32)]
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ProtocolType {
     Ssh = 1,
     Mosh,

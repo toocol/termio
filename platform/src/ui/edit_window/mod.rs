@@ -1,3 +1,4 @@
+use cli::{auth::credential::Credential, constant::ProtocolType};
 use log::debug;
 use tlib::{connect, events::MouseEvent};
 use tmui::{
@@ -8,7 +9,9 @@ use tmui::{
     widget::WidgetImpl,
 };
 
-use crate::components::{password_bundle::PasswordBundle, text_bundle::TextBundle};
+use crate::{
+    components::{password_bundle::PasswordBundle, text_bundle::TextBundle},
+};
 
 use super::sessions::SESSION_CREDENTIAL_TREE;
 
@@ -72,7 +75,7 @@ impl EditWindow {
         let password_check = self.password.check_required();
 
         if !host_check || !user_check || !password_check {
-            return
+            return;
         }
 
         let host = self.remote_host.value();
@@ -85,6 +88,22 @@ impl EditWindow {
                 .unwrap()
                 .downcast_mut::<TreeView>()
                 .unwrap();
+
+            let node_session = sct
+                .get_store_mut()
+                .root_mut()
+                .children_mut()
+                .first_mut()
+                .unwrap();
+            node_session.add_node(&Credential::new(
+                None,
+                host,
+                user,
+                password,
+                "".to_string(),
+                22,
+                ProtocolType::Ssh,
+            ));
         });
 
         self.window().close();

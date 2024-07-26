@@ -1,129 +1,125 @@
-mod local_shell_session;
-mod mosh_session;
-mod ssh_session;
-mod telnet_session;
-mod rsh_session;
-
-pub use local_shell_session::*;
-pub use mosh_session::*;
-pub use ssh_session::*;
-pub use telnet_session::*;
-pub use rsh_session::*;
-
-use parking_lot::{MappedMutexGuard, Mutex, MutexGuard};
-use libs::SnowflakeGuidGenerator;
-
-use std::collections::HashMap;
-
-use crate::ProtocolType;
-use self::{LocalShellSession, MoshSession, RshSession, SshSession, TelnetSession};
 use lazy_static::lazy_static;
-use log::info;
+use parking_lot::Mutex;
+use tmui::tlib::utils::{SnowflakeGuidGenerator, Timestamp};
+use std::collections::HashMap;
+use crate::constant::ProtocolType;
 
-pub trait Session: Sync + Send {
-    type TYPE;
+pub type SessionId = u64;
 
+#[derive(Debug, Clone, Copy)]
+pub enum Session {
+    Ssh(SessionProps),
+    Mosh(SessionProps),
+    Telnet(SessionProps),
+    Rsh(SessionProps),
+    LocalShell(SessionProps),
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct SessionProps {
+    id: u64,
+    establish_time: Timestamp,
+}
+
+pub trait SessionExt {
     /// Create a new session.
-    fn create() -> Self::TYPE;
+    fn create(protocol: ProtocolType) -> SessionId;
 
-    /// Generate global unique u64 id.
-    fn gen_id() -> u64 {
-        SnowflakeGuidGenerator::next_id().expect("`SnowflakeGuidGenerator` generate id failed.")
+    /// Get the copy of session.
+    fn get(id: SessionId) -> Option<Session> {
+        SESSION_MAP.lock().get(&id).map(|s| *s)
     }
 
+    /// Remove the session.
+    fn remove(id: SessionId) {
+        SESSION_MAP.lock().remove(&id);
+    }
+
+    /// Get the property of session.
+    fn props(&self) -> &SessionProps;
+
     /// Get the global unique id.
-    fn id(&self) -> u64;
+    fn id(&self) -> SessionId;
 
     /// Get the connection protocol of the session.
     fn protocol(&self) -> ProtocolType;
 
     /// Get the timestamp of session establishment.
-    fn establish_time(&self) -> u64;
+    fn establish_time(&self) -> Timestamp;
 }
 
-pub trait SessionWrapper: Send + Sync {
-    fn id(&self) -> u64;
+impl SessionExt for Session {
+    fn create(protocol: ProtocolType) -> SessionId {
+        let props = SessionProps {
+            id: gen_id(),
+            establish_time: Timestamp::now(),
+        };
 
-    fn protocol(&self) -> ProtocolType;
+        let session = match protocol {
+            ProtocolType::Ssh => Self::Ssh(props),
+            ProtocolType::Mosh => Self::Mosh(props),
+            ProtocolType::Telnet => Self::Telnet(props),
+            ProtocolType::Rsh => Self::Rsh(props),
+            ProtocolType::LocalShell => Self::LocalShell(props),
+        };
 
-    fn establish_time(&self) -> u64;
-}
+        let id = session.id();
 
-impl<T: Session> SessionWrapper for Option<T> {
-    fn id(&self) -> u64 {
-        self.as_ref()
-            .expect("`Wrapper` session can not be None.")
-            .id()
+        SESSION_MAP.lock().insert(id, session);
+
+        id
     }
 
+    #[inline]
+    fn props(&self) -> &SessionProps {
+        match self {
+            Self::Ssh(props) => props,
+            Self::Mosh(props) => props,
+            Self::Telnet(props) => props,
+            Self::Rsh(props) => props,
+            Self::LocalShell(props) => props,
+        }
+    }
+
+    #[inline]
+    fn id(&self) -> SessionId {
+        self.props().id
+    }
+
+    #[inline]
     fn protocol(&self) -> ProtocolType {
-        self.as_ref()
-            .expect("`Wrapper` session can not be None.")
-            .protocol()
+        match self {
+            Self::Ssh(_) => ProtocolType::Ssh,
+            Self::Mosh(_) => ProtocolType::Mosh,
+            Self::Telnet(_) => ProtocolType::Telnet,
+            Self::Rsh(_) => ProtocolType::Rsh,
+            Self::LocalShell(_) => ProtocolType::LocalShell,
+        }
     }
 
-    fn establish_time(&self) -> u64 {
-        self.as_ref()
-            .expect("`Wrapper` session can not be None.")
-            .establish_time()
-    }
-}
-
-/// Create a new session base on protocol, and return it's id.
-pub fn create_session(protocol: ProtocolType) -> u64 {
-    match protocol {
-        ProtocolType::Ssh => MutexGuard::map(SESSION_MAP.lock(), move |map| {
-            let ssh_session = SshSession::create();
-            let id = ssh_session.id();
-            map.entry(id).or_insert(Box::new(Some(ssh_session)))
-        })
-        .id(),
-        ProtocolType::Mosh => MutexGuard::map(SESSION_MAP.lock(), move |map| {
-            let mosh_session = MoshSession::create();
-            let id = mosh_session.id();
-            map.entry(id).or_insert(Box::new(Some(mosh_session)))
-        })
-        .id(),
-        ProtocolType::Telnet => MutexGuard::map(SESSION_MAP.lock(), move |map| {
-            let telnet_session = TelnetSession::create();
-            let id = telnet_session.id();
-            map.entry(id).or_insert(Box::new(Some(telnet_session)))
-        })
-        .id(),
-        ProtocolType::Rsh => MutexGuard::map(SESSION_MAP.lock(), move |map| {
-            let rsh_session = RshSession::create();
-            let id = rsh_session.id();
-            map.entry(id).or_insert(Box::new(Some(rsh_session)))
-        })
-        .id(),
-        ProtocolType::LocalShell => MutexGuard::map(SESSION_MAP.lock(), move |map| {
-            let local_shell_session = LocalShellSession::create();
-            let id = local_shell_session.id();
-            map.entry(id).or_insert(Box::new(Some(local_shell_session)))
-        })
-        .id(),
+    #[inline]
+    fn establish_time(&self) -> Timestamp {
+        self.props().establish_time
     }
 }
 
-pub fn get_session(id: u64) -> MappedMutexGuard<'static, Box<dyn SessionWrapper>> {
-    MutexGuard::map(SESSION_MAP.lock(), move |d| d.get_mut(&id).unwrap())
+/// Generate global unique u64 id.
+fn gen_id() -> SessionId {
+    SnowflakeGuidGenerator::next_id().expect("`SnowflakeGuidGenerator` generate id failed.")
 }
 
 lazy_static! {
-    pub static ref SESSION_MAP: Mutex<HashMap<u64, Box<dyn SessionWrapper>>> = {
-        info!("Create session_map success.");
-        Mutex::new(HashMap::new())
-    };
+    pub static ref SESSION_MAP: Mutex<HashMap<u64, Session>> = Mutex::new(HashMap::new());
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::ProtocolType;
     use super::*;
+    use crate::constant::ProtocolType;
 
     #[test]
     fn test_sessions() {
-        let session_id = create_session(ProtocolType::Ssh);
-        assert_ne!(0, session_id);
+        let session = Session::create(ProtocolType::Ssh);
+        assert_eq!(session, Session::get(session).unwrap().id())
     }
 }

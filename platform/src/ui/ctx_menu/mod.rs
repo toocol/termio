@@ -13,7 +13,7 @@ use tmui::{
         object::{ObjectImpl, ObjectSubclass},
     },
     views::list_view::ListView,
-    widget::{WidgetFinder, WidgetImpl},
+    widget::WidgetImpl,
 };
 
 #[extends(Popup)]
@@ -58,7 +58,7 @@ impl ObjectImpl for CtxMenu {
         scroll_bar.set_visible_in_valid(true);
 
         let ctx_menu_id = self.id();
-        self.selection_list.register_node_pressed(move |w, evt| {
+        self.selection_list.register_node_pressed(move |w, _, evt| {
             let selection_str = w.get_value::<String>(0).unwrap();
             let view = w.get_view();
             let ctx_menu = ApplicationWindow::window_of(view.window_id())

@@ -6,7 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-tmui = { git = "https://github.com/toocol/tmui" }
+tmui = { git = "https://github.com/toocol/tmui"}
 
 asset = { path = "../asset/" }
 emulator = { path = "../emulator/" }

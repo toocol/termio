@@ -218,7 +218,7 @@ impl CharacterColor {
                 palette[self.u as usize + 2 + if self.v > 0 { BASE_COLORS } else { 0 }].color
             }
             COLOR_SPACE_256 => Self::color_256(self.u, palette),
-            COLOR_SPACE_RGB => Color::from_rgb(self.u, self.v, self.w),
+            COLOR_SPACE_RGB => Color::rgb(self.u, self.v, self.w),
             COLOR_SPACE_UNDEFINED => Color::new(),
             _ => unimplemented!(),
         }
@@ -238,7 +238,7 @@ impl CharacterColor {
 
         // 16..231: 6x6x6 rgb color cube
         if u < 216 {
-            return Color::from_rgb(
+            return Color::rgb(
                 if (u / 36) % 6 > 0 {
                     40 * ((u / 36) % 6) + 55
                 } else {
@@ -260,7 +260,7 @@ impl CharacterColor {
 
         // 232..255: gray, leaving out black and white
         let gray = u * 10 + 8;
-        Color::from_rgb(gray, gray, gray)
+        Color::rgb(gray, gray, gray)
     }
 }
 

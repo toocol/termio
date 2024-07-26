@@ -1,6 +1,6 @@
 use std::cmp::Ordering;
 
-use crate::{Command, InputCommandState, COMMANDS};
+use crate::command::{Command, InputCommandState, COMMANDS};
 
 pub struct CommandFeedback {
     pub command: String,

@@ -526,7 +526,7 @@ impl TerminalView {
                     painter.draw_line_f(r.left(), under_line_pos, r.right(), under_line_pos);
                 }
             }
-            HotSpotType::Marker => painter.fill_rect(r, Color::from_rgba(255, 0, 0, 120)),
+            HotSpotType::Marker => painter.fill_rect(r, Color::rgba(255, 0, 0, 120)),
             _ => {}
         }
     }

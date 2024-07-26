@@ -256,6 +256,25 @@ impl WidgetImpl for TerminalView {
 
         self.handle_font_change()
     }
+
+    fn on_get_focus(&mut self) {
+        if self.has_blinking_cursor {
+            self.blink_cursor_timer.start(Duration::from_millis(
+                application::cursor_blinking_time() as u64,
+            ))
+        }
+
+        if self.cursor_blinking {
+            self.blink_cursor_event()
+        }
+    }
+
+    fn on_lose_focus(&mut self) {
+        self.blink_cursor_timer.stop();
+        if !self.cursor_blinking {
+            self.blink_cursor_event()
+        }
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////

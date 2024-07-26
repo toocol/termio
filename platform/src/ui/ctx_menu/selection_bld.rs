@@ -18,7 +18,7 @@ impl CtxMenuLoc {
         };
 
         for obj in selections.iter() {
-            view.add_node(obj)
+            view.add_node(obj);
         }
     }
 }

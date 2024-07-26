@@ -1,4 +1,3 @@
-pub mod session_credential;
 pub mod session_group;
 pub mod service;
 

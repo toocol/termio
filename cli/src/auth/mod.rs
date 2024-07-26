@@ -1,3 +1,2 @@
-mod credential;
-
-pub use credential::*;
+pub mod credential;
+pub mod mgr;
