@@ -1,37 +1,40 @@
+use super::sessions::SESSION_CREDENTIAL_TREE;
+use crate::components::{
+    number_bundle::NumberBundle, password_bundle::PasswordBundle, text_bundle::TextBundle,
+};
 use cli::{auth::credential::Credential, constant::ProtocolType};
 use log::debug;
 use tlib::{connect, events::MouseEvent};
 use tmui::{
     button::Button,
+    input::number::Number,
     prelude::*,
     tlib::object::{ObjectImpl, ObjectSubclass},
     views::tree_view::TreeView,
     widget::WidgetImpl,
 };
 
-use crate::{
-    components::{password_bundle::PasswordBundle, text_bundle::TextBundle},
-};
-
-use super::sessions::SESSION_CREDENTIAL_TREE;
-
 #[extends(Widget, Layout(VBox))]
 #[derive(Childrenable)]
 pub struct EditWindow {
     #[children]
-    #[derivative(Default(value = "TextBundle::new(\"Remote Host:\")"))]
+    #[derivative(Default(value = r#"TextBundle::new("Remote Host:")"#))]
     remote_host: Box<TextBundle>,
 
     #[children]
-    #[derivative(Default(value = "TextBundle::new(\"Specifiy User:\")"))]
+    #[derivative(Default(value = r#"TextBundle::new("Specifiy User:")"#))]
     user: Box<TextBundle>,
 
     #[children]
-    #[derivative(Default(value = "PasswordBundle::new(\"Password:\")"))]
+    #[derivative(Default(value = r#"PasswordBundle::new("Password:")"#))]
     password: Box<PasswordBundle>,
 
     #[children]
-    #[derivative(Default(value = "Button::new(Some(\"Submit\"))"))]
+    #[derivative(Default(value = r#"NumberBundle::new("Port:")"#))]
+    port: Box<NumberBundle>,
+
+    #[children]
+    #[derivative(Default(value = r#"Button::new(Some("Submit"))"#))]
     submit_btn: Box<Button>,
 }
 
@@ -50,6 +53,11 @@ impl ObjectImpl for EditWindow {
         self.remote_host.set_required(true);
         self.user.set_required(true);
         self.password.set_required(true);
+        self.port.set_required(true);
+
+        self.port.set_val(22.);
+        self.port.set_min(0.);
+        self.port.set_max(65535.);
 
         self.submit_btn.width_request(50);
         self.submit_btn.height_request(20);
@@ -70,17 +78,18 @@ impl EditWindow {
     pub fn submit(&mut self, _: MouseEvent) {
         debug!("Submit button pressed.");
 
-        let host_check = self.remote_host.check_required();
-        let user_check = self.user.check_required();
-        let password_check = self.password.check_required();
-
-        if !host_check || !user_check || !password_check {
+        if !self.remote_host.check_required()
+            || !self.user.check_required()
+            || !self.password.check_required()
+            || !self.port.check_required()
+        {
             return;
         }
 
         let host = self.remote_host.value();
         let user = self.user.value();
         let password = self.password.value();
+        let port = self.port.val().unwrap() as u32;
 
         self.window().call_response(move |win| {
             let sct = win
@@ -100,8 +109,7 @@ impl EditWindow {
                 host,
                 user,
                 password,
-                "".to_string(),
-                22,
+                port,
                 ProtocolType::Ssh,
             ));
         });

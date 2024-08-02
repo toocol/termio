@@ -1,0 +1,1 @@
+pub static PERSISTENCE_PATH: &'static str = "pers/";

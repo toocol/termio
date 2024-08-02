@@ -4,7 +4,7 @@ use tmui::{
     tlib::{
         events::MouseEvent,
         figure::{point, Point},
-    }, views::tree_view::TreeView, widget::{widget_ext::WidgetExt, ChildOp, WidgetImpl}, window::{win_builder::WindowBuilder, win_config::WindowConfig}
+    }, views::{list_view::list_node::ListNode, tree_view::TreeView}, widget::{widget_ext::WidgetExt, ChildOp, WidgetImpl, WindowAcquire}, window::{win_builder::WindowBuilder, win_config::WindowConfig}
 };
 
 pub struct SessionCredentialService;
@@ -12,14 +12,14 @@ pub struct SessionCredentialService;
 impl SessionCredentialService {
     pub fn new_session_pressed(
         ctx_menu: &mut CtxMenu,
-        widget: &mut dyn WidgetImpl,
+        node: &mut ListNode,
     ) {
         ctx_menu.hide();
 
         const EDIT_WIN_WIDTH: u32 = 600;
         const EDIT_WIN_HEIGHT: u32 = 400;
 
-        let win = widget.window();
+        let win = node.get_view().window();
         let win_size = win.size();
         let win_pos = win.outer_position();
         let pos = Point::new(

@@ -1,3 +1,4 @@
+use serde::{Deserialize, Serialize};
 use tmui::{
     tlib::figure::Color,
     views::{
@@ -7,6 +8,7 @@ use tmui::{
     },
 };
 
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct SessionGroup {
     name: String,
 }
@@ -33,9 +35,14 @@ impl TreeViewObject for SessionGroup {
 
 impl SessionGroup {
     #[inline]
-    pub fn new(name: &str) -> Self {
+    pub fn new(name: impl ToString) -> Self {
         Self {
             name: name.to_string(),
         }
+    }
+
+    #[inline]
+    pub fn name(&self) -> &str {
+        &self.name
     }
 }

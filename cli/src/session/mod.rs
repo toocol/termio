@@ -1,3 +1,7 @@
+pub mod cfg;
+pub mod session_grp_pers;
+pub mod session_grp;
+
 use lazy_static::lazy_static;
 use parking_lot::Mutex;
 use tmui::tlib::utils::{SnowflakeGuidGenerator, Timestamp};
@@ -5,6 +9,8 @@ use std::collections::HashMap;
 use crate::constant::ProtocolType;
 
 pub type SessionId = u64;
+
+pub const ROOT_SESSION: &'static str = "Sessions";
 
 #[derive(Debug, Clone, Copy)]
 pub enum Session {
@@ -114,6 +120,8 @@ lazy_static! {
 
 #[cfg(test)]
 mod tests {
+    use session_grp_pers::SessionGrpPers;
+
     use super::*;
     use crate::constant::ProtocolType;
 

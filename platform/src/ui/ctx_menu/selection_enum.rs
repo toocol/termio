@@ -1,5 +1,5 @@
 use crate::ui::sessions::session_credential_tree;
-use tmui::{tlib::events::MouseEvent, widget::WidgetImpl};
+use tmui::{tlib::events::MouseEvent, views::list_view::list_node::ListNode, widget::WidgetImpl};
 
 use super::CtxMenu;
 
@@ -29,13 +29,13 @@ impl SelectionEnum {
     pub fn handle_mouse_pressed(
         &self,
         ctx_menu: &mut CtxMenu,
-        widget: &mut dyn WidgetImpl,
+        node: &mut ListNode,
         evt: &MouseEvent,
     ) {
         match self {
             Self::NewSession => {
                 session_credential_tree::service::SessionCredentialService::new_session_pressed(
-                    ctx_menu, widget,
+                    ctx_menu, node,
                 )
             }
         }
