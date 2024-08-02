@@ -84,9 +84,10 @@ impl GlobalWatchImpl for CtxMenu {
         let pos: Point = evt.position().into();
         if !self.rect().contains(&pos) {
             self.hide();
+            true
+        } else {
+            false
         }
-
-        true
     }
 }
 

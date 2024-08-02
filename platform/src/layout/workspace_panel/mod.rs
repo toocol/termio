@@ -10,7 +10,7 @@ use tmui::{
 #[extends(Widget, Layout(Stack))]
 #[derive(Childrenable)]
 #[run_after]
-#[async_task(name = "build_session_tree", value = "Box<TreeNode>")]
+#[async_task(name = "BuildSessionTree", value = "Box<TreeNode>")]
 pub struct WorkspacePanel {
     #[derivative(Default(value = "SessionCredentialTree::view()"))]
     #[children]
