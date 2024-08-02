@@ -41,7 +41,8 @@ impl BundleMessage {
 
 #[cfg(test)]
 mod tests {
-    use crate::{change_locale, Locale};
+
+    use crate::international::{change_locale, Locale};
 
     use super::*;
 

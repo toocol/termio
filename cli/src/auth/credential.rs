@@ -11,14 +11,13 @@ use tmui::{
 use crate::constant::ProtocolType;
 pub type CredentialId = u64;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 pub struct Credential {
     pub id: CredentialId,
     pub shown_name: String,
     pub host: String,
     pub user: String,
     pub password: String,
-    pub group: String,
     pub port: u32,
     pub protocol: ProtocolType,
 }
@@ -30,7 +29,6 @@ impl Credential {
         host: String,
         user: String,
         password: String,
-        group: String,
         port: u32,
         protocol: ProtocolType,
     ) -> Self {
@@ -41,7 +39,6 @@ impl Credential {
             host,
             user,
             password,
-            group,
             port,
             protocol,
         }

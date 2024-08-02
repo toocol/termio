@@ -1,13 +1,16 @@
+use crate::ui::sessions::{load::load_data, SessionCredentialTree};
+use tlib::run_after;
 use tmui::{
     prelude::*,
     tlib::object::{ObjectImpl, ObjectSubclass},
-    views::tree_view::TreeView,
+    views::tree_view::{tree_node::TreeNode, TreeView},
     widget::WidgetImpl,
 };
-use crate::ui::sessions::SessionCredentialTree;
 
 #[extends(Widget, Layout(Stack))]
 #[derive(Childrenable)]
+#[run_after]
+#[async_task(name = "build_session_tree", value = "Box<TreeNode>")]
 pub struct WorkspacePanel {
     #[derivative(Default(value = "SessionCredentialTree::view()"))]
     #[children]
@@ -28,7 +31,20 @@ impl ObjectImpl for WorkspacePanel {
     }
 }
 
-impl WidgetImpl for WorkspacePanel {}
+impl WidgetImpl for WorkspacePanel {
+    fn run_after(&mut self) {
+        let store = self.session_tree.get_store();
+        let store_id = store.id();
+        let level = store.root().level() + 1;
+
+        self.build_session_tree(load_data(store_id, level), |w: &mut WorkspacePanel, val| {
+            w.session_tree
+                .get_store_mut()
+                .root_mut()
+                .add_node_directly(val);
+        })
+    }
+}
 
 impl WorkspacePanel {
     #[inline]

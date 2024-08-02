@@ -1,7 +1,6 @@
-pub mod session_group;
+pub mod load;
 pub mod service;
 
-use self::session_group::SessionGroup;
 use crate::ui::ctx_menu::{menu_selection::{CtxMenuSelectionCreator, MenuSelection}, selection_bld::CtxMenuLoc, selection_enum::SelectionEnum, CtxMenu};
 use tmui::{
     popup::Popupable,
@@ -19,9 +18,6 @@ impl SessionCredentialTree {
     pub fn view() -> Box<TreeView> {
         let mut view: Box<TreeView> = Object::new(&[]);
         view.set_name(SESSION_CREDENTIAL_TREE);
-        view.get_store_mut()
-            .root_mut()
-            .add_node(&SessionGroup::new(" Sessions"));
         view.set_background(Color::WHITE);
         view.add_popup(CtxMenu::new(CtxMenuLoc::SessionCredentialTree));
         view.register_node_pressed(node_pressed);

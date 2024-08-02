@@ -4,8 +4,11 @@ use std::{
     sync::{Mutex, MutexGuard},
 };
 
-use crate::{bundle_message::BundleMessage, with_locale, Locale};
 use lazy_static::lazy_static;
+
+use crate::international::{with_locale, Locale};
+
+use super::bundle_message::BundleMessage;
 
 const PROPERTIES_PATH_PREFIX: &str = "bundle/";
 
@@ -110,7 +113,7 @@ fn initialize(
 
 #[cfg(test)]
 mod tests {
-    use crate::change_locale;
+    use crate::international::change_locale;
 
     use super::*;
 
