@@ -10,6 +10,7 @@ use super::{session_grp::SessionGroup, ROOT_SESSION};
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct SessionGrpPers {
     name: String,
+    expand: bool,
     children: HashMap<String, SessionGrpPers>,
 }
 
@@ -18,6 +19,7 @@ impl SessionGrpPers {
     pub fn new(name: impl ToString) -> Self {
         Self {
             name: name.to_string(),
+            expand: true,
             children: HashMap::new(),
         }
     }
@@ -30,6 +32,16 @@ impl SessionGrpPers {
     #[inline]
     pub fn children(&self) -> &HashMap<String, SessionGrpPers> {
         &self.children
+    }
+
+    #[inline]
+    pub fn set_expand(&mut self, expand: bool) {
+        self.expand = expand
+    }
+
+    #[inline]
+    pub fn is_expand(&self) -> bool {
+        self.expand
     }
 
     pub fn build_node(
@@ -49,6 +61,10 @@ impl SessionGrpPers {
             for c in cs.iter() {
                 root.add_node(c);
             }
+        }
+
+        if !self.expand {
+            root.shuffle_expand();
         }
     }
 }

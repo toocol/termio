@@ -47,8 +47,12 @@ fn node_released(node: &mut TreeNode, evt: &MouseEvent) {
             };
 
             if node.is_extensible() {
+                let node_id = node.id();
                 let view = node.get_view();
+                let view_id = view.id();
                 view.show_popup(view.map_to_global(&evt.position().into()));
+                view.get_popup_mut().unwrap().set_property(PROP_TREE_NODE_ID, node_id.to_value());
+                view.get_popup_mut().unwrap().set_property(&PROP_TREE_VIEW_ID, view_id.to_value());
             }
         }
         _ => {}
@@ -59,7 +63,12 @@ impl CtxMenuSelectionCreator for SessionCredentialTree {
     #[inline]
     fn create_selections() -> Vec<MenuSelection> {
         vec![
-            MenuSelection::new(SelectionEnum::NewSession)
+            MenuSelection::new(SelectionEnum::NewSession),
+            MenuSelection::new(SelectionEnum::NewGroup),
         ]
     }
 }
+
+// Constants: 
+pub const PROP_TREE_NODE_ID: &'static str = "tree_node_id";
+pub const PROP_TREE_VIEW_ID: &'static str = "tree_view_id";

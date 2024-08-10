@@ -6,6 +6,7 @@ use super::CtxMenu;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SelectionEnum {
     NewSession,
+    NewGroup,
 }
 
 impl ToString for SelectionEnum {
@@ -13,6 +14,7 @@ impl ToString for SelectionEnum {
     fn to_string(&self) -> String {
         match self {
             Self::NewSession => STR_NEW_SESSION.to_string(),
+            Self::NewGroup => STR_NEW_GROUP.to_string(),
         }
     }
 }
@@ -22,6 +24,7 @@ impl SelectionEnum {
     pub fn from_str(str: &str) -> Self {
         match str {
             STR_NEW_SESSION => Self::NewSession,
+            STR_NEW_GROUP => Self::NewGroup,
             _ => panic!("Unknown selection."),
         }
     }
@@ -38,9 +41,15 @@ impl SelectionEnum {
                     ctx_menu, node,
                 )
             }
+            Self::NewGroup => {
+                session_credential_tree::service::SessionCredentialService::new_group_pressed(
+                    ctx_menu, node,
+                )
+            }
         }
     }
 }
 
 /// Constants:
 pub const STR_NEW_SESSION: &'static str = "New Session";
+pub const STR_NEW_GROUP: &'static str = "New Group";
