@@ -40,6 +40,10 @@ impl SessionCredentialService {
             win_pos.x() + (win_size.width() - EDIT_WIN_WIDTH as i32) / 2,
             win_pos.y() + (win_size.height() - EDIT_WIN_HEIGHT as i32) / 2,
         );
+        let group_id = ctx_menu
+            .get_property(PROP_TREE_NODE_ID)
+            .unwrap()
+            .get::<ObjectId>();
 
         win.create_window(
             WindowBuilder::default()
@@ -52,6 +56,7 @@ impl SessionCredentialService {
                         .build(),
                 )
                 .modal(true)
+                .param("group_id", group_id)
                 .on_activate(|win| win.child(EditWindow::new())),
         );
     }
@@ -87,7 +92,7 @@ impl SessionCredentialService {
                 .unwrap()
                 .register_key_released(|w, evt| {
                     if evt.key_code() == KeyCode::KeyEnter {
-                        w.hide();
+                        w.get_parent_mut().unwrap().hide();
                         return;
                     }
                 });

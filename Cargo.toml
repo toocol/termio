@@ -52,4 +52,3 @@ platform = { path = "platform/" }
 
 log = { workspace = true }
 log4rs = { workspace = true }
-

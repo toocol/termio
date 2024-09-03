@@ -90,6 +90,7 @@ impl EditWindow {
         let user = self.user.value();
         let password = self.password.value();
         let port = self.port.val().unwrap() as u32;
+        let group_id = ApplicationWindow::window().get_param::<u32>("group_id").unwrap();
 
         self.window().call_response(move |win| {
             let sct = win
@@ -98,13 +99,8 @@ impl EditWindow {
                 .downcast_mut::<TreeView>()
                 .unwrap();
 
-            let node_session = sct
-                .get_store_mut()
-                .root_mut()
-                .children_mut()
-                .first_mut()
-                .unwrap();
-            node_session.add_node(&Credential::new(
+            let group = sct.get_store_mut().get_node_mut(group_id).unwrap();
+            group.add_node(&Credential::new(
                 None,
                 host,
                 user,
