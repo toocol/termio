@@ -17,6 +17,7 @@ pub async fn load_data(store_id: u32, level: i32) -> Box<TreeNode> {
             let root = guard.root_group();
             let mut root_node = TreeNode::create(store_id, level, &root.to_view_obj());
             root.build_node(guard.grp_credential_map(), &mut root_node);
+            root_node.sort(true);
             root_node
         })
     }

@@ -1,7 +1,7 @@
 use libs::{err, Error};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use tmui::views::tree_view::tree_node::TreeNode;
+use tmui::{tlib::utils::Timestamp, views::tree_view::tree_node::TreeNode};
 
 use crate::{auth::credential::Credential, persistence::Persistence};
 
@@ -12,6 +12,7 @@ pub struct SessionGrpPers {
     name: String,
     expand: bool,
     children: HashMap<String, SessionGrpPers>,
+    timestamp: u64,
 }
 
 impl SessionGrpPers {
@@ -21,12 +22,13 @@ impl SessionGrpPers {
             name: name.to_string(),
             expand: true,
             children: HashMap::new(),
+            timestamp: Timestamp::now().as_millis()
         }
     }
 
     #[inline]
     pub fn to_view_obj(&self) -> SessionGroup {
-        SessionGroup::new(self.name.as_str())
+        SessionGroup::new_with_time(self.name.as_str(), self.timestamp)
     }
 
     #[inline]
@@ -42,6 +44,11 @@ impl SessionGrpPers {
     #[inline]
     pub fn is_expand(&self) -> bool {
         self.expand
+    }
+
+    #[inline]
+    pub fn timestamp(&self) -> u64 {
+        self.timestamp
     }
 
     pub fn build_node(
@@ -66,6 +73,22 @@ impl SessionGrpPers {
         if !self.expand {
             root.shuffle_expand();
         }
+    }
+
+    pub fn add_group(&mut self, parent: &str, group: &str) -> bool {
+        if self.name == parent {
+            let grp = SessionGrpPers::new(group);
+            self.children.insert(group.to_string(), grp);
+            return true
+        }
+
+        for (_, c) in self.children.iter_mut() {
+            if c.add_group(parent, group) {
+                return true
+            }
+        }
+
+        return false
     }
 }
 

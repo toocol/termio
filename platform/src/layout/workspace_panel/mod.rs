@@ -37,7 +37,9 @@ impl WidgetImpl for WorkspacePanel {
         let store_id = store.id();
         let level = store.root().level() + 1;
 
+        self.session_tree.start_loading();
         self.build_session_tree(load_data(store_id, level), |w: &mut WorkspacePanel, val| {
+            w.session_tree.stop_loading();
             w.session_tree
                 .get_store_mut()
                 .root_mut()

@@ -48,14 +48,14 @@ impl ObjectImpl for WinControlButtons {
 
         self.minimize.width_request(45);
         self.minimize.height_request(30);
-        self.minimize.register_hover_in(|w| w.set_background(CTRL_BTN_GREY));
-        self.minimize.register_hover_out(move |w| w.set_background(background));
+        self.minimize.register_mouse_enter(|w| w.set_background(CTRL_BTN_GREY));
+        self.minimize.register_mouse_leave(move |w| w.set_background(background));
         self.minimize.register_mouse_released(|w, _| w.window().minimize());
 
         self.maximize_restore.width_request(45);
         self.maximize_restore.height_request(30);
-        self.maximize_restore.register_hover_in(|w| w.set_background(CTRL_BTN_GREY));
-        self.maximize_restore.register_hover_out(move |w| w.set_background(background));
+        self.maximize_restore.register_mouse_enter(|w| w.set_background(CTRL_BTN_GREY));
+        self.maximize_restore.register_mouse_leave(move |w| w.set_background(background));
         self.maximize_restore.register_mouse_released(|w, _| {
             let icon = w.downcast_mut::<SvgToggleIcon>().unwrap();
             match icon.current_icon() {
@@ -69,8 +69,8 @@ impl ObjectImpl for WinControlButtons {
 
         self.close.width_request(45);
         self.close.height_request(30);
-        self.close.register_hover_in(|w| w.set_background(CTRL_BTN_RED));
-        self.close.register_hover_out(move |w| w.set_background(background));
+        self.close.register_mouse_enter(|w| w.set_background(CTRL_BTN_RED));
+        self.close.register_mouse_leave(move |w| w.set_background(background));
         self.close.register_mouse_released(|w, _| w.window().close());
     }
 }

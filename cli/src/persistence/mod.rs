@@ -42,6 +42,9 @@ pub trait Persistence: Sized + Serialize {
                     let mut file = err!(File::open(&path))?;
                     let mut buf = String::new();
                     err!(file.read_to_string(&mut buf))?;
+                    if buf.is_empty() {
+                        continue;
+                    }
                     res.push(err!(Self::parse(&buf))?);
                 }
             }
@@ -50,6 +53,9 @@ pub trait Persistence: Sized + Serialize {
             let mut file = err!(File::open(Self::path()))?;
             let mut buf = String::new();
             err!(file.read_to_string(&mut buf))?;
+            if buf.is_empty() {
+                return Ok(vec![])
+            }
             Ok(vec![err!(Self::parse(&buf))?])
         }
     }
@@ -111,7 +117,7 @@ mod tests {
                 22,
                 ProtocolType::Ssh,
             ),
-            SessionGroup::new("group"),
+            "group".to_string(),
         );
 
         let session_grp = SessionGrpPers::new("group");

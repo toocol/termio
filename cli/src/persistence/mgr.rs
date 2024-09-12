@@ -4,8 +4,13 @@ use crate::{
 };
 use lazy_static::lazy_static;
 use libs::prelude::*;
+use log::{debug, error};
 use parking_lot::{Mutex, RawMutex};
 use std::collections::HashMap;
+use tmui::{
+    prelude::{AsAny, CloseHandler, CloseHandlerMgr, Reflect},
+    tlib::{self, async_do},
+};
 
 use super::Persistence;
 
@@ -24,10 +29,33 @@ pub struct PersistenceMgr {
 impl PersistenceMgr {
     #[inline]
     pub fn add_session(session: SessionCfg) {
-        let mut guard = INSTANCE.lock();
-        guard.sessions.push(session);
+        async_do!(move {
+            let mut guard = INSTANCE.lock();
+            if let Err(e) = session.persistence() {
+                e.handle()
+            }
+            guard.sessions.push(session)
+        });
     }
 
+    #[inline]
+    pub fn add_group(parent: &str, group: &str) {
+        let (parent, group) = (parent.to_string(), group.to_string());
+        async_do!(move {
+            let mut guard = INSTANCE.lock();
+            if let Some(root_group) = guard.root_group.as_mut() {
+                root_group.add_group(&parent, &group);
+                if let Err(e) = root_group.persistence() {
+                    error!(
+                        "Persistence `SessionGrpPers` failed, {:?}, error: {:?}",
+                        root_group, e
+                    )
+                }
+            }
+        });
+    }
+
+    #[inline]
     pub fn set_root_group(root_group: SessionGrpPers) {
         let mut guard = INSTANCE.lock();
         guard.root_group = Some(root_group);
@@ -61,8 +89,9 @@ impl PersistenceMgr {
         match sessions {
             Ok(sessions) => {
                 for session in sessions.iter() {
-                    guard.grp_credential_map
-                        .entry(session.group().name().to_string())
+                    guard
+                        .grp_credential_map
+                        .entry(session.group().to_string())
                         .or_default()
                         .push(session.credential().clone());
                 }

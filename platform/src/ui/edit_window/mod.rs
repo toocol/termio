@@ -2,7 +2,12 @@ use super::sessions::SESSION_CREDENTIAL_TREE;
 use crate::components::{
     number_bundle::NumberBundle, password_bundle::PasswordBundle, text_bundle::TextBundle,
 };
-use cli::{auth::credential::Credential, constant::ProtocolType};
+use cli::{
+    auth::credential::Credential,
+    constant::ProtocolType,
+    persistence::mgr::PersistenceMgr,
+    session::{cfg::SessionCfg, session_grp::SessionGroup},
+};
 use log::debug;
 use tlib::{connect, events::MouseEvent};
 use tmui::{
@@ -90,7 +95,9 @@ impl EditWindow {
         let user = self.user.value();
         let password = self.password.value();
         let port = self.port.val().unwrap() as u32;
-        let group_id = ApplicationWindow::window().get_param::<u32>("group_id").unwrap();
+        let group_id = ApplicationWindow::window()
+            .get_param::<u32>("group_id")
+            .unwrap();
 
         self.window().call_response(move |win| {
             let sct = win
@@ -100,14 +107,11 @@ impl EditWindow {
                 .unwrap();
 
             let group = sct.get_store_mut().get_node_mut(group_id).unwrap();
-            group.add_node(&Credential::new(
-                None,
-                host,
-                user,
-                password,
-                port,
-                ProtocolType::Ssh,
-            ));
+            let credential = Credential::new(None, host, user, password, port, ProtocolType::Ssh);
+            group.add_node(&credential);
+
+            let group = group.get_value::<String>(0).unwrap();
+            PersistenceMgr::add_session(SessionCfg::new(credential, group));
         });
 
         self.window().close();

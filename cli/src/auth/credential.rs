@@ -1,6 +1,9 @@
 use serde::{Deserialize, Serialize};
 use tmui::{
-    tlib::{figure::Color, utils::SnowflakeGuidGenerator},
+    tlib::{
+        figure::Color,
+        utils::{SnowflakeGuidGenerator, Timestamp},
+    },
     views::{
         cell::{cell_render::TextCellRender, Cell},
         node::node_render::NodeRender,
@@ -13,13 +16,14 @@ pub type CredentialId = u64;
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 pub struct Credential {
-    pub id: CredentialId,
-    pub shown_name: String,
-    pub host: String,
-    pub user: String,
-    pub password: String,
-    pub port: u32,
-    pub protocol: ProtocolType,
+    id: CredentialId,
+    shown_name: String,
+    host: String,
+    user: String,
+    password: String,
+    port: u32,
+    protocol: ProtocolType,
+    timestamp: u64,
 }
 
 impl Credential {
@@ -41,7 +45,48 @@ impl Credential {
             password,
             port,
             protocol,
+            timestamp: Timestamp::now().as_millis(),
         }
+    }
+
+    #[inline]
+    pub fn id(&self) -> CredentialId {
+        self.id
+    }
+
+    #[inline]
+    pub fn shown_name(&self) -> &str {
+        &self.shown_name
+    }
+
+    #[inline]
+    pub fn host(&self) -> &str {
+        &self.host
+    }
+
+    #[inline]
+    pub fn user(&self) -> &str {
+        &self.user
+    }
+
+    #[inline]
+    pub fn password(&self) -> &str {
+        &self.password
+    }
+    
+    #[inline]
+    pub fn port(&self) -> u32 {
+        self.port
+    }
+
+    #[inline]
+    pub fn protocol_type(&self) -> ProtocolType {
+        self.protocol
+    }
+
+    #[inline]
+    pub fn timestamp(&self) -> u64 {
+        self.timestamp
     }
 }
 
@@ -53,6 +98,7 @@ impl TreeViewObject for Credential {
                 .value(self.protocol.as_str().to_string())
                 .cell_render(TextCellRender::builder().color(Color::BLACK).build())
                 .build(),
+            Cell::value_cell().value(self.timestamp).build(),
             Cell::string()
                 .value(self.shown_name.clone())
                 .cell_render(TextCellRender::builder().color(Color::BLACK).build())

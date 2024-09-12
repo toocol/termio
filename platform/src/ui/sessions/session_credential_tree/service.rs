@@ -3,7 +3,7 @@ use crate::ui::{
     edit_window::EditWindow,
     sessions::{PROP_TREE_NODE_ID, PROP_TREE_VIEW_ID},
 };
-use cli::session::session_grp::SessionGroup;
+use cli::{persistence::mgr::PersistenceMgr, session::session_grp::SessionGroup};
 use log::{debug, warn};
 use tmui::{
     input::{dialog::InputDialog, text::Text, Input},
@@ -80,8 +80,9 @@ impl SessionCredentialService {
             .get_store_mut()
             .get_node_mut(tree_node_id)
             .unwrap();
+        let parent_name = tree_node.get_value::<String>(0).unwrap();
 
-        if let Some(new_group) = tree_node.add_node(&SessionGroup::new("Test")) {
+        if let Some(new_group) = tree_node.add_node(&SessionGroup::new("")) {
             let mut rect = new_group.rect(Coordinate::World).unwrap();
             rect.set_height(rect.height() - line_spacing);
             let new_group_id = new_group.id();
@@ -119,8 +120,10 @@ impl SessionCredentialService {
                     if group_name.is_empty() {
                         new_group.remove();
                     } else {
-                        new_group.set_value(0, group_name)
+                        PersistenceMgr::add_group(&parent_name, &group_name);
+                        new_group.set_value(0, group_name);
                     }
+
                 }
             });
         } else {
