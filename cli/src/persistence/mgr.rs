@@ -1,16 +1,16 @@
 use crate::{
-    auth::credential::Credential,
-    session::{cfg::SessionCfg, session_grp_pers::SessionGrpPers},
+    auth::credential::{Credential, CredentialId},
+    session::{
+        cfg::SessionCfg,
+        session_grp_pers::SessionGrpPers,
+    },
 };
 use lazy_static::lazy_static;
 use libs::prelude::*;
-use log::{debug, error};
+use log::error;
 use parking_lot::{Mutex, RawMutex};
 use std::collections::HashMap;
-use tmui::{
-    prelude::{AsAny, CloseHandler, CloseHandlerMgr, Reflect},
-    tlib::{self, async_do},
-};
+use tmui::tlib::{self, async_do};
 
 use super::Persistence;
 
@@ -21,7 +21,7 @@ lazy_static! {
 
 #[derive(Default)]
 pub struct PersistenceMgr {
-    sessions: Vec<SessionCfg>,
+    sessions: HashMap<CredentialId, SessionCfg>,
     root_group: Option<SessionGrpPers>,
     grp_credential_map: HashMap<String, Vec<Credential>>,
 }
@@ -34,7 +34,8 @@ impl PersistenceMgr {
             if let Err(e) = session.persistence() {
                 e.handle()
             }
-            guard.sessions.push(session)
+            guard.sessions.insert(session.credential().id(), session);
+            ()
         });
     }
 
@@ -88,14 +89,15 @@ impl PersistenceMgr {
         let mut guard = INSTANCE.lock();
         match sessions {
             Ok(sessions) => {
-                for session in sessions.iter() {
+                for session in sessions.into_iter() {
                     guard
                         .grp_credential_map
                         .entry(session.group().to_string())
                         .or_default()
                         .push(session.credential().clone());
+
+                    guard.sessions.insert(session.credential().id(), session);
                 }
-                guard.sessions = sessions;
             }
             Err(e) => e.handle(),
         }
@@ -106,6 +108,11 @@ impl PersistenceMgr {
             }
             Err(e) => e.handle(),
         }
+    }
+
+    #[inline]
+    pub fn get_credential(id: CredentialId) -> Option<Credential> {
+        Some(INSTANCE.lock().sessions.get(&id)?.credential().clone())
     }
 
     #[inline]

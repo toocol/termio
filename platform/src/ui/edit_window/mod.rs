@@ -6,13 +6,12 @@ use cli::{
     auth::credential::Credential,
     constant::ProtocolType,
     persistence::mgr::PersistenceMgr,
-    session::{cfg::SessionCfg, session_grp::SessionGroup},
+    session::cfg::SessionCfg,
 };
 use log::debug;
 use tlib::{connect, events::MouseEvent};
 use tmui::{
     button::Button,
-    input::number::Number,
     prelude::*,
     tlib::object::{ObjectImpl, ObjectSubclass},
     views::tree_view::TreeView,

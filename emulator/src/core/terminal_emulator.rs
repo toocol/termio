@@ -1,9 +1,14 @@
 #![allow(dead_code)]
+use std::cell::RefCell;
+
 use super::{session::Session, terminal_panel::TerminalPanel};
 use crate::pty::pty_receive_pool;
-use cli::session::SessionId;
 use derivative::Derivative;
 use tmui::{prelude::*, tlib::object::ObjectSubclass};
+
+thread_local! {
+    static EMULATOR_ID: RefCell<ObjectId> = RefCell::new(0);
+}
 
 /*
                           |- Session/Emulation |- ScreenWidow/Screens
@@ -33,8 +38,11 @@ impl ObjectImpl for TerminalEmulator {
 
         self.set_vexpand(true);
         self.set_hexpand(true);
+
+        EMULATOR_ID.with(|e| *e.borrow_mut() = self.id())
     }
 
+    #[inline]
     fn initialize(&mut self) {
         pty_receive_pool().start();
     }
@@ -51,6 +59,11 @@ impl TerminalEmulator {
     #[inline]
     pub fn new() -> Box<Self> {
         Object::new(&[])
+    }
+
+    #[inline]
+    pub fn id() -> ObjectId {
+        EMULATOR_ID.with(|e| *e.borrow())
     }
 
     pub fn start_session(&mut self, session: cli::session::Session) {

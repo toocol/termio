@@ -4,22 +4,20 @@ use crate::ui::{
     sessions::{PROP_TREE_NODE_ID, PROP_TREE_VIEW_ID},
 };
 use cli::{persistence::mgr::PersistenceMgr, session::session_grp::SessionGroup};
-use log::{debug, warn};
+use log::warn;
 use tmui::{
     input::{dialog::InputDialog, text::Text, Input},
     prelude::{ApplicationWindow, Coordinate, ObjectId, ObjectOperation},
     tlib::{
-        events::MouseEvent,
-        figure::{point, Point},
+        figure::Point,
         namespace::KeyCode,
     },
     views::{
         list_view::list_node::ListNode,
-        tree_view::{self, TreeView},
+        tree_view::TreeView,
     },
     widget::{
-        callbacks::CallbacksRegister, widget_ext::WidgetExt, ChildOp, WidgetFinder, WidgetImpl,
-        WindowAcquire,
+        callbacks::CallbacksRegister, widget_ext::WidgetExt, ChildOp, WidgetFinder, WindowAcquire,
     },
     window::{win_builder::WindowBuilder, win_config::WindowConfig},
 };

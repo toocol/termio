@@ -1,5 +1,5 @@
 use crate::ui::sessions::session_credential_tree;
-use tmui::{tlib::events::MouseEvent, views::list_view::list_node::ListNode, widget::WidgetImpl};
+use tmui::{tlib::events::MouseEvent, views::list_view::list_node::ListNode};
 
 use super::CtxMenu;
 

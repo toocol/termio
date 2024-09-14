@@ -5,14 +5,28 @@ use tmui::{
         utils::{SnowflakeGuidGenerator, Timestamp},
     },
     views::{
-        cell::{cell_render::TextCellRender, Cell},
+        cell::{cell_index::CellIndex, cell_render::TextCellRender, Cell},
         node::node_render::NodeRender,
-        tree_view::tree_view_object::TreeViewObject,
+        tree_view::{tree_node::TreeNode, tree_view_object::TreeViewObject},
     },
 };
+use crate::{constant::ProtocolType, persistence::mgr::PersistenceMgr};
 
-use crate::constant::ProtocolType;
 pub type CredentialId = u64;
+
+#[repr(u8)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CredentialIdx {
+    Protocol = 0,
+    ShowName,
+    Id,
+}
+impl CellIndex for CredentialIdx {
+    #[inline]
+    fn index(&self) -> usize {
+        *self as usize
+    }
+}
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 pub struct Credential {
@@ -47,6 +61,11 @@ impl Credential {
             protocol,
             timestamp: Timestamp::now().as_millis(),
         }
+    }
+
+    #[inline]
+    pub fn from_tree_node(node: &TreeNode) -> Option<Self> {
+        PersistenceMgr::get_credential(node.get_value(CredentialIdx::Id)?)
     }
 
     #[inline]
@@ -98,13 +117,11 @@ impl TreeViewObject for Credential {
                 .value(self.protocol.as_str().to_string())
                 .cell_render(TextCellRender::builder().color(Color::BLACK).build())
                 .build(),
-            Cell::value_cell().value(self.timestamp).build(),
             Cell::string()
                 .value(self.shown_name.clone())
                 .cell_render(TextCellRender::builder().color(Color::BLACK).build())
                 .build(),
-            Cell::value_cell().value(self.port).build(),
-            Cell::value_cell().value(self.password.clone()).build(),
+            Cell::value_cell().value(self.id).build(),
         ]
     }
 

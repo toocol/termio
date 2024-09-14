@@ -8,10 +8,7 @@ use tmui::{
     graphics::box_shadow::{BoxShadow, ShadowSide},
     prelude::*,
     scroll_area::LayoutMode,
-    tlib::{
-        global_watch,
-        object::{ObjectImpl, ObjectSubclass},
-    },
+    tlib::object::{ObjectImpl, ObjectSubclass},
     views::list_view::ListView,
     widget::WidgetImpl,
 };

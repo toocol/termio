@@ -11,7 +11,10 @@ pub struct SessionCfg {
 impl SessionCfg {
     #[inline]
     pub fn new(credential: Credential, group: String) -> Self {
-        Self { credential, group }
+        Self {
+            credential,
+            group,
+        }
     }
 
     #[inline]

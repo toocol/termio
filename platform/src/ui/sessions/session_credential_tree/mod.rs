@@ -9,8 +9,15 @@ use crate::ui::ctx_menu::{
     selection_enum::SelectionEnum,
     CtxMenu,
 };
+use cli::{
+    auth::credential::{Credential, CredentialId, CredentialIdx},
+    session::session_grp::SessionGrpIdx,
+};
+use emulator::core::terminal_emulator::TerminalEmulator;
+use log::warn;
 use tmui::{
     popup::Popupable,
+    prelude::ApplicationWindow,
     tlib::{
         compare::Compare, events::MouseEvent, figure::Color, namespace::MouseButton, prelude::*,
         Object,
@@ -39,7 +46,15 @@ impl SessionCredentialTree {
             } else if !a.is_extensible() && b.is_extensible() {
                 Ordering::Greater
             } else {
-                a.get_value::<u64>(1).cmp(&b.get_value::<u64>(1))
+                if a.is_extensible() {
+                    use SessionGrpIdx::*;
+                    a.get_value::<u64>(Timestamp)
+                        .cmp(&b.get_value::<u64>(Timestamp))
+                } else {
+                    use CredentialIdx::*;
+                    a.get_value::<CredentialId>(Id)
+                        .cmp(&b.get_value::<CredentialId>(Id))
+                }
             }
         }));
         view
@@ -48,7 +63,24 @@ impl SessionCredentialTree {
 
 fn node_pressed(node: &mut TreeNode, evt: &MouseEvent) {
     match evt.mouse_button() {
-        MouseButton::LeftButton => {}
+        MouseButton::LeftButton => match evt.n_press() {
+            2 => {
+                if node.is_extensible() {
+                    return;
+                }
+
+                if let Some(credential) = Credential::from_tree_node(node) {
+                    let emulator = ApplicationWindow::window()
+                        .find_id_mut(TerminalEmulator::id())
+                        .unwrap()
+                        .downcast_mut::<TerminalEmulator>()
+                        .unwrap();
+                } else {
+                    warn!("Convert `TreeNode` to `Credential` failed.")
+                }
+            }
+            _ => {}
+        },
         MouseButton::RightButton => {}
         _ => {}
     }

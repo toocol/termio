@@ -2,11 +2,24 @@ use serde::{Deserialize, Serialize};
 use tmui::{
     tlib::{figure::Color, utils::Timestamp},
     views::{
-        cell::{cell_render::TextCellRender, Cell},
+        cell::{cell_index::CellIndex, cell_render::TextCellRender, Cell},
         node::node_render::NodeRender,
-        tree_view::tree_view_object::TreeViewObject,
+        tree_view::{tree_node::TreeNode, tree_view_object::TreeViewObject},
     },
 };
+
+#[repr(u8)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SessionGrpIdx {
+    Name = 0,
+    Timestamp,
+}
+impl CellIndex for SessionGrpIdx {
+    #[inline]
+    fn index(&self) -> usize {
+        *self as usize
+    }
+}
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct SessionGroup {
@@ -49,6 +62,15 @@ impl SessionGroup {
             name: name.to_string(),
             timestamp,
         }
+    }
+
+    #[inline]
+    pub fn from_tree_node(node: &TreeNode) -> Self {
+        use SessionGrpIdx::*;
+        let name = node.get_value::<String>(Name).unwrap();
+        let timestamp = node.get_value::<u64>(Timestamp).unwrap();
+
+        Self { name, timestamp }
     }
 
     #[inline]
