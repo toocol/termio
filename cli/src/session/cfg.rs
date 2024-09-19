@@ -1,17 +1,16 @@
+use crate::{auth::credential::Credential, persistence::Persistence};
 use libs::{err, Error};
 use serde::{Deserialize, Serialize};
-use crate::{auth::credential::Credential, persistence::Persistence};
-use super::session_grp::SessionGroup;
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct SessionCfg {
     credential: Credential,
-    group: SessionGroup,
+    group: String,
 }
 
 impl SessionCfg {
     #[inline]
-    pub fn new(credential: Credential, group: SessionGroup) -> Self {
+    pub fn new(credential: Credential, group: String) -> Self {
         Self {
             credential,
             group,
@@ -24,7 +23,7 @@ impl SessionCfg {
     }
 
     #[inline]
-    pub fn group(&self) -> &SessionGroup {
+    pub fn group(&self) -> &String {
         &self.group
     }
 }
@@ -36,7 +35,7 @@ impl Persistence for SessionCfg {
     fn name() -> &'static str {
         "*"
     }
-    
+
     #[inline]
     fn parse(data: &str) -> Result<Self, Error> {
         err!(serde_json::from_str(data))
@@ -44,6 +43,6 @@ impl Persistence for SessionCfg {
 
     #[inline]
     fn sep_name(&self) -> &str {
-        &self.credential.shown_name
+        self.credential.shown_name()
     }
 }

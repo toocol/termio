@@ -8,17 +8,13 @@ use tmui::{
     graphics::box_shadow::{BoxShadow, ShadowSide},
     prelude::*,
     scroll_area::LayoutMode,
-    tlib::{
-        global_watch,
-        object::{ObjectImpl, ObjectSubclass},
-    },
+    tlib::object::{ObjectImpl, ObjectSubclass},
     views::list_view::ListView,
     widget::WidgetImpl,
 };
 
 #[extends(Popup)]
 #[derive(Childable)]
-#[global_watch(MouseReleased)]
 pub struct CtxMenu {
     loc: CtxMenuLoc,
 
@@ -75,20 +71,6 @@ impl ObjectImpl for CtxMenu {
 }
 
 impl WidgetImpl for CtxMenu {}
-
-impl GlobalWatchImpl for CtxMenu {
-    fn on_global_mouse_released(&mut self, evt: &tlib::events::MouseEvent) -> bool {
-        if !self.visible() {
-            return false;
-        }
-        let pos: Point = evt.position().into();
-        if !self.rect().contains(&pos) {
-            self.hide();
-        }
-
-        true
-    }
-}
 
 impl PopupImpl for CtxMenu {
     #[inline]

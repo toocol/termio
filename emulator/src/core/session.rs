@@ -9,11 +9,12 @@ use crate::{
     core::terminal_view::TerminalViewSignals,
     emulation::{Emulation, VT102Emulation},
     pty::{ProtocolType, Pty},
-    tools::{history::HistoryType, event::KeyPressedEvent},
+    tools::{event::KeyPressedEvent, history::HistoryType},
 };
+use cli::session::SessionPropsId;
 use derivative::Derivative;
 use log::debug;
-use std::{ptr::NonNull, rc::Rc, cell::RefCell};
+use std::{cell::RefCell, ptr::NonNull, rc::Rc};
 use tmui::{
     prelude::*,
     scroll_area::{ScrollArea, ScrollAreaExt},
@@ -59,12 +60,8 @@ pub struct Session {
     program: String,
     arguments: Vec<String>,
 
-    protocol_type: ProtocolType,
     session_group_id: i32,
     session_id: u64,
-    host: String,
-    user: String,
-    password: String,
 
     has_dark_background: bool,
     modified_background: Color,
@@ -168,8 +165,9 @@ pub trait SessionSignal: ActionExt {
 impl SessionSignal for Session {}
 
 impl Session {
-    pub fn new() -> Box<Self> {
+    pub fn new(id: SessionPropsId) -> Box<Self> {
         let mut session: Box<Session> = Object::new(&[]);
+        session.session_id = id;
         let emulation = VT102Emulation::new(None).wrap();
         connect!(emulation, title_changed(), session, set_user_title());
         connect!(emulation, state_set(), session, activate_state_set(i32));

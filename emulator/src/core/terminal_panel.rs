@@ -1,9 +1,11 @@
 use super::session::Session;
 use crate::{
-    config::Config, tools::{event::ToKeyPressedEvent, history::HistoryTypeBuffer}
+    config::Config,
+    tools::{event::ToKeyPressedEvent, history::HistoryTypeBuffer},
 };
+use cli::session::SessionPropsId;
 use derivative::Derivative;
-use std::{rc::Rc, cell::RefCell};
+use std::{cell::RefCell, rc::Rc};
 use tmui::{
     prelude::*,
     tlib::{events::KeyEvent, object::ObjectSubclass},
@@ -30,23 +32,21 @@ impl ObjectImpl for TerminalPanel {
 
         self.set_hexpand(true);
         self.set_vexpand(true);
-
-        let session = self.create_session();
-        let scrolled_view = session.create_terminal_view();
-        session.view_mut().set_font(Config::font());
-
-        self.add_child(scrolled_view);
     }
 }
 
 impl WidgetImpl for TerminalPanel {}
 
 impl TerminalPanel {
-    pub fn create_session(&mut self) -> &mut Box<Session> {
-        let mut session = Session::new();
+    pub fn create_session(&mut self, id: SessionPropsId) -> &mut Box<Session> {
+        let mut session = Session::new(id);
         session.set_auto_close(true);
         session.set_history_type(Rc::new(RefCell::new(HistoryTypeBuffer::new(10000))));
         session.set_key_binding("");
+
+        let scrolled_view = session.create_terminal_view();
+        session.view_mut().set_font(Config::font());
+        self.add_child(scrolled_view);
 
         self.sessions.push(session);
         self.sessions.last_mut().unwrap()

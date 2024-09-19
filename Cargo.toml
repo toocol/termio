@@ -7,7 +7,7 @@ version = "0.1.0"
 edition = "2021"
 
 [workspace.dependencies]
-tmui = { git = "https://github.com/toocol/tmui"}
+tmui = { git = "https://github.com/toocol/tmui", features = []}
 
 log = "0.4"
 log4rs = "1.1.1"
@@ -52,4 +52,3 @@ platform = { path = "platform/" }
 
 log = { workspace = true }
 log4rs = { workspace = true }
-

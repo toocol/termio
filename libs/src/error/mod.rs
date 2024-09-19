@@ -188,6 +188,27 @@ macro_rules! err {
     };
 }
 
+/// See [`err`]
+#[macro_export]
+macro_rules! err_crash {
+    ( $err:expr ) => {{
+        match $err {
+            Ok(val) => Ok(val),
+            Err(e) => {
+                let mut err = Error::from(e);
+                err.set_localtion(std::panic::Location::caller());
+                err.crash(true);
+                Err(err)
+            }
+        }
+    }};
+    ( $code:ident, $msg:expr ) => {
+        let mut error = Error::new(ErrorCode::$code, $msg, file!(), line!(), column!())
+        error.crash();
+        error
+    };
+}
+
 #[cfg(test)]
 mod tests {
     use std::fs::File;

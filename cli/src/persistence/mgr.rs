@@ -1,11 +1,16 @@
 use crate::{
-    auth::credential::Credential,
-    session::{cfg::SessionCfg, session_grp_pers::SessionGrpPers},
+    auth::credential::{Credential, CredentialId},
+    session::{
+        cfg::SessionCfg,
+        session_grp_pers::SessionGrpPers,
+    },
 };
 use lazy_static::lazy_static;
 use libs::prelude::*;
+use log::error;
 use parking_lot::{Mutex, RawMutex};
 use std::collections::HashMap;
+use tmui::tlib::{self, async_do};
 
 use super::Persistence;
 
@@ -16,7 +21,7 @@ lazy_static! {
 
 #[derive(Default)]
 pub struct PersistenceMgr {
-    sessions: Vec<SessionCfg>,
+    sessions: HashMap<CredentialId, SessionCfg>,
     root_group: Option<SessionGrpPers>,
     grp_credential_map: HashMap<String, Vec<Credential>>,
 }
@@ -24,10 +29,34 @@ pub struct PersistenceMgr {
 impl PersistenceMgr {
     #[inline]
     pub fn add_session(session: SessionCfg) {
-        let mut guard = INSTANCE.lock();
-        guard.sessions.push(session);
+        async_do!(move {
+            let mut guard = INSTANCE.lock();
+            if let Err(e) = session.persistence() {
+                e.handle()
+            }
+            guard.sessions.insert(session.credential().id(), session);
+            ()
+        });
     }
 
+    #[inline]
+    pub fn add_group(parent: &str, group: &str) {
+        let (parent, group) = (parent.to_string(), group.to_string());
+        async_do!(move {
+            let mut guard = INSTANCE.lock();
+            if let Some(root_group) = guard.root_group.as_mut() {
+                root_group.add_group(&parent, &group);
+                if let Err(e) = root_group.persistence() {
+                    error!(
+                        "Persistence `SessionGrpPers` failed, {:?}, error: {:?}",
+                        root_group, e
+                    )
+                }
+            }
+        });
+    }
+
+    #[inline]
     pub fn set_root_group(root_group: SessionGrpPers) {
         let mut guard = INSTANCE.lock();
         guard.root_group = Some(root_group);
@@ -60,13 +89,15 @@ impl PersistenceMgr {
         let mut guard = INSTANCE.lock();
         match sessions {
             Ok(sessions) => {
-                for session in sessions.iter() {
-                    guard.grp_credential_map
-                        .entry(session.group().name().to_string())
+                for session in sessions.into_iter() {
+                    guard
+                        .grp_credential_map
+                        .entry(session.group().to_string())
                         .or_default()
                         .push(session.credential().clone());
+
+                    guard.sessions.insert(session.credential().id(), session);
                 }
-                guard.sessions = sessions;
             }
             Err(e) => e.handle(),
         }
@@ -77,6 +108,11 @@ impl PersistenceMgr {
             }
             Err(e) => e.handle(),
         }
+    }
+
+    #[inline]
+    pub fn get_credential(id: CredentialId) -> Option<Credential> {
+        Some(INSTANCE.lock().sessions.get(&id)?.credential().clone())
     }
 
     #[inline]

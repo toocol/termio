@@ -42,6 +42,9 @@ pub trait Persistence: Sized + Serialize {
                     let mut file = err!(File::open(&path))?;
                     let mut buf = String::new();
                     err!(file.read_to_string(&mut buf))?;
+                    if buf.is_empty() {
+                        continue;
+                    }
                     res.push(err!(Self::parse(&buf))?);
                 }
             }
@@ -50,6 +53,9 @@ pub trait Persistence: Sized + Serialize {
             let mut file = err!(File::open(Self::path()))?;
             let mut buf = String::new();
             err!(file.read_to_string(&mut buf))?;
+            if buf.is_empty() {
+                return Ok(vec![])
+            }
             Ok(vec![err!(Self::parse(&buf))?])
         }
     }
@@ -91,13 +97,9 @@ pub trait Persistence: Sized + Serialize {
 mod tests {
     use std::{fs, path::PathBuf};
     use crate::{
-        prelude::*,
-        auth::credential::Credential,
-        constant::{paths::PERSISTENCE_PATH, ProtocolType},
-        persistence::Persistence,
-        session::{
+        auth::{connect_info::ConnectInfo, credential::Credential}, constant::{paths::PERSISTENCE_PATH, ProtocolType}, persistence::Persistence, prelude::*, session::{
             cfg::SessionCfg, session_grp::SessionGroup, session_grp_pers::SessionGrpPers,
-        },
+        }
     };
 
     #[test]
@@ -105,13 +107,10 @@ mod tests {
         let session = SessionCfg::new(
             Credential::new(
                 None,
-                "127.0.0.1".to_string(),
-                "root".to_string(),
-                "password".to_string(),
-                22,
                 ProtocolType::Ssh,
+                ConnectInfo::LocalShell("~".to_string())
             ),
-            SessionGroup::new("group"),
+            "group".to_string(),
         );
 
         let session_grp = SessionGrpPers::new("group");
