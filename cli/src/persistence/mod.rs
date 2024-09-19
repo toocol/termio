@@ -97,13 +97,9 @@ pub trait Persistence: Sized + Serialize {
 mod tests {
     use std::{fs, path::PathBuf};
     use crate::{
-        prelude::*,
-        auth::credential::Credential,
-        constant::{paths::PERSISTENCE_PATH, ProtocolType},
-        persistence::Persistence,
-        session::{
+        auth::{connect_info::ConnectInfo, credential::Credential}, constant::{paths::PERSISTENCE_PATH, ProtocolType}, persistence::Persistence, prelude::*, session::{
             cfg::SessionCfg, session_grp::SessionGroup, session_grp_pers::SessionGrpPers,
-        },
+        }
     };
 
     #[test]
@@ -111,11 +107,8 @@ mod tests {
         let session = SessionCfg::new(
             Credential::new(
                 None,
-                "127.0.0.1".to_string(),
-                "root".to_string(),
-                "password".to_string(),
-                22,
                 ProtocolType::Ssh,
+                ConnectInfo::LocalShell("~".to_string())
             ),
             "group".to_string(),
         );

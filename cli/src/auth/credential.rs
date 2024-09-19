@@ -1,3 +1,4 @@
+use crate::{constant::ProtocolType, persistence::mgr::PersistenceMgr};
 use serde::{Deserialize, Serialize};
 use tmui::{
     tlib::{
@@ -10,7 +11,8 @@ use tmui::{
         tree_view::{tree_node::TreeNode, tree_view_object::TreeViewObject},
     },
 };
-use crate::{constant::ProtocolType, persistence::mgr::PersistenceMgr};
+
+use super::connect_info::ConnectInfo;
 
 pub type CredentialId = u64;
 
@@ -32,11 +34,8 @@ impl CellIndex for CredentialIdx {
 pub struct Credential {
     id: CredentialId,
     shown_name: String,
-    host: String,
-    user: String,
-    password: String,
-    port: u32,
     protocol: ProtocolType,
+    connect_info: ConnectInfo,
     timestamp: u64,
 }
 
@@ -44,21 +43,21 @@ impl Credential {
     #[inline]
     pub fn new(
         shown_name: Option<String>,
-        host: String,
-        user: String,
-        password: String,
-        port: u32,
         protocol: ProtocolType,
+        connect_info: ConnectInfo,
     ) -> Self {
-        let shown_name = shown_name.unwrap_or(host.clone());
+        let shown_name = shown_name.unwrap_or_else(|| match connect_info {
+            ConnectInfo::LocalShell(ref path) => {
+                format!("LocalShell({})", path)
+            }
+            ConnectInfo::Ssh(ref host, _, _, _) => host.clone(),
+            _ => String::new(),
+        });
         Credential {
             id: SnowflakeGuidGenerator::next_id().expect("Generate uid failed."),
             shown_name,
-            host,
-            user,
-            password,
-            port,
             protocol,
+            connect_info,
             timestamp: Timestamp::now().as_millis(),
         }
     }
@@ -79,28 +78,13 @@ impl Credential {
     }
 
     #[inline]
-    pub fn host(&self) -> &str {
-        &self.host
-    }
-
-    #[inline]
-    pub fn user(&self) -> &str {
-        &self.user
-    }
-
-    #[inline]
-    pub fn password(&self) -> &str {
-        &self.password
-    }
-    
-    #[inline]
-    pub fn port(&self) -> u32 {
-        self.port
-    }
-
-    #[inline]
     pub fn protocol_type(&self) -> ProtocolType {
         self.protocol
+    }
+
+    #[inline]
+    pub fn connect_info(&self) -> &ConnectInfo {
+        &self.connect_info
     }
 
     #[inline]

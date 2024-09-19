@@ -3,18 +3,19 @@ use crate::ui::{
     edit_window::EditWindow,
     sessions::{PROP_TREE_NODE_ID, PROP_TREE_VIEW_ID},
 };
-use cli::{persistence::mgr::PersistenceMgr, session::session_grp::SessionGroup};
+use cli::{
+    auth::credential::Credential, persistence::mgr::PersistenceMgr,
+    session::{session_grp::SessionGroup, SessionExt, SessionProps},
+};
+use emulator::core::terminal_emulator::TerminalEmulator;
 use log::warn;
 use tmui::{
     input::{dialog::InputDialog, text::Text, Input},
     prelude::{ApplicationWindow, Coordinate, ObjectId, ObjectOperation},
-    tlib::{
-        figure::Point,
-        namespace::KeyCode,
-    },
+    tlib::{figure::Point, namespace::KeyCode},
     views::{
         list_view::list_node::ListNode,
-        tree_view::TreeView,
+        tree_view::{tree_node::TreeNode, TreeView},
     },
     widget::{
         callbacks::CallbacksRegister, widget_ext::WidgetExt, ChildOp, WidgetFinder, WindowAcquire,
@@ -121,7 +122,6 @@ impl SessionCredentialService {
                         PersistenceMgr::add_group(&parent_name, &group_name);
                         new_group.set_value(0, group_name);
                     }
-
                 }
             });
         } else {
@@ -131,6 +131,23 @@ impl SessionCredentialService {
                 line!(),
                 column!()
             )
+        }
+    }
+
+    pub fn session_node_pressed(node: &mut TreeNode) {
+        if node.is_extensible() {
+            return;
+        }
+
+        if let Some(credential) = Credential::from_tree_node(node) {
+            let emulator = ApplicationWindow::window()
+                .find_id_mut(TerminalEmulator::id())
+                .unwrap()
+                .downcast_mut::<TerminalEmulator>()
+                .unwrap();
+            emulator.start_session(SessionProps::create(credential));
+        } else {
+            warn!("Get `Credential` from `TreeNode` failed.")
         }
     }
 }

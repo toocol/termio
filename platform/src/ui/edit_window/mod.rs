@@ -3,7 +3,7 @@ use crate::components::{
     number_bundle::NumberBundle, password_bundle::PasswordBundle, text_bundle::TextBundle,
 };
 use cli::{
-    auth::credential::Credential,
+    auth::{connect_info::ConnectInfo, credential::Credential},
     constant::ProtocolType,
     persistence::mgr::PersistenceMgr,
     session::cfg::SessionCfg,
@@ -106,7 +106,11 @@ impl EditWindow {
                 .unwrap();
 
             let group = sct.get_store_mut().get_node_mut(group_id).unwrap();
-            let credential = Credential::new(None, host, user, password, port, ProtocolType::Ssh);
+            let credential = Credential::new(
+                None,
+                ProtocolType::Ssh,
+                ConnectInfo::Ssh(host, user, password, port),
+            );
             group.add_node(&credential);
 
             let group = group.get_value::<String>(0).unwrap();

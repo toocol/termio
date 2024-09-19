@@ -1,51 +1,61 @@
 pub mod cfg;
-pub mod session_grp_pers;
 pub mod session_grp;
+pub mod session_grp_pers;
 
+use crate::{auth::credential::Credential, constant::ProtocolType};
 use lazy_static::lazy_static;
 use parking_lot::Mutex;
-use tmui::tlib::utils::{SnowflakeGuidGenerator, Timestamp};
 use std::collections::HashMap;
-use crate::constant::ProtocolType;
+use tmui::tlib::utils::{SnowflakeGuidGenerator, Timestamp};
 
-pub type SessionId = u64;
+pub type SessionPropsId = u64;
 
 pub const ROOT_SESSION: &'static str = "Sessions";
 
-#[derive(Debug, Clone, Copy)]
-pub enum Session {
-    Ssh(SessionProps),
-    Mosh(SessionProps),
-    Telnet(SessionProps),
-    Rsh(SessionProps),
-    LocalShell(SessionProps),
+lazy_static! {
+    pub static ref SESSION_MAP: Mutex<HashMap<u64, SessionProps>> = Mutex::new(HashMap::new());
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct SessionProps {
     id: u64,
     establish_time: Timestamp,
+    credential: Credential,
 }
 
 pub trait SessionExt {
     /// Create a new session.
-    fn create(protocol: ProtocolType) -> SessionId;
+    fn create(credential: Credential) -> SessionPropsId;
 
     /// Get the copy of session.
-    fn get(id: SessionId) -> Option<Session> {
-        SESSION_MAP.lock().get(&id).map(|s| *s)
+    fn get(id: SessionPropsId) -> Option<SessionProps> {
+        SESSION_MAP.lock().get(&id).map(|s| s.clone())
     }
 
     /// Remove the session.
-    fn remove(id: SessionId) {
+    fn remove(id: SessionPropsId) {
         SESSION_MAP.lock().remove(&id);
     }
 
-    /// Get the property of session.
-    fn props(&self) -> &SessionProps;
+    fn command(id: SessionPropsId) -> Option<String> {
+        let guard = SESSION_MAP.lock();
+        let session = guard.get(&id)?;
+        let credential = &session.credential;
+        let connect_info = credential.connect_info();
+
+        match session.protocol() {
+            ProtocolType::Ssh => Some(format!(
+                "ssh {}@{} -p {}",
+                connect_info.user(),
+                connect_info.host(),
+                connect_info.port()
+            )),
+            _ => None,
+        }
+    }
 
     /// Get the global unique id.
-    fn id(&self) -> SessionId;
+    fn id(&self) -> SessionPropsId;
 
     /// Get the connection protocol of the session.
     fn protocol(&self) -> ProtocolType;
@@ -54,68 +64,41 @@ pub trait SessionExt {
     fn establish_time(&self) -> Timestamp;
 }
 
-impl SessionExt for Session {
-    fn create(protocol: ProtocolType) -> SessionId {
+impl SessionExt for SessionProps {
+    fn create(credential: Credential) -> SessionPropsId {
+        let protocol = credential.protocol_type();
         let props = SessionProps {
             id: gen_id(),
             establish_time: Timestamp::now(),
+            credential: credential,
         };
 
-        let session = match protocol {
-            ProtocolType::Ssh => Self::Ssh(props),
-            ProtocolType::Mosh => Self::Mosh(props),
-            ProtocolType::Telnet => Self::Telnet(props),
-            ProtocolType::Rsh => Self::Rsh(props),
-            ProtocolType::LocalShell => Self::LocalShell(props),
-        };
+        let id = props.id();
 
-        let id = session.id();
-
-        SESSION_MAP.lock().insert(id, session);
+        SESSION_MAP.lock().insert(id, props);
 
         id
     }
 
     #[inline]
-    fn props(&self) -> &SessionProps {
-        match self {
-            Self::Ssh(props) => props,
-            Self::Mosh(props) => props,
-            Self::Telnet(props) => props,
-            Self::Rsh(props) => props,
-            Self::LocalShell(props) => props,
-        }
-    }
-
-    #[inline]
-    fn id(&self) -> SessionId {
-        self.props().id
+    fn id(&self) -> SessionPropsId {
+        self.id
     }
 
     #[inline]
     fn protocol(&self) -> ProtocolType {
-        match self {
-            Self::Ssh(_) => ProtocolType::Ssh,
-            Self::Mosh(_) => ProtocolType::Mosh,
-            Self::Telnet(_) => ProtocolType::Telnet,
-            Self::Rsh(_) => ProtocolType::Rsh,
-            Self::LocalShell(_) => ProtocolType::LocalShell,
-        }
+        self.credential.protocol_type()
     }
 
     #[inline]
     fn establish_time(&self) -> Timestamp {
-        self.props().establish_time
+        self.establish_time
     }
 }
 
 /// Generate global unique u64 id.
-fn gen_id() -> SessionId {
+fn gen_id() -> SessionPropsId {
     SnowflakeGuidGenerator::next_id().expect("`SnowflakeGuidGenerator` generate id failed.")
-}
-
-lazy_static! {
-    pub static ref SESSION_MAP: Mutex<HashMap<u64, Session>> = Mutex::new(HashMap::new());
 }
 
 #[cfg(test)]
@@ -123,11 +106,11 @@ mod tests {
     use session_grp_pers::SessionGrpPers;
 
     use super::*;
-    use crate::constant::ProtocolType;
+    use crate::constant::Protocol;
 
     #[test]
     fn test_sessions() {
-        let session = Session::create(ProtocolType::Ssh);
+        let session = SessionProps::create(Protocol::Ssh);
         assert_eq!(session, Session::get(session).unwrap().id())
     }
 }

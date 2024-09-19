@@ -10,14 +10,12 @@ use crate::ui::ctx_menu::{
     CtxMenu,
 };
 use cli::{
-    auth::credential::{Credential, CredentialId, CredentialIdx},
+    auth::credential::{CredentialId, CredentialIdx},
     session::session_grp::SessionGrpIdx,
 };
-use emulator::core::terminal_emulator::TerminalEmulator;
-use log::warn;
+use service::SessionCredentialService;
 use tmui::{
     popup::Popupable,
-    prelude::ApplicationWindow,
     tlib::{
         compare::Compare, events::MouseEvent, figure::Color, namespace::MouseButton, prelude::*,
         Object,
@@ -64,21 +62,8 @@ impl SessionCredentialTree {
 fn node_pressed(node: &mut TreeNode, evt: &MouseEvent) {
     match evt.mouse_button() {
         MouseButton::LeftButton => match evt.n_press() {
-            2 => {
-                if node.is_extensible() {
-                    return;
-                }
+            2 => SessionCredentialService::session_node_pressed(node),
 
-                if let Some(credential) = Credential::from_tree_node(node) {
-                    let emulator = ApplicationWindow::window()
-                        .find_id_mut(TerminalEmulator::id())
-                        .unwrap()
-                        .downcast_mut::<TerminalEmulator>()
-                        .unwrap();
-                } else {
-                    warn!("Convert `TreeNode` to `Credential` failed.")
-                }
-            }
             _ => {}
         },
         MouseButton::RightButton => {}
