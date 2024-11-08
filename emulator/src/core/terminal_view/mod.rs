@@ -14,9 +14,7 @@ use self::{
 };
 use super::screen_window::{ScreenWindow, ScreenWindowSignals};
 use crate::tools::{
-    character::{Character, ExtendedCharTable, LineProperty},
-    character_color::{ColorEntry, DEFAULT_BACK_COLOR, DEFAULT_FORE_COLOR, TABLE_COLORS},
-    filter::{FilterChainImpl, TerminalImageFilterChain},
+    character::{Character, ExtendedCharTable, LineProperty}, character_color::{ColorEntry, DEFAULT_BACK_COLOR, DEFAULT_FORE_COLOR, TABLE_COLORS}, event::KeyPressedEvent, filter::{FilterChainImpl, TerminalImageFilterChain}
 };
 use derivative::Derivative;
 use std::{ptr::NonNull, sync::atomic::Ordering, time::Duration};
@@ -33,7 +31,7 @@ use tmui::{
     tlib::{
         connect, emit,
         events::{KeyEvent, MouseEvent},
-        figure::{Color, FPoint, FRect, Size},
+        figure::{Color, Size},
         global::bound64,
         nonnull_mut,
         object::{ObjectImpl, ObjectSubclass},
@@ -288,7 +286,7 @@ pub trait TerminalViewSignals: ActionExt {
         ///
         /// @param [`KeyEvent`] key event.
         /// @param [`bool`] from paste.
-        key_pressed_signal();
+        key_pressed_signal(KeyPressedEvent, bool);
 
         /// A mouse event occurred.
         /// @param [`i32`] button: The mouse button (0 for left button, 1 for middle button, 2
@@ -297,16 +295,16 @@ pub trait TerminalViewSignals: ActionExt {
         /// @param [`i32`] row: The character row where the event occurred <br>
         /// @param [`u8`] type: The type of event.  0 for a mouse press / release or 1 for
         /// mouse motion
-        mouse_signal();
+        mouse_signal(i32, i32, i32, u8);
 
-        changed_font_metrics_signal();
-        changed_content_size_signal();
+        changed_font_metrics_signal(f32, f32);
+        changed_content_size_signal(i32, i32);
 
         /// Emitted when the user right clicks on the display, or right-clicks with the
         /// Shift key held down if [`uses_mouse()`] is true.
         ///
         /// This can be used to display a context menu.
-        configure_request();
+        configure_request(Point);
 
         /// When a shortcut which is also a valid terminal key sequence is pressed
         /// while the terminal widget  has focus, this signal is emitted to allow the
@@ -324,11 +322,11 @@ pub trait TerminalViewSignals: ActionExt {
         /// @param [`i32`] length of the string, if there was a empty string, the value was -1/0
         send_string_to_emulation();
 
-        copy_avaliable();
+        copy_avaliable(bool);
         term_get_focus();
         term_lost_focus();
 
-        notify_bell();
+        notify_bell(&str);
         uses_mouse_changed();
     );
 }
@@ -726,8 +724,8 @@ impl TerminalView {
         if self.screen_window.is_some() {
             connect!(window, output_changed(), self, update_line_properties());
             connect!(window, output_changed(), self, update_image());
-            connect!(window, output_changed(), self, update_filters());
-            connect!(window, scrolled(), self, update_filters());
+            connect!(window, output_changed(), self, update_filters(i32));
+            connect!(window, scrolled(), self, update_filters(i32));
             connect!(window, scroll_to_end(), self, scroll_to_end());
             window.set_window_lines(self.lines);
         }
@@ -855,7 +853,7 @@ impl TerminalView {
             } else {
                 SystemCursorShape::ArrowCursor
             });
-            emit!(self.uses_mouse_changed());
+            emit!(self, uses_mouse_changed());
         }
     }
 
@@ -876,7 +874,7 @@ impl TerminalView {
         // produce a horrible noise
         if self.allow_bell {
             self.allow_bell = false;
-            Timer::once(|mut timer| {
+            Timer::once(|timer| {
                 connect!(timer, timeout(), self, enable_bell());
                 timer.start(Duration::from_millis(500));
             });
@@ -886,11 +884,11 @@ impl TerminalView {
                     System::beep();
                 }
                 BellMode::NotifyBell => {
-                    emit!(self.notify_bell(), message)
+                    emit!(self, notify_bell(message))
                 }
                 BellMode::VisualBell => {
                     self.swap_color_table();
-                    Timer::once(|mut timer| {
+                    Timer::once(|timer| {
                         connect!(timer, timeout(), self, swap_color_table());
                         timer.start(Duration::from_millis(200));
                     });

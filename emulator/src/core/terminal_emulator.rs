@@ -1,9 +1,9 @@
 #![allow(dead_code)]
 use std::cell::RefCell;
 
-use super::{session::Session, terminal_panel::TerminalPanel};
+use super::terminal_panel::TerminalPanel;
 use crate::pty::pty_receive_pool;
-use cli::session::{SessionExt, SessionPropsId};
+use cli::session::SessionPropsId;
 use derivative::Derivative;
 use tmui::{prelude::*, tlib::object::ObjectSubclass};
 

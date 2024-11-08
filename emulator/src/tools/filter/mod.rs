@@ -4,11 +4,9 @@ pub mod regex_filter;
 pub mod url_filter;
 
 pub use filter_chain::*;
-pub use regex_filter::*;
 use tmui::tlib::emit;
 use tmui::tlib::object::{ObjectImpl, ObjectSubclass};
 use tmui::tlib::{signal, signals};
-pub use url_filter::*;
 
 use crate::tools::system_ffi::string_width;
 use lazy_static::__Deref;
@@ -246,12 +244,7 @@ impl BaseFilterImpl for BaseFilter {
             if i == self.line_positions.deref().borrow().len() - 1 {
                 next_line = self.buffer.deref().borrow().len() + 1;
             } else {
-                next_line = *self
-                    .line_positions
-                    .deref()
-                    .borrow()
-                    .get(i + 1)
-                    .unwrap() as usize;
+                next_line = *self.line_positions.deref().borrow().get(i + 1).unwrap() as usize;
             }
 
             if *self.line_positions.deref().borrow().get(i).unwrap() <= position
@@ -337,7 +330,7 @@ impl FilterObject {
         FilterObject:
 
         /// Signal to activate ation `filter activated`.
-        action_filter_activated();
+        action_filter_activated(String, bool);
 
         /// Signal to activate action `open`.
         action_open();
@@ -355,7 +348,7 @@ impl FilterObject {
 
     #[inline]
     pub fn emit_activated(&self, url: String, from_context_menu: bool) {
-        emit!(self.action_filter_activated(), (url, from_context_menu))
+        emit!(self, action_filter_activated(url, from_context_menu));
     }
 
     pub fn activate(&self) {

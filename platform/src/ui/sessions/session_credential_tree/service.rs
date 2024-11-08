@@ -60,7 +60,7 @@ impl SessionCredentialService {
         );
     }
 
-    pub fn new_group_pressed(ctx_menu: &mut CtxMenu, node: &mut ListNode) {
+    pub fn new_group_pressed(ctx_menu: &mut CtxMenu, _node: &mut ListNode) {
         println!("new group pressed.");
         ctx_menu.hide();
 

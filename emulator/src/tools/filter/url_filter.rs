@@ -142,19 +142,25 @@ impl HotSpotImpl for UrlFilterHotSpot {
 
         match kind {
             UrlType::StandardUrl => {
-                let open_action =
-                    Action::with_param(self.url_object.borrow().action_open(), "Open link");
-                let copy_action =
-                    Action::with_param(self.url_object.borrow().action_open(), "Copy link address");
+                let open_action = Action::with_param(
+                    self.url_object.borrow().action_open(),
+                    vec!["Open link".to_value()],
+                );
+                let copy_action = Action::with_param(
+                    self.url_object.borrow().action_open(),
+                    vec!["Copy link address".to_value()],
+                );
                 list.push(open_action);
                 list.push(copy_action);
             }
             UrlType::Email => {
-                let open_action =
-                    Action::with_param(self.url_object.borrow().action_open(), "Send email to...");
+                let open_action = Action::with_param(
+                    self.url_object.borrow().action_open(),
+                    vec!["Send email to...".to_value()],
+                );
                 let copy_action = Action::with_param(
                     self.url_object.borrow().action_copy(),
-                    "Copy email address",
+                    vec!["Copy email address".to_value()],
                 );
                 list.push(open_action);
                 list.push(copy_action);

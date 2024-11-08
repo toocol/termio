@@ -11,12 +11,6 @@ pub(super) static ANTIALIAS_TEXT: AtomicBool = AtomicBool::new(true);
 pub(super) static HAVE_TRANSPARENCY: AtomicBool = AtomicBool::new(true);
 pub(super) static TEXT_BLINK_DELAY: AtomicU64 = AtomicU64::new(500);
 
-pub(super) const REPCHAR: &str = concat!(
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
-    "abcdefgjijklmnopqrstuvwxyz",
-    "0123456789./+@"
-);
-
 pub(super) const LTR_OVERRIDE_CHAR: wchar_t = 0x202D;
 
 pub(super) const LINE_CHARS: [u32; 128] = [

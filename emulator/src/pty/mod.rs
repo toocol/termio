@@ -7,6 +7,7 @@ pub mod posix_pty;
 use once_cell::sync::Lazy;
 #[cfg(not(target_os = "windows"))]
 use pty::prelude::Fork;
+use tlib::namespace::ExitStatus;
 #[cfg(not(target_os = "windows"))]
 use std::io::Read;
 use std::{
@@ -14,7 +15,7 @@ use std::{
 };
 use tmui::{
     prelude::*,
-    tlib::{emit, signals},
+    tlib::signals,
 };
 #[cfg(target_os = "windows")]
 use winptyrs::PTY;
@@ -96,7 +97,7 @@ pub trait PtySignals: ActionExt {
         ///
         /// @param exit_code [`i32`] <br>
         /// @param exit_status [`ExitStatus`](tmui::tlib::namespace::ExitStatus)
-        finished();
+        finished(i32, ExitStatus);
     }
 }
 
@@ -125,10 +126,11 @@ impl PtyReceivePool {
 
             thread::spawn(move || loop {
                 #[cfg(target_os = "windows")]
-                ptys.lock().unwrap().iter().for_each(|(_, (pty, signal))| {
+                ptys.lock().unwrap().iter().for_each(|(_, (pty, _signal))| {
                     if let Ok(data) = pty.lock().unwrap().read(u32::MAX, false) {
                         if !data.is_empty() {
-                            emit!(signal.clone(), data.to_str().unwrap())
+                            // TODO: Figure out a way to receive pty data from another thread
+                            // emit!(signal.clone(), data.to_str().unwrap())
                         }
                     }
                 });
