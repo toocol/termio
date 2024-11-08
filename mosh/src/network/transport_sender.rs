@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 use std::{cell::RefCell, rc::Rc};
 
-use libs::TimeStamp;
+use libs::util::timestamp::Timestamp;
 
 use crate::{
     crypto::{Prng, Session},
@@ -44,7 +44,7 @@ impl TransportSender {
     pub fn new(initial_state: UserStream, connection: Rc<RefCell<Connection>>) -> Self {
         let sent_states = vec![];
         let timed_state = Rc::new(RefCell::new(TimestampState {
-            timestamp: TimeStamp::timestamp(),
+            timestamp: Timestamp::now().as_millis(),
             num: 0,
             state: initial_state.clone(),
         }));
@@ -54,8 +54,8 @@ impl TransportSender {
             fragmenter: Fragmenter::new(),
             connection,
             assumed_receiver_state: timed_state.clone(),
-            next_ack_time: TimeStamp::timestamp(),
-            next_send_time: TimeStamp::timestamp() as i64,
+            next_ack_time: Timestamp::now().as_millis(),
+            next_send_time: Timestamp::now().as_millis(),
             shutdown_tries: 0,
             shutdown_start: -1,
             ack_num: 0,
@@ -75,7 +75,7 @@ impl TransportSender {
     pub fn tick(&mut self) {
         self.calculate_timers();
 
-        let now = TimeStamp::timestamp();
+        let now: u64 = Timestamp::now().as_millis();
         if now < self.next_ack_time && (now as i64) < self.next_send_time {
             return;
         }
@@ -123,7 +123,7 @@ impl TransportSender {
     }
 
     fn send_empty_ack(&mut self) {
-        let now = TimeStamp::timestamp();
+        let now = Timestamp::now().as_millis();
         assert!(now >= self.next_ack_time);
 
         let new_num = self.sent_states.last().unwrap().borrow().num + 1;
@@ -146,15 +146,15 @@ impl TransportSender {
         }
 
         if new_num == back.borrow().num {
-            back.borrow_mut().timestamp = TimeStamp::timestamp();
+            back.borrow_mut().timestamp = Timestamp::now().as_millis();
         } else {
-            self.add_sent_states(TimeStamp::timestamp(), new_num, self.current_state.clone());
+            self.add_sent_states(Timestamp::now().as_millis(), new_num, self.current_state.clone());
         }
 
         self.send_in_fragments(diff, new_num);
 
         self.assumed_receiver_state = self.sent_states.last().unwrap().clone();
-        self.next_ack_time = TimeStamp::timestamp() + ACK_INTERVAL;
+        self.next_ack_time = Timestamp::now().as_millis::<u64>() + ACK_INTERVAL;
         self.next_send_time = -1;
     }
 
@@ -192,7 +192,7 @@ impl TransportSender {
     }
 
     fn calculate_timers(&mut self) {
-        let now = TimeStamp::timestamp();
+        let now = Timestamp::now().as_millis();
 
         self.update_assumed_receiver_state();
         self.rationalize_states();
@@ -230,7 +230,7 @@ impl TransportSender {
     }
 
     fn update_assumed_receiver_state(&mut self) {
-        let now = TimeStamp::timestamp();
+        let now: u64 = Timestamp::now().as_millis();
 
         self.assumed_receiver_state = self.sent_states[0].clone();
 
