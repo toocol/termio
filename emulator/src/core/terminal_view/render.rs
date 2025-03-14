@@ -316,7 +316,7 @@ impl TerminalView {
         invert_character_color: bool,
     ) {
         // Don't draw text which is currently blinking.
-        if self.blinking && style.rendition & RE_BLINK != 0 {
+        if self.text_blinking && style.rendition & RE_BLINK != 0 {
             return;
         }
 

@@ -62,7 +62,7 @@ pub trait ScreenWindowSignals: ActionExt {
         ScreenWindow:
 
         /// Emitted when the contents of the associated terminal screen (see screen()) changes.
-        output_changed();
+        screen_window_output_changed();
 
         /// Emitted when the screen window is scrolled to a different position.
         ///
@@ -408,7 +408,7 @@ impl ScreenWindow {
 
         self.buffer_needs_update = true;
 
-        emit!(self, output_changed());
+        emit!(self, screen_window_output_changed());
     }
 
     pub fn handle_command_from_keyboard(&mut self, command: u16) {
@@ -443,7 +443,7 @@ impl ScreenWindow {
 
         if update {
             self.set_track_output(self.at_end_of_output());
-            emit!(self, output_changed());
+            emit!(self, screen_window_output_changed());
         }
     }
 }

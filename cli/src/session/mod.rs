@@ -66,7 +66,6 @@ pub trait SessionExt {
 
 impl SessionExt for SessionProps {
     fn create(credential: Credential) -> SessionPropsId {
-        let protocol = credential.protocol_type();
         let props = SessionProps {
             id: gen_id(),
             establish_time: Timestamp::now(),

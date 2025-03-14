@@ -324,12 +324,12 @@ impl TerminalView {
         (line, column)
     }
 
-    pub(super) fn blink_event(&mut self) {
+    pub(super) fn blink_text_event(&mut self) {
         if !self.allow_blinking_text {
             return;
         }
 
-        self.blinking = !self.blinking;
+        self.text_blinking = !self.text_blinking;
 
         // TODO:  Optimize to only repaint the areas of the widget
         // where there is blinking text
@@ -993,7 +993,7 @@ impl TerminalView {
         let tl = self.contents_rect(Some(Coordinate::Widget)).top_left();
         let tlx = tl.x();
         let tly = tl.y();
-        self.has_blinker = false;
+        self.has_blinker_text = false;
 
         let mut len;
 
@@ -1032,7 +1032,8 @@ impl TerminalView {
             if !self.resizing {
                 let mut x = 0usize;
                 while x < columns_to_update as usize {
-                    self.has_blinker = self.has_blinker || (new_line[x].rendition & RE_BLINK != 0);
+                    self.has_blinker_text =
+                        self.has_blinker_text || (new_line[x].rendition & RE_BLINK != 0);
 
                     // Start drawing if this character or the next one differs.
                     // We also take the next one into account to handle the situation
@@ -1158,14 +1159,14 @@ impl TerminalView {
             self.update_rect(CoordRect::new(dirty_region, Coordinate::Widget));
         }
 
-        if self.has_blinker && !self.blink_timer.is_active() {
-            self.blink_timer.start(Duration::from_millis(
+        if self.has_blinker_text && !self.blink_text_timer.is_active() {
+            self.blink_text_timer.start(Duration::from_millis(
                 TEXT_BLINK_DELAY.load(Ordering::SeqCst),
             ));
         }
-        if !self.has_blinker && self.blink_timer.is_active() {
-            self.blink_timer.stop();
-            self.blinking = false;
+        if !self.has_blinker_text && self.blink_text_timer.is_active() {
+            self.blink_text_timer.stop();
+            self.text_blinking = false;
         }
     }
 

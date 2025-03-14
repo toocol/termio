@@ -127,9 +127,9 @@ pub struct TerminalView {
     bell_mode: BellMode,
 
     // hide text in paint event.
-    blinking: bool,
+    text_blinking: bool,
     // has character to blink.
-    has_blinker: bool,
+    has_blinker_text: bool,
     // hide cursor in paint event.
     cursor_blinking: bool,
     // has bliking cursor enable.
@@ -142,7 +142,7 @@ pub struct TerminalView {
     // columns/lines are locked.
     is_fixed_size: bool,
     triple_click_mode: TripleClickMode,
-    blink_timer: Timer,
+    blink_text_timer: Timer,
     blink_cursor_timer: Timer,
 
     // true during visual bell.
@@ -259,10 +259,10 @@ impl WidgetImpl for TerminalView {
     }
 
     fn on_get_focus(&mut self) {
-        if self.has_blinking_cursor {
+        if self.has_blinking_cursor && !self.blink_cursor_timer.is_active() {
             self.blink_cursor_timer.start(Duration::from_millis(
                 application::cursor_blinking_time() as u64,
-            ))
+            ));
         }
 
         if self.cursor_blinking {
@@ -725,9 +725,19 @@ impl TerminalView {
         self.screen_window = NonNull::new(window);
 
         if self.screen_window.is_some() {
-            connect!(window, output_changed(), self, update_line_properties());
-            connect!(window, output_changed(), self, update_image());
-            connect!(window, output_changed(), self, update_filters());
+            connect!(
+                window,
+                screen_window_output_changed(),
+                self,
+                update_line_properties()
+            );
+            connect!(window, screen_window_output_changed(), self, update_image());
+            connect!(
+                window,
+                screen_window_output_changed(),
+                self,
+                update_filters()
+            );
             connect!(window, scrolled(), self, update_filters());
             connect!(window, scroll_to_end(), self, scroll_to_end());
             window.set_window_lines(self.lines);

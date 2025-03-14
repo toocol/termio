@@ -80,6 +80,13 @@ impl TerminalPanel {
             .emulation_mut()
             .send_text(text);
     }
+
+    pub fn set_blinking_cursor(&mut self, _id: SessionPropsId, blink: bool) {
+        self.sessions
+            .first_mut()
+            .unwrap()
+            .set_blinking_cursor(blink);
+    }
 }
 
 impl TerminalPanel {
