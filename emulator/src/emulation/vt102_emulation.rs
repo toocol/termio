@@ -244,6 +244,7 @@ pub struct VT102Emulation {
     saved_modes: TerminalState,
     pending_title_updates: HashMap<i32, String>,
     report_focus_event: bool,
+    signal_source: Option<ObjectId>,
     // TODO: Add timer: title_update_timer
 }
 impl_as_any!(VT102Emulation);
@@ -272,6 +273,16 @@ impl ObjectOperation for VT102Emulation {
     fn set_name(&mut self, name: &str) {
         self.emulation_mut().set_name(name)
     }
+
+    #[inline]
+    fn set_signal_source(&mut self, id: Option<ObjectId>) {
+        self.signal_source = id;
+    }
+
+    #[inline]
+    fn get_signal_source(&self) -> Option<ObjectId> {
+        self.signal_source
+    }
 }
 impl Default for VT102Emulation {
     #[inline]
@@ -290,6 +301,7 @@ impl Default for VT102Emulation {
             saved_modes: Default::default(),
             pending_title_updates: Default::default(),
             report_focus_event: Default::default(),
+            signal_source: None,
         }
     }
 }
@@ -434,7 +446,7 @@ impl VT102Emulation {
             // ACK: ignored
         } else if token == ty_ctl!('G') {
             // VT100
-            emit!(self.state_set(), EmulationState::NotifyBell as u8);
+            emit!(self, state_set(EmulationState::NotifyBell as i32));
         } else if token == ty_ctl!('H') {
             // VT100
             current_screen.backspace();
@@ -601,11 +613,11 @@ impl VT102Emulation {
         } else if token == ty_csi_ps!('t', 8) {
             // resize = \e[8;<row>;<col>t
             self.set_image_size(p as i32, q);
-            emit!(self.image_resize_request(), Size::new(q, p as i32));
+            emit!(self, image_resize_request(Size::new(q, p as i32)));
         //////////////////////////////////////////////////////////////
         } else if token == ty_csi_ps!('t', 28) {
             // change tab text color : \e[28;<color>t  color: 0-16,777,215
-            emit!(self.change_tab_text_color_request(), p as i32);
+            emit!(self, change_tab_text_color_request(p as i32));
         //////////////////////////////////////////////////////////////
         } else if token == ty_csi_ps!('K', 0) {
             current_screen.clear_to_end_of_line();
@@ -803,38 +815,38 @@ impl VT102Emulation {
         //////////////////////////////////////////////////////////////
         } else if token == ty_csi_ps_sp!('q', 0) {
             emit!(
-                self.cursor_changed(),
-                (KeyboardCursorShape::BlockCursor as u8, true)
+                self,
+                cursor_changed(KeyboardCursorShape::BlockCursor as u8, true)
             );
         } else if token == ty_csi_ps_sp!('q', 1) {
             emit!(
-                self.cursor_changed(),
-                (KeyboardCursorShape::BlockCursor as u8, true)
+                self,
+                cursor_changed(KeyboardCursorShape::BlockCursor as u8, true)
             );
         } else if token == ty_csi_ps_sp!('q', 2) {
             emit!(
-                self.cursor_changed(),
-                (KeyboardCursorShape::BlockCursor as u8, false)
+                self,
+                cursor_changed(KeyboardCursorShape::BlockCursor as u8, false)
             );
         } else if token == ty_csi_ps_sp!('q', 3) {
             emit!(
-                self.cursor_changed(),
-                (KeyboardCursorShape::UnderlineCursor as u8, true)
+                self,
+                cursor_changed(KeyboardCursorShape::UnderlineCursor as u8, true)
             );
         } else if token == ty_csi_ps_sp!('q', 4) {
             emit!(
-                self.cursor_changed(),
-                (KeyboardCursorShape::UnderlineCursor as u8, false)
+                self,
+                cursor_changed(KeyboardCursorShape::UnderlineCursor as u8, false)
             );
         } else if token == ty_csi_ps_sp!('q', 5) {
             emit!(
-                self.cursor_changed(),
-                (KeyboardCursorShape::IBeamCursor as u8, true)
+                self,
+                cursor_changed(KeyboardCursorShape::IBeamCursor as u8, true)
             );
         } else if token == ty_csi_ps_sp!('q', 6) {
             emit!(
-                self.cursor_changed(),
-                (KeyboardCursorShape::IBeamCursor as u8, false)
+                self,
+                cursor_changed(KeyboardCursorShape::IBeamCursor as u8, false)
             );
         //////////////////////////////////////////////////////////////
         } else if token == ty_csi_pn!('@') {
@@ -1647,7 +1659,7 @@ impl VT102Emulation {
                 Some(val) => val,
                 None => "",
             };
-            emit!(self.title_changed(), (*arg, title));
+            emit!(self, title_changed(*arg, title.to_string()));
         }
         self.pending_title_updates.clear();
     }
@@ -1858,11 +1870,11 @@ impl Emulation for VT102Emulation {
                     self.clear_screen_and_set_columns(132);
                 }
             }
-            MODE_MOUSE_1000 => emit!(self.program_uses_mouse_changed(), false),
-            MODE_MOUSE_1001 => emit!(self.program_uses_mouse_changed(), false),
-            MODE_MOUSE_1002 => emit!(self.program_uses_mouse_changed(), false),
-            MODE_MOUSE_1003 => emit!(self.program_uses_mouse_changed(), false),
-            MODE_BRACKETD_PASTE => emit!(self.program_bracketed_paste_mode_changed(), true),
+            MODE_MOUSE_1000 => emit!(self, program_uses_mouse_changed(false)),
+            MODE_MOUSE_1001 => emit!(self, program_uses_mouse_changed(false)),
+            MODE_MOUSE_1002 => emit!(self, program_uses_mouse_changed(false)),
+            MODE_MOUSE_1003 => emit!(self, program_uses_mouse_changed(false)),
+            MODE_BRACKETD_PASTE => emit!(self, program_bracketed_paste_mode_changed(true)),
             MODE_APP_SCREEN => {
                 self.emulation_mut().screen[1].clear_selection();
                 self.set_screen(1);
@@ -1885,11 +1897,11 @@ impl Emulation for VT102Emulation {
                     self.clear_screen_and_set_columns(80);
                 }
             }
-            MODE_MOUSE_1000 => emit!(self.program_uses_mouse_changed(), true),
-            MODE_MOUSE_1001 => emit!(self.program_uses_mouse_changed(), true),
-            MODE_MOUSE_1002 => emit!(self.program_uses_mouse_changed(), true),
-            MODE_MOUSE_1003 => emit!(self.program_uses_mouse_changed(), true),
-            MODE_BRACKETD_PASTE => emit!(self.program_bracketed_paste_mode_changed(), false),
+            MODE_MOUSE_1000 => emit!(self, program_uses_mouse_changed(true)),
+            MODE_MOUSE_1001 => emit!(self, program_uses_mouse_changed(true)),
+            MODE_MOUSE_1002 => emit!(self, program_uses_mouse_changed(true)),
+            MODE_MOUSE_1003 => emit!(self, program_uses_mouse_changed(true)),
+            MODE_BRACKETD_PASTE => emit!(self, program_bracketed_paste_mode_changed(false)),
             MODE_APP_SCREEN => {
                 self.emulation_mut().screen[0].clear_selection();
                 self.set_screen(0);
@@ -2141,8 +2153,8 @@ impl Emulation for VT102Emulation {
 
         if modifiers.has(KeyboardModifier::ControlModifier) {
             match event.key_code() {
-                KeyCode::KeyS => emit!(self.flow_control_key_pressed(), true),
-                KeyCode::KeyQ | KeyCode::KeyC => emit!(self.flow_control_key_pressed(), false),
+                KeyCode::KeyS => emit!(self, flow_control_key_pressed(true)),
+                KeyCode::KeyQ | KeyCode::KeyC => emit!(self, flow_control_key_pressed(false)),
                 _ => {}
             }
         }
@@ -2193,7 +2205,7 @@ impl Emulation for VT102Emulation {
                 if entry.command().has(Command::Erase) {
                     text_to_send.push(self.erase_char() as u8);
                 } else {
-                    emit!(self.handle_command_from_keyboard(), entry.command());
+                    emit!(self, handle_command_from_keyboard(entry.command()));
                 }
             } else if !entry.text(None, None).is_empty() {
                 text_to_send.extend_from_slice(
@@ -2218,7 +2230,7 @@ impl Emulation for VT102Emulation {
             }
 
             if !from_paste && !text_to_send.is_empty() {
-                emit!(self.output_from_keypress_event())
+                emit!(self, output_from_keypress_event());
             }
 
             if text_to_send.is_empty() {
@@ -2226,7 +2238,7 @@ impl Emulation for VT102Emulation {
             }
 
             let text_to_send = String::from_utf8(text_to_send).unwrap();
-            // emit!(self.send_data(), text_to_send)
+            emit!(self, send_data(text_to_send.as_str()));
 
             // receive data for test:
             let buffer = text_to_send.as_bytes();
@@ -2309,18 +2321,18 @@ is missing."#;
     #[inline]
     fn send_string(&self, string: String, length: i32) {
         if length >= 0 {
-            emit!(self.send_data(), string);
+            emit!(self, send_data(string.as_str()));
         } else {
             let len = string.len() as i32;
             if len == 0 {
                 return;
             }
-            emit!(self.send_data(), string);
+            emit!(self, send_data(string.as_str()));
         }
     }
 
     fn receive_data(&mut self, buffer: &[u8], len: i32) {
-        emit!(self.state_set(), EmulationState::NotifyActivity as i32);
+        emit!(self, state_set(EmulationState::NotifyActivity as i32));
 
         self.buffered_update();
 
@@ -2341,7 +2353,7 @@ is missing."#;
                 && len as usize - i - 1 > 3
                 && String::from_utf8(buffer[i + 1..i + 4].to_vec()).unwrap() == "B00"
             {
-                emit!(self.zmodem_detected())
+                emit!(self, zmodem_detected());
             }
         }
     }

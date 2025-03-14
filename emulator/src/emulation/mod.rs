@@ -14,7 +14,7 @@ use crate::{
         event::KeyPressedEvent,
         history::HistoryType,
         terminal_character_decoder::TerminalCharacterDecoder,
-        translators::{KeyboardTranslator, KeyboardTranslatorManager},
+        translators::{Command, KeyboardTranslator, KeyboardTranslatorManager},
     },
 };
 use std::{cell::RefCell, ptr::NonNull, rc::Rc, time::Duration};
@@ -95,7 +95,7 @@ pub trait EmulationSignal: ActionExt {
         /// Emitted when a buffer of data is ready to send to the standard input of the terminal.
         ///
         /// @param data The String buffer of data ready to be sent <br>
-        send_data();
+        send_data(&str);
 
         ///  Requests that sending of input to the emulation from the terminal process be suspended or resumed.
         ///
@@ -109,24 +109,24 @@ pub trait EmulationSignal: ActionExt {
         /// Emitted when the activity state of the emulation is set.
         ///
         /// @param state The new activity state, one of NOTIFYNORMAL, NOTIFYACTIVITY or NOTIFYBELL
-        state_set();
+        state_set(i32);
 
         /// Emmitted when the `zmodem` detected.
         zmodem_detected();
 
         /// Requests that the color of the text used to represent the tabs associated with this
         /// emulation be changed.  This is a Konsole-specific extension from pre-KDE 4 times.
-        change_tab_text_color_request();
+        change_tab_text_color_request(i32);
 
         /// This is emitted when the program running in the shell indicates whether or not it is interested in mouse events.
         ///
         /// @param [`bool`] usesMouse This will be true if the program wants to be informed about mouse events or false otherwise.
-        program_uses_mouse_changed();
+        program_uses_mouse_changed(bool);
 
         /// Emit when program bracketed paste mode changed.
         ///
         /// @param [`bool`]
-        program_bracketed_paste_mode_changed();
+        program_bracketed_paste_mode_changed(bool);
 
         /// Emitted when the contents of the screen image change.
         /// The emulation buffers the updates from successive image changes,
@@ -160,13 +160,13 @@ pub trait EmulationSignal: ActionExt {
         /// in the current KDE icon theme (eg: 'konsole', 'kate', 'folder_home')</li>
         /// </ul>
         /// @param newTitle Specifies the new title
-        title_changed();
+        title_changed(i32, String);
 
         /// Emitted when the setImageSize() is called on this emulation for the first time.
         image_size_initialized();
 
         /// Emitted after receiving the escape sequence which asks to change the terminal emulator's size.
-        image_resize_request();
+        image_resize_request(Size);
 
         /// Emitted when the terminal program requests to change various properties of the terminal display.
         ///
@@ -181,15 +181,15 @@ pub trait EmulationSignal: ActionExt {
         /// Emitted when a flow control key combination ( Ctrl+S or Ctrl+Q ) is pressed.
         ///
         /// @param suspendKeyPressed True if Ctrl+S was pressed to suspend output or Ctrl+Q to resume output.
-        flow_control_key_pressed();
+        flow_control_key_pressed(bool);
 
         /// Emitted when the cursor shape or its blinking state is changed via DECSCUSR sequences.
         ////
         /// @param cursorShape One of 3 possible values in KeyboardCursorShape enum. <br>
         /// @param blinkingCursorEnabled Whether to enable blinking or not
-        cursor_changed();
+        cursor_changed(u8, bool);
 
-        handle_command_from_keyboard();
+        handle_command_from_keyboard(Command);
 
         output_from_keypress_event();
     }
@@ -369,7 +369,7 @@ impl Emulation for BaseEmulation {
             self,
             bracketed_paste_mode_changed(bool)
         );
-        connect!(self, cursor_changed(), self, emit_cursor_change(u8:0, bool:1));
+        connect!(self, cursor_changed(), self, emit_cursor_change(u8, bool));
     }
 
     fn create_window(&mut self) -> Option<NonNull<ScreenWindow>> {
@@ -552,7 +552,7 @@ impl Emulation for BaseEmulation {
             wch!('\t') => current_screen.tab(1),
             wch!('\n') => current_screen.new_line(),
             wch!('\r') => current_screen.to_start_of_line(),
-            0x07 => emit!(self.state_set(), EmulationState::NotifyBell as u8),
+            0x07 => emit!(self, state_set(EmulationState::NotifyBell as i32)),
             _ => current_screen.display_character(c),
         }
     }
@@ -583,10 +583,10 @@ impl Emulation for BaseEmulation {
     }
 
     fn send_key_event(&mut self, event: KeyPressedEvent, _from_paste: bool) {
-        emit!(self.state_set(), EmulationState::NotifyNormal as i32);
+        emit!(self, state_set(EmulationState::NotifyNormal as i32));
 
         if !event.text().is_empty() {
-            emit!(self.send_data(), event.text())
+            emit!(self, send_data(event.text()));
         }
     }
 
@@ -599,7 +599,7 @@ impl Emulation for BaseEmulation {
     }
 
     fn receive_data(&mut self, buffer: &[u8], len: i32) {
-        emit!(self.state_set(), EmulationState::NotifyActivity as u8);
+        emit!(self, state_set(EmulationState::NotifyActivity as i32));
 
         self.buffered_update();
 
@@ -620,7 +620,7 @@ impl Emulation for BaseEmulation {
                 && len as usize - i - 1 > 3
                 && String::from_utf8(buffer[i + 1..i + 4].to_vec()).unwrap() == "B00"
             {
-                emit!(self.zmodem_detected())
+                emit!(self, zmodem_detected());
             }
         }
     }
@@ -629,7 +629,7 @@ impl Emulation for BaseEmulation {
         self.bulk_timer1.stop();
         self.bulk_timer2.stop();
 
-        emit!(self.output_changed());
+        emit!(self, output_changed());
 
         let current_screen = unsafe { self.current_screen.as_mut().unwrap().as_mut() };
         current_screen.reset_scrolled_lines();
@@ -655,8 +655,8 @@ impl Emulation for BaseEmulation {
 
     fn emit_cursor_change(&mut self, cursor_shape: u8, blinking_cursor_enable: bool) {
         emit!(
-            self.title_changed(),
-            (
+            self,
+            title_changed(
                 50,
                 format!(
                     "CursorShape={};BlinkingCursorEnabled={}",

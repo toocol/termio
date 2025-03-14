@@ -4,9 +4,9 @@ use super::{
     Connection, Fragment, FragmentAssembly, TimestampState, TransportSender, MOSH_PROTOCOL_VERSION,
 };
 use crate::statesync::{CompleteTerminal, UserStream, UserEvent};
+use libs::util::timestamp::Timestamp;
 use log::{error, warn};
 use std::{cell::RefCell, rc::Rc};
-use libs::TimeStamp;
 
 pub struct Transport {
     last_receive_state: CompleteTerminal,
@@ -30,7 +30,7 @@ impl Transport {
         let connection = Rc::new(RefCell::new(Connection::new(ip, port, key)));
         let mut receive_states = vec![];
         receive_states.push(Rc::new(RefCell::new(TimestampState::new(
-            TimeStamp::timestamp(),
+            Timestamp::now().as_millis(),
             0,
             initial_remote.clone(),
         ))));
@@ -95,7 +95,7 @@ impl Transport {
                 self.process_throwaway_until(inst.throwaway_num());
 
                 let mut new_state = TimestampState::new(
-                    TimeStamp::timestamp(),
+                    Timestamp::now().as_millis(),
                     inst.new_num(),
                     reference_state.as_ref().unwrap().borrow().state.clone(),
                 );

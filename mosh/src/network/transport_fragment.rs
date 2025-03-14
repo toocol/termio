@@ -1,10 +1,6 @@
-#![allow(dead_code)]
-
 use std::collections::BinaryHeap;
-
+use libs::util::byte_order::ByteOrder;
 use protobuf::Message;
-use libs::ByteOrder;
-
 use crate::{network::Compressor, proto::transportinstruction::Instruction};
 
 use super::DEFAULT_SEND_MTU;

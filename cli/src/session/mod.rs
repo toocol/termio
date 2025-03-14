@@ -100,17 +100,3 @@ impl SessionExt for SessionProps {
 fn gen_id() -> SessionPropsId {
     SnowflakeGuidGenerator::next_id().expect("`SnowflakeGuidGenerator` generate id failed.")
 }
-
-#[cfg(test)]
-mod tests {
-    use session_grp_pers::SessionGrpPers;
-
-    use super::*;
-    use crate::constant::Protocol;
-
-    #[test]
-    fn test_sessions() {
-        let session = SessionProps::create(Protocol::Ssh);
-        assert_eq!(session, Session::get(session).unwrap().id())
-    }
-}

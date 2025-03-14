@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 use std::sync::atomic::AtomicU64;
-use libs::ByteOrder;
+
+use libs::util::byte_order::ByteOrder;
 
 use super::{AeCtx, AeOcb, AE_SUCCESS};
 pub const KEY_LEN: usize = 16;

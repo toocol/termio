@@ -1,5 +1,4 @@
-#![allow(dead_code)]
-use libs::ByteOrder;
+use libs::util::byte_order::ByteOrder;
 
 use crate::crypto::{Crypto, Message, Nonce};
 
@@ -109,7 +108,7 @@ impl Direction {
 
 #[cfg(test)]
 mod tests {
-    use libs::TimeStamp;
+    use libs::util::timestamp::Timestamp;
 
     use super::*;
 
@@ -118,8 +117,8 @@ mod tests {
         let _packet = MoshPacket::from_payload(
             vec![],
             Direction::ToClient,
-            TimeStamp::timestamp_16(),
-            TimeStamp::timestamp_16(),
+            Timestamp::now().as_u16(),
+            Timestamp::now().as_u16(),
         );
         let packet = MoshPacket::from_message(Message::new(Nonce::from_seq(1), vec![0; 20]));
         let _message = packet.to_message();

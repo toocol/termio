@@ -23,8 +23,8 @@ pub enum RelativeScrollMode {
     ScrollPages,
 }
 
-/// Provides a window onto a section of a terminal screen. 
-/// A terminal widget can then render the contents of the window 
+/// Provides a window onto a section of a terminal screen.
+/// A terminal widget can then render the contents of the window
 /// and use the window to change the terminal screen's selection in response to mouse or keyboard input.
 ///
 /// A new ScreenWindow for a terminal session can be created by calling Emulation::createWindow()
@@ -180,7 +180,7 @@ impl ScreenWindow {
     /// Transfer function to emit `scroll_to_end` signal
     #[inline]
     pub fn emit_scroll_to_end(&self) {
-        emit!(self.scroll_to_end())
+        emit!(self, scroll_to_end());
     }
 
     /// Returns the area of the window which was last scrolled, this is usually the whole window area.
@@ -209,7 +209,7 @@ impl ScreenWindow {
         };
 
         self.buffer_needs_update = true;
-        emit!(self.selection_changed());
+        emit!(self, selection_changed());
     }
 
     /// Sets the end of the selection to the given @p line and @p column within the window.
@@ -225,7 +225,7 @@ impl ScreenWindow {
         };
 
         self.buffer_needs_update = true;
-        emit!(self.selection_changed());
+        emit!(self, selection_changed());
     }
 
     /// Retrieves the start of the selection within the window.
@@ -252,7 +252,7 @@ impl ScreenWindow {
     pub fn clear_selection(&mut self) {
         unsafe { self.screen.as_mut().unwrap().as_mut().clear_selection() };
 
-        emit!(self.selection_changed());
+        emit!(self, selection_changed());
     }
 
     /// Sets the number of lines in the window.
@@ -320,7 +320,7 @@ impl ScreenWindow {
 
         self.buffer_needs_update = true;
 
-        emit!(self.scrolled(), self.current_line());
+        emit!(self, scrolled());
     }
 
     /// Scrolls the window relative to its current position on the screen.
@@ -357,7 +357,7 @@ impl ScreenWindow {
 
     ///  Returns the text which is currently selected.
     ///
-    /// @param preserveLineBreaks See Screen::selected_text()
+    /// @param preserve_line_breaks See Screen::selected_text()
     #[inline]
     pub fn selected_text(&self, preserve_line_break: bool) -> String {
         self.screen().selected_text(preserve_line_break)
@@ -408,7 +408,7 @@ impl ScreenWindow {
 
         self.buffer_needs_update = true;
 
-        emit!(self.output_changed())
+        emit!(self, output_changed());
     }
 
     pub fn handle_command_from_keyboard(&mut self, command: u16) {
@@ -433,7 +433,7 @@ impl ScreenWindow {
             update = true;
         }
         if command.has(Command::ScrollDownToBottom) {
-            emit!(self.scroll_to_end());
+            emit!(self, scroll_to_end());
             update = true;
         }
         if command.has(Command::ScrollUpToTop) {
@@ -443,7 +443,7 @@ impl ScreenWindow {
 
         if update {
             self.set_track_output(self.at_end_of_output());
-            emit!(self.output_changed());
+            emit!(self, output_changed());
         }
     }
 }

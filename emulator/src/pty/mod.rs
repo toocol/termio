@@ -4,32 +4,24 @@ pub mod con_pty;
 #[cfg(not(target_os = "windows"))]
 pub mod posix_pty;
 
+use log::info;
 use once_cell::sync::Lazy;
 #[cfg(not(target_os = "windows"))]
 use pty::prelude::Fork;
 #[cfg(not(target_os = "windows"))]
 use std::io::Read;
 use std::{
-    collections::HashMap, path::PathBuf, ptr::addr_of_mut, sync::{Arc, Mutex, Once}, thread, time::Duration
+    collections::HashMap,
+    path::PathBuf,
+    ptr::addr_of_mut,
+    sync::{Arc, Mutex, Once},
+    thread,
+    time::Duration,
 };
-use tmui::{
-    prelude::*,
-    tlib::{emit, signals},
-};
+use tlib::namespace::ExitStatus;
+use tmui::{prelude::*, tlib::signals};
 #[cfg(target_os = "windows")]
 use winptyrs::PTY;
-
-#[repr(u8)]
-#[derive(Default)]
-pub enum ProtocolType {
-    #[default]
-    None = 0,
-    Ssh,
-    Mosh,
-    Telnet,
-    Rsh,
-    LocalShell,
-}
 
 impl AsMutPtr for dyn Pty {}
 
@@ -37,13 +29,7 @@ pub trait Pty: PtySignals {
     /// Start the terminal process.
     ///
     /// Return true if the process was started successfully or non-zero otherwise.
-    fn start(
-        &mut self,
-        program: &str,
-        arguments: Vec<&str>,
-        enviroments: Vec<&str>,
-        protocol_type: ProtocolType,
-    ) -> bool;
+    fn start(&mut self, program: &str, arguments: Vec<&str>, enviroment: Vec<&str>) -> bool;
 
     /// Set the terminal process was writeable or not.
     fn set_writeable(&mut self, writeable: bool);
@@ -96,7 +82,7 @@ pub trait PtySignals: ActionExt {
         ///
         /// @param exit_code [`i32`] <br>
         /// @param exit_status [`ExitStatus`](tmui::tlib::namespace::ExitStatus)
-        finished();
+        finished(i32, ExitStatus);
     }
 }
 
@@ -125,10 +111,12 @@ impl PtyReceivePool {
 
             thread::spawn(move || loop {
                 #[cfg(target_os = "windows")]
-                ptys.lock().unwrap().iter().for_each(|(_, (pty, signal))| {
+                ptys.lock().unwrap().iter().for_each(|(_, (pty, _signal))| {
                     if let Ok(data) = pty.lock().unwrap().read(u32::MAX, false) {
                         if !data.is_empty() {
-                            emit!(signal.clone(), data.to_str().unwrap())
+                            // TODO: Figure out a way to receive pty data from another thread
+                            // emit!(signal.clone(), data.to_str().unwrap())
+                            info!("Receive shell msg: {}", data.to_str().unwrap());
                         }
                     }
                 });

@@ -258,7 +258,7 @@ impl TerminalView {
             }
 
             let e = KeyPressedEvent::new(KeyCode::Unknown, text, KeyboardModifier::NoModifier);
-            emit!(self.key_pressed_signal(), e, true);
+            emit!(self, key_pressed_signal(e, true));
 
             let screen_window = nonnull_mut!(self.screen_window);
             screen_window.clear_selection();
@@ -342,12 +342,14 @@ impl TerminalView {
             return;
         }
         emit!(
-            self.copy_avaliable(),
-            !self
-                .screen_window()
-                .unwrap()
-                .selected_text(false)
-                .is_empty()
+            self,
+            copy_avaliable(
+                !self
+                    .screen_window()
+                    .unwrap()
+                    .selected_text(false)
+                    .is_empty()
+            )
         );
     }
 
@@ -856,9 +858,8 @@ impl TerminalView {
         if self.resizing {
             self.show_resize_notification();
             emit!(
-                self.changed_content_size_signal(),
-                self.content_height,
-                self.content_width
+                self,
+                changed_content_size_signal(self.content_height, self.content_width)
             );
         }
 
@@ -1118,7 +1119,6 @@ impl TerminalView {
                     self.font_width * columns_to_update as f32,
                     self.font_height,
                 );
-
 
                 dirty_region.or(&dirty_rect);
             }

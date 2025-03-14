@@ -9,9 +9,18 @@ use crate::{
 };
 use std::time::Duration;
 use tmui::{
-    application::cursor_blinking_time, font::FontCalculation, opti::tracker::Tracker, prelude::*, skia_safe::ClipOp, tlib::{
-        connect, events::{KeyEvent, MouseEvent}, figure::FSize, namespace::{Align, KeyboardModifier, MouseButton}
-    }, widget::widget_ext::WidgetExt
+    application::cursor_blinking_time,
+    font::FontCalculation,
+    opti::tracker::Tracker,
+    prelude::*,
+    skia_safe::ClipOp,
+    tlib::{
+        connect,
+        events::{KeyEvent, MouseEvent},
+        figure::FSize,
+        namespace::{Align, KeyboardModifier, MouseButton},
+    },
+    widget::widget_ext::WidgetExt,
 };
 use wchar::wch;
 
@@ -63,7 +72,10 @@ impl TerminalView {
             let rect = self.terminal_rect();
             painter.save();
             painter.clip_rect(rect, ClipOp::Difference);
-            painter.fill_rect(self.contents_rect_f(Some(Coordinate::Widget)), self.background());
+            painter.fill_rect(
+                self.contents_rect_f(Some(Coordinate::Widget)),
+                self.background(),
+            );
             painter.restore();
             self.clear_margin = false;
         }
@@ -100,8 +112,8 @@ impl TerminalView {
         self.screen_window_mut().unwrap().clear_selection();
 
         emit!(
-            self.key_pressed_signal(),
-            (event.to_key_pressed_event(), false)
+            self,
+            key_pressed_signal(event.to_key_pressed_event(), false)
         );
     }
 
@@ -146,11 +158,13 @@ impl TerminalView {
                 if !self.mouse_marks && !event.modifier().has(KeyboardModifier::ShiftModifier) {
                     let scroll_bar = self.scroll_bar().unwrap();
                     emit!(
-                        self.mouse_signal(),
-                        0,
-                        char_column + 1,
-                        char_line + 1 + scroll_bar.value() - scroll_bar.maximum(),
-                        2u8
+                        self,
+                        mouse_signal(
+                            0,
+                            char_column + 1,
+                            char_line + 1 + scroll_bar.value() - scroll_bar.maximum(),
+                            2u8
+                        )
                     )
                 }
             }
@@ -171,11 +185,13 @@ impl TerminalView {
             };
 
             emit!(
-                self.mouse_signal(),
-                button,
-                char_column + 1,
-                char_line + 1 + scroll_bar.value() - scroll_bar.maximum(),
-                2u8
+                self,
+                mouse_signal(
+                    button,
+                    char_column + 1,
+                    char_line + 1 + scroll_bar.value() - scroll_bar.maximum(),
+                    2u8
+                )
             );
         }
     }
@@ -261,11 +277,13 @@ impl TerminalView {
 
             let scroll_bar = self.scroll_bar().unwrap();
             emit!(
-                self.mouse_signal(),
-                button,
-                char_column + 1,
-                char_line + 1 + scroll_bar.value() - scroll_bar.maximum(),
-                1u8
+                self,
+                mouse_signal(
+                    button,
+                    char_column + 1,
+                    char_line + 1 + scroll_bar.value() - scroll_bar.maximum(),
+                    1u8
+                )
             );
             return;
         }
@@ -338,11 +356,13 @@ impl TerminalView {
                 } else {
                     let scroll_bar = self.scroll_bar().unwrap();
                     emit!(
-                        self.mouse_signal(),
-                        0,
-                        char_column + 1,
-                        char_line + 1 + scroll_bar.value() - scroll_bar.maximum(),
-                        0u8
+                        self,
+                        mouse_signal(
+                            0,
+                            char_column + 1,
+                            char_line + 1 + scroll_bar.value() - scroll_bar.maximum(),
+                            0u8
+                        )
                     )
                 }
 
@@ -357,25 +377,29 @@ impl TerminalView {
             } else {
                 let scroll_bar = self.scroll_bar().unwrap();
                 emit!(
-                    self.mouse_signal(),
-                    1,
-                    char_column + 1,
-                    char_line + 1 + scroll_bar.value() - scroll_bar.maximum(),
-                    0u8
+                    self,
+                    mouse_signal(
+                        1,
+                        char_column + 1,
+                        char_line + 1 + scroll_bar.value() - scroll_bar.maximum(),
+                        0u8
+                    )
                 );
             }
         } else if evt.mouse_button() == MouseButton::RightButton {
             if self.mouse_marks || modifier.has(KeyboardModifier::ShiftModifier) {
                 let pos: Point = evt.position().into();
-                emit!(self.configure_request(), pos);
+                emit!(self, configure_request(pos));
             } else {
                 let scroll_bar = self.scroll_bar().unwrap();
                 emit!(
-                    self.mouse_signal(),
-                    2,
-                    char_column + 1,
-                    char_line + 1 + scroll_bar.value() - scroll_bar.maximum(),
-                    0u8
+                    self,
+                    mouse_signal(
+                        2,
+                        char_column + 1,
+                        char_line + 1 + scroll_bar.value() - scroll_bar.maximum(),
+                        0u8
+                    )
                 );
             }
         }
@@ -396,11 +420,13 @@ impl TerminalView {
         if !self.mouse_marks && !modifier.has(KeyboardModifier::ShiftModifier) {
             let scroll_bar = self.scroll_bar().unwrap();
             emit!(
-                self.mouse_signal(),
-                0,
-                pos.x() + 1,
-                pos.y() + 1 + scroll_bar.value() - scroll_bar.maximum(),
-                0u8
+                self,
+                mouse_signal(
+                    0,
+                    pos.x() + 1,
+                    pos.y() + 1 + scroll_bar.value() - scroll_bar.maximum(),
+                    0u8
+                )
             );
             return;
         }
@@ -600,8 +626,8 @@ impl TerminalView {
         }
 
         emit!(
-            self.changed_font_metrics_signal(),
-            (self.font_height, self.font_width)
+            self,
+            changed_font_metrics_signal(self.font_height, self.font_width)
         );
         self.propagate_size();
 

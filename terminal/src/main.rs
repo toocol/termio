@@ -1,5 +1,8 @@
+use cli::constant::ProtocolType;
 use emulator::core::terminal_emulator::TerminalEmulator;
-use tmui::{application::Application, application_window::ApplicationWindow, widget::ChildOp};
+use tmui::{
+    application::Application, application_window::ApplicationWindow, prelude::*, widget::ChildOp,
+};
 
 fn main() {
     log4rs::init_file("terminal/log4rs.yaml", Default::default()).unwrap();
@@ -18,5 +21,13 @@ fn main() {
 
 fn build_ui(window: &mut ApplicationWindow) {
     let terminal_emulator = TerminalEmulator::new();
+    let id = terminal_emulator.id();
     window.child(terminal_emulator);
+
+    window.register_run_after(move |win| {
+        if let Some(w) = win.find_id_mut(id) {
+            let emulator = w.downcast_mut::<TerminalEmulator>().unwrap();
+            emulator.start_session(0, ProtocolType::LocalShell);
+        }
+    });
 }

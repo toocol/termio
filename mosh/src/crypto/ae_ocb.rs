@@ -1,8 +1,8 @@
 #![allow(dead_code)]
 use aes::{cipher::block_padding::NoPadding, Aes128Dec, Aes128Enc};
 use cipher::{generic_array::GenericArray, BlockDecryptMut, BlockEncryptMut, KeyInit};
+use libs::util::byte_order::ByteOrder;
 use once_cell::sync::OnceCell;
-use libs::ByteOrder;
 
 use super::KEY_LEN;
 

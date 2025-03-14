@@ -1148,7 +1148,7 @@ impl Screen {
 
     /// Returns the currently selected text.
     ///
-    /// @param preserveLineBreaks Specifies whether new line characters should
+    /// @param preserve_line_breaks Specifies whether new line characters should
     /// be inserted into the returned text at the end of each terminal line.
     pub fn selected_text(&self, preserve_line_breaks: bool) -> String {
         let mut result = String::new();

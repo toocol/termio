@@ -1,9 +1,9 @@
 #![allow(dead_code)]
 use super::{Direction, MoshPacket, MAX_RTO, MIN_RTO, RTTVAR, SRIT};
 use crate::crypto::{Base64Key, Session};
+use libs::util::timestamp::Timestamp;
 use log::info;
 use std::{net::UdpSocket, time::Duration};
-use libs::TimeStamp;
 
 pub struct Connection {
     socket: UdpSocket,
@@ -75,7 +75,7 @@ impl Connection {
         let packet = MoshPacket::from_message(decrypt_message);
         self.expected_receiver_seq = packet.seq() + 1;
         self.saved_timestamp = packet.timestamp() as i64;
-        self.saved_timestamp_receive_at = TimeStamp::timestamp() as i64;
+        self.saved_timestamp_receive_at = Timestamp::now().as_millis();
         packet.payload()
     }
 
@@ -92,7 +92,7 @@ impl Connection {
     fn new_packet(&mut self, msg: Vec<u8>) -> MoshPacket {
         let mut outgoing_timestamp_reply = -1i16;
 
-        let now = TimeStamp::timestamp() as i64;
+        let now: i64 = Timestamp::now().as_millis();
 
         if now - self.saved_timestamp_receive_at < 1000 {
             outgoing_timestamp_reply =
@@ -104,7 +104,7 @@ impl Connection {
         MoshPacket::from_payload(
             msg,
             Direction::ToServer,
-            TimeStamp::timestamp_16(),
+            Timestamp::now().as_u16(),
             outgoing_timestamp_reply as u16,
         )
     }

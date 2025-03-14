@@ -21,6 +21,8 @@ log4rs = { workspace = true }
 local_ipaddress = { workspace = true }
 terminal_size = { workspace = true }
 
+libz-ng-sys = "=1.1.16"
+
 [build-dependencies]
 protoc-bin-vendored = "3.0.0"
 protobuf-codegen = "3.2.0"
