@@ -102,10 +102,9 @@ impl TerminalView {
         if self.has_blinking_cursor {
             self.blink_cursor_timer
                 .start(Duration::from_millis(cursor_blinking_time() as u64));
+
             if self.cursor_blinking {
                 self.blink_cursor_event()
-            } else {
-                self.cursor_blinking = false
             }
         }
 

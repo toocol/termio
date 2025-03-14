@@ -4,7 +4,9 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-tmui = { git = "https://github.com/toocol/tmui" }
+tmui = { git = "https://github.com/toocol/tmui", features = [
+    "verbose_logging",
+] }
 
 cli = { path = "../cli/" }
 libs = { path = "../libs/" }

@@ -71,4 +71,9 @@ impl TerminalEmulator {
     pub fn start_session(&mut self, id: SessionPropsId, protocol_type: ProtocolType) {
         self.terminal_panel.create_session(id, protocol_type);
     }
+
+    #[inline]
+    pub fn set_blinking_cursor(&mut self, id: SessionPropsId, blink: bool) {
+        self.terminal_panel.set_blinking_cursor(id, blink);
+    }
 }

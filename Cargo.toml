@@ -9,6 +9,10 @@ path = "src/lib.rs"
 name = "termio"
 path = "src/main.rs"
 
+[[bin]]
+name = "terminal"
+path = "terminal/src/main.rs"
+
 [package]
 name = "termio"
 version = "0.1.0"

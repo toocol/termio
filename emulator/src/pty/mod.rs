@@ -4,7 +4,6 @@ pub mod con_pty;
 #[cfg(not(target_os = "windows"))]
 pub mod posix_pty;
 
-use log::info;
 use once_cell::sync::Lazy;
 #[cfg(not(target_os = "windows"))]
 use pty::prelude::Fork;
@@ -116,7 +115,6 @@ impl PtyReceivePool {
                         if !data.is_empty() {
                             // TODO: Figure out a way to receive pty data from another thread
                             // emit!(signal.clone(), data.to_str().unwrap())
-                            info!("Receive shell msg: {}", data.to_str().unwrap());
                         }
                     }
                 });
