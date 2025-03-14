@@ -1,10 +1,11 @@
 use crate::{pty_mut, pty_ref};
 
-use super::{ProtocolType, Pty, PtySignals, pty_receive_pool};
+use super::{pty_receive_pool, Pty, PtySignals};
 use pty::prelude::Fork;
 use std::{
+    os::fd::{AsRawFd, RawFd},
     path::PathBuf,
-    sync::{Arc, Mutex}, os::fd::{RawFd, AsRawFd},
+    sync::{Arc, Mutex},
 };
 use tmui::{prelude::*, tlib::object::ObjectSubclass};
 
@@ -12,6 +13,7 @@ use tmui::{prelude::*, tlib::object::ObjectSubclass};
 pub struct PosixPty {
     cols: i32,
     rows: i32,
+    #[derivative(Default(value = "std::env::current_dir().unwrap()"))]
     working_directory: PathBuf,
     writeable: bool,
     utf8_mode: bool,
@@ -30,13 +32,7 @@ impl ObjectSubclass for PosixPty {
 impl ObjectImpl for PosixPty {}
 
 impl Pty for PosixPty {
-    fn start(
-        &mut self,
-        program: &str,
-        arguments: Vec<&str>,
-        enviroments: Vec<&str>,
-        _protocol_type: ProtocolType,
-    ) -> bool {
+    fn start(&mut self, program: &str, arguments: Vec<&str>) -> bool {
         // Generate the program arguments.
         let mut args = String::new();
         arguments.iter().for_each(|arg| {

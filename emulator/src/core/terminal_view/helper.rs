@@ -1170,7 +1170,7 @@ impl TerminalView {
     }
 
     /// Essentially calls [`process_filters()`].
-    pub(super) fn update_filters(&mut self, _current_line: i32) {
+    pub(super) fn update_filters(&mut self) {
         if self.screen_window.is_none() {
             return;
         }

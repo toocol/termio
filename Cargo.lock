@@ -3300,6 +3300,7 @@ dependencies = [
 name = "terminal"
 version = "0.1.0"
 dependencies = [
+ "cli",
  "emulator",
  "libs",
  "log",
@@ -3322,6 +3323,7 @@ name = "termio"
 version = "0.1.0"
 dependencies = [
  "cli",
+ "emulator",
  "libs",
  "log",
  "log4rs",

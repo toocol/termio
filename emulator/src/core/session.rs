@@ -8,10 +8,10 @@ use crate::pty::posix_pty::PosixPty;
 use crate::{
     core::terminal_view::TerminalViewSignals,
     emulation::{Emulation, VT102Emulation},
-    pty::Pty,
+    pty::{Pty, PtySignals},
     tools::{event::KeyPressedEvent, history::HistoryType},
 };
-use cli::session::SessionPropsId;
+use cli::{constant::ProtocolType, session::SessionPropsId};
 use derivative::Derivative;
 use log::debug;
 use std::{cell::RefCell, ptr::NonNull, rc::Rc};
@@ -35,12 +35,8 @@ pub struct Session {
     enviroment: Vec<String>,
 
     #[cfg(target_os = "windows")]
-    #[derivative(Default(value = "ConPty::new()"))]
-    shell_process: Box<dyn Pty>,
-
-    #[cfg(not(target_os = "windows"))]
-    #[derivative(Default(value = "PosixPty::new()"))]
-    shell_process: Box<dyn Pty>,
+    shell_process: Option<Box<dyn Pty>>,
+    protocol_type: ProtocolType,
 
     auto_close: bool,
     wanted_close: bool,
@@ -165,11 +161,17 @@ pub trait SessionSignal: ActionExt {
 impl SessionSignal for Session {}
 
 impl Session {
-    pub fn new(id: SessionPropsId) -> Box<Self> {
+    pub fn new(id: SessionPropsId, protocol_type: ProtocolType) -> Box<Self> {
         let mut session: Box<Session> = Object::new(&[]);
         session.session_id = id;
+        session.protocol_type = protocol_type;
         let emulation = VT102Emulation::new(None).wrap();
-        connect!(emulation, title_changed(), session, set_user_title(i32, String));
+        connect!(
+            emulation,
+            title_changed(),
+            session,
+            set_user_title(i32, String)
+        );
         connect!(emulation, state_set(), session, activate_state_set(i32));
         connect!(
             emulation,
@@ -178,28 +180,34 @@ impl Session {
             on_emulation_size_change(Size)
         );
 
-        // Bind connections between `session` and it's `shell_process`:
-        session.shell_process.set_utf8_mode(true);
-        connect!(
-            session.shell_process,
-            receive_data(),
-            session,
-            on_receive_block(String)
-        );
-        connect!(session.shell_process, finished(), session, done(i32, ExitStatus));
+        match protocol_type {
+            ProtocolType::LocalShell => {
+                #[cfg(target_os = "windows")]
+                let mut shell_process = ConPty::new();
+                #[cfg(not(target_os = "windows"))]
+                let mut shell_process = PosixPty::new();
+                // Bind connections between `session` and it's `shell_process`:
+                shell_process.set_utf8_mode(true);
+                connect!(
+                    shell_process,
+                    receive_data(),
+                    session,
+                    on_receive_block(String)
+                );
+                connect!(shell_process, finished(), session, done(i32, ExitStatus));
 
-        connect!(
-            emulation,
-            send_data(),
-            session.shell_process,
-            send_data(String)
-        );
-        connect!(
-            emulation,
-            use_utf8_request(),
-            session.shell_process,
-            set_utf8_mode(bool)
-        );
+                connect!(emulation, send_data(), shell_process, send_data(String));
+                connect!(
+                    emulation,
+                    use_utf8_request(),
+                    shell_process,
+                    set_utf8_mode(bool)
+                );
+
+                session.shell_process = Some(shell_process);
+            }
+            _ => todo!(),
+        };
 
         session.emulation = Some(emulation);
         session
@@ -235,7 +243,12 @@ impl Session {
         self.view = NonNull::new(view);
 
         self.bind_view_to_emulation();
-        connect!(view, changed_content_size_signal(), self, on_view_size_change(i32, i32));
+        connect!(
+            view,
+            changed_content_size_signal(),
+            self,
+            on_view_size_change(i32, i32)
+        );
 
         scroll_area
     }
@@ -250,9 +263,24 @@ impl Session {
         terminal_view.set_bracketed_paste_mode(emulation.program_bracketed_paste_mode());
 
         // Connect `TerminalView`'s signal to emulation:
-        connect!(terminal_view, key_pressed_signal(), emulation, send_key_event(KeyPressedEvent, bool));
-        connect!(terminal_view, mouse_signal(), emulation, send_mouse_event(i32, i32, i32, u8));
-        connect!(terminal_view, send_string_to_emulation(), emulation, send_string(String, i32));
+        connect!(
+            terminal_view,
+            key_pressed_signal(),
+            emulation,
+            send_key_event(KeyPressedEvent, bool)
+        );
+        connect!(
+            terminal_view,
+            mouse_signal(),
+            emulation,
+            send_mouse_event(i32, i32, i32, u8)
+        );
+        connect!(
+            terminal_view,
+            send_string_to_emulation(),
+            emulation,
+            send_string(String, i32)
+        );
 
         // allow emulation to notify view when the foreground process
         // indicates whether or not it is interested in mouse signals:
@@ -327,6 +355,14 @@ impl Session {
         self.view_mut().set_blinking_cursor(blink)
     }
 
+    #[inline]
+    pub fn start_shell_process(&mut self) {
+        self.shell_process
+            .as_mut()
+            .unwrap()
+            .start("cmd.exe", vec!["/K"], vec![]);
+    }
+
     ///////////////////////////////////////////////////////////////////////////////////////////
     // private
     ///////////////////////////////////////////////////////////////////////////////////////////
@@ -352,7 +388,10 @@ impl Session {
 
         if min_lines > 0 && min_columns > 0 {
             self.emulation_mut().set_image_size(min_lines, min_columns);
-            self.shell_process.set_window_size(min_columns, min_lines);
+            self.shell_process
+                .as_mut()
+                .unwrap()
+                .set_window_size(min_columns, min_lines);
         }
     }
 

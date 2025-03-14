@@ -4,7 +4,8 @@ use crate::ui::{
     sessions::{PROP_TREE_NODE_ID, PROP_TREE_VIEW_ID},
 };
 use cli::{
-    auth::credential::Credential, persistence::mgr::PersistenceMgr,
+    auth::credential::Credential,
+    persistence::mgr::PersistenceMgr,
     session::{session_grp::SessionGroup, SessionExt, SessionProps},
 };
 use emulator::core::terminal_emulator::TerminalEmulator;
@@ -145,7 +146,8 @@ impl SessionCredentialService {
                 .unwrap()
                 .downcast_mut::<TerminalEmulator>()
                 .unwrap();
-            emulator.start_session(SessionProps::create(credential));
+            let protocol_type = credential.protocol_type();
+            emulator.start_session(SessionProps::create(credential), protocol_type);
         } else {
             warn!("Get `Credential` from `TreeNode` failed.")
         }

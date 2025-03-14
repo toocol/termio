@@ -67,7 +67,7 @@ pub trait ScreenWindowSignals: ActionExt {
         /// Emitted when the screen window is scrolled to a different position.
         ///
         /// @param line The line which is now at the top of the window.
-        scrolled(i32);
+        scrolled();
 
         /// Emitted when the selection is changed.
         selection_changed();
@@ -320,7 +320,7 @@ impl ScreenWindow {
 
         self.buffer_needs_update = true;
 
-        emit!(self, scrolled(self.current_line()));
+        emit!(self, scrolled());
     }
 
     /// Scrolls the window relative to its current position on the screen.

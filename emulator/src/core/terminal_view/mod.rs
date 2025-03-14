@@ -14,7 +14,10 @@ use self::{
 };
 use super::screen_window::{ScreenWindow, ScreenWindowSignals};
 use crate::tools::{
-    character::{Character, ExtendedCharTable, LineProperty}, character_color::{ColorEntry, DEFAULT_BACK_COLOR, DEFAULT_FORE_COLOR, TABLE_COLORS}, event::KeyPressedEvent, filter::{FilterChainImpl, TerminalImageFilterChain}
+    character::{Character, ExtendedCharTable, LineProperty},
+    character_color::{ColorEntry, DEFAULT_BACK_COLOR, DEFAULT_FORE_COLOR, TABLE_COLORS},
+    event::KeyPressedEvent,
+    filter::{FilterChainImpl, TerminalImageFilterChain},
 };
 use derivative::Derivative;
 use std::{ptr::NonNull, sync::atomic::Ordering, time::Duration};
@@ -724,8 +727,8 @@ impl TerminalView {
         if self.screen_window.is_some() {
             connect!(window, output_changed(), self, update_line_properties());
             connect!(window, output_changed(), self, update_image());
-            connect!(window, output_changed(), self, update_filters(i32));
-            connect!(window, scrolled(), self, update_filters(i32));
+            connect!(window, output_changed(), self, update_filters());
+            connect!(window, scrolled(), self, update_filters());
             connect!(window, scroll_to_end(), self, scroll_to_end());
             window.set_window_lines(self.lines);
         }

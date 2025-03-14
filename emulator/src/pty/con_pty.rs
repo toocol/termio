@@ -1,5 +1,6 @@
 use crate::{pty_mut, pty_ref};
 use derivative::Derivative;
+use log::warn;
 use std::{
     ffi::OsString,
     path::PathBuf,
@@ -7,14 +8,16 @@ use std::{
 };
 use winptyrs::{AgentConfig, MouseMode, PTYArgs, PTYBackend, PTY};
 
-use super::{pty_receive_pool, ProtocolType, Pty, PtySignals};
+use super::{pty_receive_pool, Pty, PtySignals};
 use tmui::{prelude::*, tlib::object::ObjectSubclass};
 
 #[extends(Object)]
 pub struct ConPty {
     cols: i32,
     rows: i32,
+    #[derivative(Default(value = "std::env::current_dir().unwrap()"))]
     working_directory: PathBuf,
+    #[derivative(Default(value = "true"))]
     writeable: bool,
     utf8_mode: bool,
     timeout: u32,
@@ -31,13 +34,7 @@ impl ObjectSubclass for ConPty {
 impl ObjectImpl for ConPty {}
 
 impl Pty for ConPty {
-    fn start(
-        &mut self,
-        program: &str,
-        arguments: Vec<&str>,
-        enviroments: Vec<&str>,
-        _protocol_type: ProtocolType,
-    ) -> bool {
+    fn start(&mut self, program: &str, arguments: Vec<&str>, enviroments: Vec<&str>) -> bool {
         let cmd = OsString::from(program);
 
         let pty_args = PTYArgs {
@@ -53,27 +50,37 @@ impl Pty for ConPty {
         )));
 
         // Generate the program arguments.
-        let mut args = OsString::new();
-        arguments.iter().for_each(|arg| {
-            args.push(arg);
-            args.push(" ");
-        });
+        let args = if arguments.is_empty() {
+            None
+        } else {
+            let mut args = OsString::new();
+            arguments.iter().for_each(|arg| {
+                args.push(arg);
+                args.push(" ");
+            });
+            Some(args)
+        };
 
         // Generate the program envs.
-        let mut envs = OsString::new();
-        enviroments.iter().for_each(|env| {
-            envs.push(env);
-            envs.push(" ");
-        });
+        let envs = if enviroments.is_empty() {
+            None
+        } else {
+            let mut envs = OsString::new();
+            enviroments.iter().for_each(|env| {
+                envs.push(env);
+                envs.push(" ");
+            });
+            Some(envs)
+        };
 
         pty_mut!(self)
             .lock()
             .unwrap()
             .spawn(
                 cmd,
-                Some(args),
+                args,
                 Some(self.working_directory.as_os_str().to_os_string()),
-                Some(envs),
+                envs,
             )
             .unwrap();
 
@@ -141,6 +148,7 @@ impl Pty for ConPty {
     #[inline]
     fn send_data(&mut self, data: String) {
         if !self.writeable {
+            warn!("The `ConPTY` is not writeable.");
             return;
         }
         pty_mut!(self)

@@ -3,7 +3,7 @@ use crate::{
     config::Config,
     tools::{event::ToKeyPressedEvent, history::HistoryTypeBuffer},
 };
-use cli::session::SessionPropsId;
+use cli::{constant::ProtocolType, session::SessionPropsId};
 use derivative::Derivative;
 use std::{cell::RefCell, rc::Rc};
 use tmui::{
@@ -38,8 +38,12 @@ impl ObjectImpl for TerminalPanel {
 impl WidgetImpl for TerminalPanel {}
 
 impl TerminalPanel {
-    pub fn create_session(&mut self, id: SessionPropsId) -> &mut Box<Session> {
-        let mut session = Session::new(id);
+    pub fn create_session(
+        &mut self,
+        id: SessionPropsId,
+        protocol_type: ProtocolType,
+    ) -> &mut Box<Session> {
+        let mut session = Session::new(id, protocol_type);
         session.set_auto_close(true);
         session.set_history_type(Rc::new(RefCell::new(HistoryTypeBuffer::new(10000))));
         session.set_key_binding("");
@@ -47,6 +51,9 @@ impl TerminalPanel {
         let scrolled_view = session.create_terminal_view();
         session.view_mut().set_font(Config::font());
         self.add_child(scrolled_view);
+        self.window().layout_change(self);
+
+        session.start_shell_process();
 
         self.sessions.push(session);
         self.sessions.last_mut().unwrap()

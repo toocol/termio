@@ -3,7 +3,7 @@ use std::cell::RefCell;
 
 use super::terminal_panel::TerminalPanel;
 use crate::pty::pty_receive_pool;
-use cli::session::SessionPropsId;
+use cli::{constant::ProtocolType, session::SessionPropsId};
 use derivative::Derivative;
 use tmui::{prelude::*, tlib::object::ObjectSubclass};
 
@@ -68,7 +68,7 @@ impl TerminalEmulator {
     }
 
     #[inline]
-    pub fn start_session(&mut self, id: SessionPropsId) {
-        self.terminal_panel.create_session(id);
+    pub fn start_session(&mut self, id: SessionPropsId, protocol_type: ProtocolType) {
+        self.terminal_panel.create_session(id, protocol_type);
     }
 }
