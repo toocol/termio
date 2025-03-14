@@ -1,3 +1,0 @@
-*.lib filter=lfs diff=lfs merge=lfs -binary
-*.a filter=lfs diff=lfs merge=lfs -binary
-*.dll filter=lfs diff=lfs merge=lfs -binary
