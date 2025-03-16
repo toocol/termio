@@ -67,7 +67,7 @@ impl TerminalPanel {
         if protocol_type == ProtocolType::Custom {
             panic!("Use `create_custom_session` instead")
         }
-        let mut session = Session::new(id, protocol_type);
+        let mut session = Session::new(id, protocol_type, None);
         session.set_auto_close(true);
         session.set_history_type(Rc::new(RefCell::new(HistoryTypeBuffer::new(10000))));
         session.set_key_binding("");
@@ -88,7 +88,7 @@ impl TerminalPanel {
         id: SessionPropsId,
         custom_pty: Box<dyn Pty>,
     ) -> &mut Box<Session> {
-        let mut session = Session::new(id, ProtocolType::Custom);
+        let mut session = Session::new(id, ProtocolType::Custom, Some(custom_pty));
         session.set_auto_close(true);
         session.set_history_type(Rc::new(RefCell::new(HistoryTypeBuffer::new(10000))));
         session.set_key_binding("");
@@ -98,7 +98,6 @@ impl TerminalPanel {
         self.add_child(scrolled_view);
         ApplicationWindow::window().layout_change(self);
 
-        session.set_custom_pty(custom_pty);
         session.start_shell_process();
 
         self.sessions.insert(id, session);
