@@ -8,7 +8,7 @@ use crate::pty::posix_pty::PosixPty;
 use crate::{
     core::terminal_view::TerminalViewSignals,
     emulation::{Emulation, VT102Emulation},
-    pty::{Pty, PtySignals},
+    pty::Pty,
     tools::{event::KeyPressedEvent, history::HistoryType},
 };
 use cli::{constant::ProtocolType, session::SessionPropsId};
@@ -34,7 +34,6 @@ use tmui::{
 pub struct Session {
     enviroment: Vec<String>,
 
-    #[cfg(target_os = "windows")]
     shell_process: Option<Box<dyn Pty>>,
     protocol_type: ProtocolType,
 
@@ -180,35 +179,32 @@ impl Session {
             on_emulation_size_change(Size)
         );
 
-        match protocol_type {
+        let mut shell_process: Option<Box<dyn Pty>> = match protocol_type {
             ProtocolType::LocalShell => {
                 #[cfg(target_os = "windows")]
-                let mut shell_process = ConPty::new();
+                let shell_process = ConPty::new();
                 #[cfg(not(target_os = "windows"))]
                 let mut shell_process = PosixPty::new();
-                // Bind connections between `session` and it's `shell_process`:
-                shell_process.set_utf8_mode(true);
-                connect!(
-                    shell_process,
-                    receive_data(),
-                    session,
-                    on_receive_block(String)
-                );
-                connect!(shell_process, finished(), session, done(i32, ExitStatus));
-
-                connect!(emulation, send_data(), shell_process, send_data(String));
-                connect!(
-                    emulation,
-                    use_utf8_request(),
-                    shell_process,
-                    set_utf8_mode(bool)
-                );
-
-                session.shell_process = Some(shell_process);
+                Some(shell_process)
             }
-            _ => todo!(),
+            _ => None,
         };
 
+        if let Some(ref mut shell_process) = shell_process {
+            // Bind connections between `session` and it's `shell_process`:
+            shell_process.set_utf8_mode(true);
+            connect!(shell_process, finished(), session, done(i32, ExitStatus));
+
+            connect!(emulation, send_data(), shell_process, send_data(String));
+            connect!(
+                emulation,
+                use_utf8_request(),
+                shell_process,
+                set_utf8_mode(bool)
+            );
+        }
+
+        session.shell_process = shell_process;
         session.emulation = Some(emulation);
         session
     }
@@ -235,8 +231,16 @@ impl Session {
         scroll_area.set_hexpand(true);
         scroll_area.set_vexpand(true);
 
-        view.set_scroll_bar(scroll_area.scroll_bar_mut());
+        let scroll_bar = scroll_area.scroll_bar_mut();
+        scroll_bar.set_background(Color::TRANSPARENT);
+        scroll_bar.set_color(Color::GREY_MEDIUM.with_a(150));
+        scroll_bar.set_active_color(Some(Color::GREY_MEDIUM.with_a(170)));
+        scroll_bar.set_slider_radius(5.);
+        scroll_bar.set_auto_hide(false);
+
+        view.set_scroll_bar(scroll_bar);
         scroll_area.set_area(view);
+        scroll_area.set_layout_mode(LayoutMode::Normal);
 
         self.scrolled_view = NonNull::new(scroll_area.as_mut());
         let view = scroll_area.get_area_cast_mut::<TerminalView>().unwrap();
@@ -356,11 +360,43 @@ impl Session {
     }
 
     #[inline]
+    pub fn get_protocol_type(&self) -> ProtocolType {
+        self.protocol_type
+    }
+
+    #[inline]
+    pub fn get_pty(&mut self) -> Option<&mut dyn Pty> {
+        self.shell_process.as_mut().map(|p| p.as_mut())
+    }
+
+    #[inline]
     pub fn start_shell_process(&mut self) {
-        self.shell_process
-            .as_mut()
-            .unwrap()
-            .start("cmd.exe", vec!["/K"], vec![]);
+        self.shell_process.as_mut().unwrap().start(
+            self.session_id,
+            "cmd.exe",
+            vec!["/K", "prompt $P$G\u{200B}"],
+            vec![],
+        );
+    }
+
+    #[inline]
+    pub fn set_custom_pty(&mut self, mut shell_process: Box<dyn Pty>) {
+        shell_process.set_utf8_mode(true);
+        connect!(shell_process, finished(), self, done(i32, ExitStatus));
+
+        connect!(
+            self.emulation_mut(),
+            send_data(),
+            shell_process,
+            send_data(String)
+        );
+        connect!(
+            self.emulation_mut(),
+            use_utf8_request(),
+            shell_process,
+            set_utf8_mode(bool)
+        );
+        self.shell_process = Some(shell_process)
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////
@@ -420,14 +456,6 @@ impl Session {
     #[inline]
     pub fn on_view_size_change(&mut self, _width: i32, _height: i32) {
         self.update_terminal_size()
-    }
-
-    pub fn on_receive_block(&mut self, block: String) {
-        let block_bytes = block.as_bytes();
-        self.emulation_mut()
-            .receive_data(block_bytes, block_bytes.len() as i32);
-
-        emit!(self, receive_data(block));
     }
 
     #[inline]

@@ -1,3 +1,4 @@
+// #![windows_subsystem = "windows"]
 use cli::constant::ProtocolType;
 use emulator::core::terminal_emulator::TerminalEmulator;
 use tmui::{
@@ -8,8 +9,8 @@ fn main() {
     log4rs::init_file("terminal/log4rs.yaml", Default::default()).unwrap();
 
     let app = Application::builder()
-        .width(200)
-        .height(120)
+        .width(1024)
+        .height(720)
         .title("Termio Terminal Emulator")
         .opti_track(true)
         .build();

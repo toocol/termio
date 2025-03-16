@@ -1,7 +1,11 @@
 #![allow(dead_code)]
+pub(super) mod data_sender;
+pub(super) mod local_display;
 pub mod vt102_emulation;
 
+use data_sender::DataSender;
 use libc::wchar_t;
+use local_display::LocalDisplay;
 pub use vt102_emulation::*;
 use widestring::WideString;
 
@@ -74,6 +78,8 @@ pub struct BaseEmulation {
     /// 0 = primary screen. <br>
     /// 1 = alternate screen (used by vi,emocs etc. scrollBar is not enable in this mode).
     pub screen: [Box<Screen>; 2],
+    pub local_display: LocalDisplay,
+    pub use_local_display: bool,
 
     windows: Vec<Box<ScreenWindow>>,
     #[derivative(Default(value = "true"))]
@@ -310,7 +316,7 @@ pub trait Emulation: 'static + EmulationSignal + ActionExt {
     ///
     /// @param buffer A string of characters received from the terminal program. <br>
     /// @param len The length of @p buffer
-    fn receive_data(&mut self, buffer: &[u8], len: i32);
+    fn receive_data(&mut self, buffer: &[u8], len: i32, data_sender: DataSender);
 
     /// triggered by timer, causes the emulation to send an updated screen image to each view.
     fn show_bulk(&mut self);
@@ -318,6 +324,8 @@ pub trait Emulation: 'static + EmulationSignal + ActionExt {
     /// Schedules an update of attached views.
     /// Repeated calls to bufferedUpdate() in close succession will result in only
     /// a single update, much like the Qt buffered update of widgets.
+    fn direct_update(&mut self);
+
     fn buffered_update(&mut self);
 
     fn uses_mouse_changed(&mut self, uses_mouse: bool);
@@ -327,6 +335,8 @@ pub trait Emulation: 'static + EmulationSignal + ActionExt {
     fn emit_cursor_change(&mut self, cursor_shape: u8, enable_blinking_cursor: bool);
 
     fn set_key_binding(&mut self, id: &str);
+
+    fn set_use_local_display(&mut self, use_local_display: bool);
 }
 
 impl BaseEmulation {
@@ -498,7 +508,7 @@ impl Emulation for BaseEmulation {
                 .unwrap()
                 .as_mut()
                 .clear_entire_screen();
-            self.buffered_update();
+            self.direct_update();
         }
     }
 
@@ -575,7 +585,7 @@ impl Emulation for BaseEmulation {
         self.screen[0].resize_image(lines, columns);
         self.screen[1].resize_image(lines, columns);
 
-        self.buffered_update();
+        self.direct_update();
     }
 
     fn send_text(&self, _: String) {
@@ -598,10 +608,8 @@ impl Emulation for BaseEmulation {
         // Default implementation does nothing.
     }
 
-    fn receive_data(&mut self, buffer: &[u8], len: i32) {
+    fn receive_data(&mut self, buffer: &[u8], len: i32, data_sender: DataSender) {
         emit!(self, state_set(EmulationState::NotifyActivity as i32));
-
-        self.buffered_update();
 
         let utf8_text = String::from_utf8(buffer.to_vec())
             .expect("`Emulation` receive_data() parse utf-8 string failed.");
@@ -623,6 +631,17 @@ impl Emulation for BaseEmulation {
                 emit!(self, zmodem_detected());
             }
         }
+
+        self.direct_update();
+
+        if data_sender == DataSender::Pty {
+            let screen = nonnull_ref!(self.current_screen);
+            self.local_display.set_terminal_info(
+                screen.get_cursor_x() + 1,
+                screen.get_cursor_y() + 1,
+                screen.get_columns(),
+            );
+        }
     }
 
     fn show_bulk(&mut self) {
@@ -634,6 +653,10 @@ impl Emulation for BaseEmulation {
         let current_screen = unsafe { self.current_screen.as_mut().unwrap().as_mut() };
         current_screen.reset_scrolled_lines();
         current_screen.reset_dropped_lines();
+    }
+
+    fn direct_update(&mut self) {
+        self.show_bulk();
     }
 
     fn buffered_update(&mut self) {
@@ -672,5 +695,10 @@ impl Emulation for BaseEmulation {
         if self.key_translator.is_none() {
             self.key_translator = KeyboardTranslatorManager::instance().default_translator();
         }
+    }
+
+    #[inline]
+    fn set_use_local_display(&mut self, use_local_display: bool) {
+        self.use_local_display = use_local_display;
     }
 }

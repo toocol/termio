@@ -1,4 +1,5 @@
 use crate::{pty_mut, pty_ref};
+use cli::session::SessionPropsId;
 use derivative::Derivative;
 use log::warn;
 use std::{
@@ -34,7 +35,13 @@ impl ObjectSubclass for ConPty {
 impl ObjectImpl for ConPty {}
 
 impl Pty for ConPty {
-    fn start(&mut self, program: &str, arguments: Vec<&str>, enviroments: Vec<&str>) -> bool {
+    fn start(
+        &mut self,
+        id: SessionPropsId,
+        program: &str,
+        arguments: Vec<&str>,
+        enviroments: Vec<&str>,
+    ) -> bool {
         let cmd = OsString::from(program);
 
         let pty_args = PTYArgs {
@@ -84,7 +91,7 @@ impl Pty for ConPty {
             )
             .unwrap();
 
-        pty_receive_pool().add_pty(self.id(), pty_ref!(self).clone(), self.receive_data());
+        pty_receive_pool().add_pty(id, pty_ref!(self).clone());
 
         self.running = true;
 
@@ -156,6 +163,11 @@ impl Pty for ConPty {
             .unwrap()
             .write(OsString::from(data))
             .unwrap();
+    }
+
+    #[inline]
+    fn read_data(&mut self) -> Vec<u8> {
+        unreachable!()
     }
 }
 

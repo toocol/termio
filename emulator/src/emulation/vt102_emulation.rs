@@ -1,5 +1,5 @@
 #![allow(unused_macros)]
-use super::{BaseEmulation, Emulation};
+use super::{data_sender::DataSender, BaseEmulation, Emulation};
 use crate::{
     core::{
         screen::{
@@ -98,7 +98,7 @@ use widestring::WideString;
 /// they are includes within the token ('N').<br>
 macro_rules! ty_construct {
     ( $t:expr, $a:expr, $n:expr ) => {
-        (((($t as i32) & 0xffff) << 16) | ((($a as i32) & 0xff) << 8) | (($n as i32) & 0xff))
+        (((($n as i32) & 0xffff) << 16) | ((($a as i32) & 0xff) << 8) | (($t as i32) & 0xff))
     };
 }
 macro_rules! ty_chr {
@@ -346,6 +346,7 @@ impl VT102Emulation {
         vt102_emulation.emulation = Some(base_emulation);
 
         vt102_emulation.init_tokenizer();
+        vt102_emulation.reset();
 
         vt102_emulation
     }
@@ -380,6 +381,9 @@ impl VT102Emulation {
         for s in "@ABCDEFGHILMPSTXZbcdfry".as_bytes().iter() {
             self.char_class[*s as usize] |= CPN;
         }
+        for s in "t".as_bytes().iter() {
+            self.char_class[*s as usize] |= CPS;
+        }
         for s in "0123456789".as_bytes().iter() {
             self.char_class[*s as usize] |= DIG;
         }
@@ -388,9 +392,6 @@ impl VT102Emulation {
         }
         for s in "()+*#[]%".as_bytes().iter() {
             self.char_class[*s as usize] |= GRP;
-        }
-        for s in "t".as_bytes().iter() {
-            self.char_class[*s as usize] |= CPS;
         }
 
         self.reset_tokenizer();
@@ -406,6 +407,7 @@ impl VT102Emulation {
     }
 
     #[allow(clippy::if_same_then_else)]
+    #[inline]
     fn process_token(&mut self, token: i32, p: wchar_t, q: i32) {
         let current_screen = unsafe {
             self.emulation
@@ -1842,7 +1844,7 @@ impl Emulation for VT102Emulation {
         self.emulation_mut().screen[0].reset(None);
         self.reset_charset(1);
 
-        self.buffered_update();
+        self.direct_update();
     }
 
     fn program_use_mouse(&self) -> bool {
@@ -1915,6 +1917,7 @@ impl Emulation for VT102Emulation {
         }
     }
 
+    #[inline]
     fn receive_char(&mut self, cc: wchar_t) {
         if cc == DEL {
             return;
@@ -1992,7 +1995,7 @@ impl Emulation for VT102Emulation {
                 return;
             }
             if self.lec(3, 1, wch!('#')) {
-                self.process_token(ty_csi_pn!(cc), self.argv[0] as wchar_t, self.argv[1]);
+                self.process_token(ty_esc_de!(self.token_buffer[2]), 0, 0);
                 self.reset_tokenizer();
                 return;
             }
@@ -2037,7 +2040,7 @@ impl Emulation for VT102Emulation {
 
             let mut i = 0usize;
             loop {
-                if i >= self.argc as usize {
+                if i > self.argc as usize {
                     break;
                 }
                 if self.epp() {
@@ -2238,11 +2241,32 @@ impl Emulation for VT102Emulation {
             }
 
             let text_to_send = String::from_utf8(text_to_send).unwrap();
-            emit!(self, send_data(text_to_send.as_str()));
+            if event.key_code() == KeyCode::KeyEnter {
+                emit!(self, send_data(text_to_send.as_str()));
+            }
 
-            // receive data for test:
-            let buffer = text_to_send.as_bytes();
-            self.receive_data(buffer, buffer.len() as i32)
+            if self.emulation().use_local_display {
+                let text_to_send = self
+                    .emulation_mut()
+                    .local_display
+                    .extend(&event, text_to_send);
+                if text_to_send.as_str() == "\u{002B}" {
+                    let display_text = self.emulation().local_display.get_display_string();
+                    if !display_text.is_empty() {
+                        self.receive_data(
+                            display_text.as_bytes(),
+                            display_text.len() as i32,
+                            DataSender::LocalDisplay,
+                        );
+                    }
+                } else if !text_to_send.is_empty() {
+                    self.receive_data(
+                        text_to_send.as_bytes(),
+                        text_to_send.len() as i32,
+                        DataSender::LocalDisplay,
+                    );
+                }
+            }
         } else {
             let translator_error = r#"No keyboard translator available.  
 The information needed to convert key presses 
@@ -2251,7 +2275,7 @@ is missing."#;
 
             self.reset();
             let buffer = translator_error.as_bytes();
-            self.receive_data(buffer, buffer.len() as i32)
+            self.receive_data(buffer, buffer.len() as i32, DataSender::Pty)
         }
     }
 
@@ -2331,10 +2355,8 @@ is missing."#;
         }
     }
 
-    fn receive_data(&mut self, buffer: &[u8], len: i32) {
+    fn receive_data(&mut self, buffer: &[u8], len: i32, data_sender: DataSender) {
         emit!(self, state_set(EmulationState::NotifyActivity as i32));
-
-        self.buffered_update();
 
         let utf8_text = String::from_utf8(buffer.to_vec())
             .expect("`Emulation` receive_data() parse utf-8 string failed.");
@@ -2342,7 +2364,12 @@ is missing."#;
 
         // Send characters to terminal emulator
         let text_slice = utf16_text.as_slice();
+        let mut execution_finish = false;
         for &ts in text_slice.iter() {
+            if ts == wch!('\u{200B}') {
+                execution_finish = true;
+                continue;
+            }
             self.receive_char(ts as wchar_t);
         }
 
@@ -2356,6 +2383,29 @@ is missing."#;
                 emit!(self, zmodem_detected());
             }
         }
+
+        self.direct_update();
+
+        if data_sender == DataSender::Pty && self.emulation().use_local_display {
+            let screen = nonnull_ref!(self.emulation_mut().current_screen);
+            self.emulation_mut().local_display.set_terminal_info(
+                screen.get_cursor_x() + 1,
+                screen.get_cursor_y() + 1,
+                screen.get_columns(),
+            );
+
+            if execution_finish {
+                self.emulation_mut().local_display.executed();
+                let display_text = self.emulation().local_display.get_all_display_string();
+                if !display_text.is_empty() {
+                    self.receive_data(
+                        display_text.as_bytes(),
+                        display_text.len() as i32,
+                        DataSender::LocalDisplay,
+                    );
+                }
+            }
+        }
     }
 
     #[inline]
@@ -2364,8 +2414,13 @@ is missing."#;
     }
 
     #[inline]
+    fn direct_update(&mut self) {
+        self.emulation_mut().direct_update()
+    }
+
+    #[inline]
     fn buffered_update(&mut self) {
-        self.emulation_mut().buffered_update()
+        self.emulation_mut().buffered_update();
     }
 
     #[inline]
@@ -2388,5 +2443,10 @@ is missing."#;
     #[inline]
     fn set_key_binding(&mut self, id: &str) {
         self.emulation_mut().set_key_binding(id)
+    }
+
+    #[inline]
+    fn set_use_local_display(&mut self, use_local_display: bool) {
+        self.emulation_mut().use_local_display = use_local_display;
     }
 }

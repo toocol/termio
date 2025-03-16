@@ -20,6 +20,7 @@ use std::{mem::size_of, rc::Rc, sync::atomic::Ordering, time::Duration};
 use tmui::{
     clipboard::ClipboardLevel,
     font::FontCalculation,
+    opti::tracker::Tracker,
     prelude::*,
     scroll_bar::{ScrollBarPosition, ScrollBarSignal},
     system::System,
@@ -190,6 +191,7 @@ impl TerminalView {
         if self.screen_window.is_none() {
             return;
         }
+        let _tracker = Tracker::start("TerminalView::process_filters");
         let screen_window = nonnull_mut!(self.screen_window);
 
         let mut pre_update_hotspots = self.hotspot_region();
@@ -722,6 +724,7 @@ impl TerminalView {
     /// the top, bottom and height of 'region' are taken into account,
     /// the left and right are ignored.
     pub(super) fn scroll_image(&mut self, lines: i32, screen_window_region: &Rect) {
+        let _tracker = Tracker::start("TerminalView::scroll_image");
         // if the flow control warning is enabled this will interfere with the
         // scrolling optimizations and cause artifacts.  the simple solution here
         // is to just disable the optimization whilst it is visible
@@ -963,6 +966,7 @@ impl TerminalView {
         if self.screen_window.is_none() {
             return;
         }
+        let _tracker = Tracker::start("TerminalView::update_image");
         let screen_window = nonnull_mut!(self.screen_window);
 
         // optimization - scroll the existing image where possible and
@@ -1041,6 +1045,7 @@ impl TerminalView {
                     if dirty_mask[x] {
                         let c = new_line[x].character_union.data();
                         if c == 0 {
+                            x += 1;
                             continue;
                         }
 
@@ -1062,6 +1067,7 @@ impl TerminalView {
                         while len < lln {
                             let ch = new_line[x + len];
                             if ch.character_union.data() == 0 {
+                                len += 1;
                                 continue;
                             }
 
@@ -1126,7 +1132,7 @@ impl TerminalView {
 
             current_line[0..columns_to_update as usize]
                 .copy_from_slice(&new_line[0..columns_to_update as usize]);
-        }
+        } // for `y` end
 
         // if the new _image is smaller than the previous _image, then ensure that the
         // area outside the new _image is cleared
@@ -1156,6 +1162,7 @@ impl TerminalView {
 
         // update the parts of the view which have changed
         if dirty_region.width() > 0. && dirty_region.height() > 0. {
+            dirty_region.set_width(dirty_region.width().ceil());
             self.update_rect(CoordRect::new(dirty_region, Coordinate::Widget));
         }
 
@@ -1189,10 +1196,14 @@ impl TerminalView {
         self.line_properties = self.screen_window().unwrap().get_line_properties();
     }
 
-    pub(super) fn scroll_bar_position_changed(&mut self, _: i32) {
+    pub(super) fn scroll_bar_position_changed(&mut self, val: i32) {
         if self.screen_window.is_none() {
             return;
         }
+        if self.last_scroll_val == val {
+            return;
+        }
+        self.last_scroll_val = val;
 
         let scroll_bar = nonnull_mut!(self.scroll_bar);
         let screen_window = nonnull_mut!(self.screen_window);
