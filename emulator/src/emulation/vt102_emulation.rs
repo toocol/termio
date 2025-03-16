@@ -2354,6 +2354,9 @@ is missing."#;
     }
 
     fn receive_data(&mut self, buffer: &[u8], len: i32, data_sender: DataSender) {
+        if len == 0 {
+            return;
+        }
         emit!(self, state_set(EmulationState::NotifyActivity as i32));
 
         let utf8_text = String::from_utf8(buffer.to_vec())
