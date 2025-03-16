@@ -2248,7 +2248,7 @@ impl Emulation for VT102Emulation {
                     .emulation_mut()
                     .local_display
                     .extend(&event, text_to_send);
-                if text_to_send.as_str() == "\u{002B}" {
+                if text_to_send.as_str() == "\u{200B}" {
                     let display_text = self.emulation().local_display.get_display_string();
                     if !display_text.is_empty() {
                         self.receive_data(
