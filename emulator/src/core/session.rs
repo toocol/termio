@@ -13,7 +13,7 @@ use crate::{
 };
 use cli::{constant::ProtocolType, session::SessionPropsId};
 use derivative::Derivative;
-use log::debug;
+use log::{debug, warn};
 use std::{cell::RefCell, ptr::NonNull, rc::Rc};
 use tmui::{
     prelude::*,
@@ -371,12 +371,25 @@ impl Session {
 
     #[inline]
     pub fn start_shell_process(&mut self) {
-        self.shell_process.as_mut().unwrap().start(
-            self.session_id,
-            "cmd.exe",
-            vec!["/K", "prompt $P$G\u{200B}"],
-            vec![],
-        );
+        match self.protocol_type {
+            ProtocolType::LocalShell => {
+                #[cfg(target_os = "windows")]
+                self.shell_process.as_mut().unwrap().start(
+                    self.session_id,
+                    "cmd.exe",
+                    vec!["/K", "prompt $P$G\u{200B}"],
+                    vec![],
+                );
+            }
+            ProtocolType::Custom => {
+                if let Some(shell_process) = self.shell_process.as_mut() {
+                    shell_process.start(self.session_id, "", vec![], vec![]);
+                } else {
+                    warn!("Custom pty is not assigned.")
+                }
+            }
+            _ => {}
+        }
     }
 
     #[inline]
