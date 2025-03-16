@@ -2,7 +2,7 @@ use super::session::Session;
 use crate::{
     config::Config,
     emulation::data_sender::DataSender,
-    pty::pty_receive_pool,
+    pty::{pty_receive_pool, Pty},
     tools::{event::ToKeyPressedEvent, history::HistoryTypeBuffer},
 };
 use cli::{constant::ProtocolType, session::SessionPropsId};
@@ -64,6 +64,9 @@ impl TerminalPanel {
         id: SessionPropsId,
         protocol_type: ProtocolType,
     ) -> &mut Box<Session> {
+        if protocol_type == ProtocolType::Custom {
+            panic!("Use `create_custom_session` instead")
+        }
         let mut session = Session::new(id, protocol_type);
         session.set_auto_close(true);
         session.set_history_type(Rc::new(RefCell::new(HistoryTypeBuffer::new(10000))));
@@ -74,6 +77,28 @@ impl TerminalPanel {
         self.add_child(scrolled_view);
         ApplicationWindow::window().layout_change(self);
 
+        session.start_shell_process();
+
+        self.sessions.insert(id, session);
+        self.sessions.get_mut(&id).unwrap()
+    }
+
+    pub fn create_custom_session(
+        &mut self,
+        id: SessionPropsId,
+        custom_pty: Box<dyn Pty>,
+    ) -> &mut Box<Session> {
+        let mut session = Session::new(id, ProtocolType::Custom);
+        session.set_auto_close(true);
+        session.set_history_type(Rc::new(RefCell::new(HistoryTypeBuffer::new(10000))));
+        session.set_key_binding("");
+
+        let scrolled_view = session.create_terminal_view();
+        session.view_mut().set_font(Config::font());
+        self.add_child(scrolled_view);
+        ApplicationWindow::window().layout_change(self);
+
+        session.set_custom_pty(custom_pty);
         session.start_shell_process();
 
         self.sessions.insert(id, session);
