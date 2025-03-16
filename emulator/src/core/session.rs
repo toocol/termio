@@ -160,7 +160,11 @@ pub trait SessionSignal: ActionExt {
 impl SessionSignal for Session {}
 
 impl Session {
-    pub fn new(id: SessionPropsId, protocol_type: ProtocolType) -> Box<Self> {
+    pub fn new(
+        id: SessionPropsId,
+        protocol_type: ProtocolType,
+        pty: Option<Box<dyn Pty>>,
+    ) -> Box<Self> {
         let mut session: Box<Session> = Object::new(&[]);
         session.session_id = id;
         session.protocol_type = protocol_type;
@@ -187,6 +191,7 @@ impl Session {
                 let mut shell_process = PosixPty::new();
                 Some(shell_process)
             }
+            ProtocolType::Custom => pty,
             _ => None,
         };
 
@@ -390,26 +395,6 @@ impl Session {
             }
             _ => {}
         }
-    }
-
-    #[inline]
-    pub fn set_custom_pty(&mut self, mut shell_process: Box<dyn Pty>) {
-        shell_process.set_utf8_mode(true);
-        connect!(shell_process, finished(), self, done(i32, ExitStatus));
-
-        connect!(
-            self.emulation_mut(),
-            send_data(),
-            shell_process,
-            send_data(String)
-        );
-        connect!(
-            self.emulation_mut(),
-            use_utf8_request(),
-            shell_process,
-            set_utf8_mode(bool)
-        );
-        self.shell_process = Some(shell_process)
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////
