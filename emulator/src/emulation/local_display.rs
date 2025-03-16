@@ -8,11 +8,12 @@ use crate::tools::event::KeyPressedEvent;
 #[derive(Debug, Derivative)]
 #[derivative(Default)]
 pub struct LocalDisplay {
-    command: Vec<wchar_t>,
+    buffer: Vec<wchar_t>,
     cursor: usize,
     /// (col, row)
     cursor_origin: Point,
     colmuns: i32,
+    #[derivative(Default(value = "true"))]
     is_executing: bool,
 
     u_stack: Vec<Vec<wchar_t>>,
@@ -34,7 +35,7 @@ impl LocalDisplay {
     /// @return
     /// string is not empty: the character is control character, and send the control character to emulation
     /// string is empty: do nothing.
-    /// string is "\u{002B}": show local display string
+    /// string is "\u{200B}": show local display string
     pub fn extend(&mut self, evt: &KeyPressedEvent, mut text: String) -> String {
         match evt.key_code() {
             KeyCode::KeyLeft => {
@@ -46,7 +47,7 @@ impl LocalDisplay {
                 }
             }
             KeyCode::KeyRight => {
-                if self.cursor < self.command.len() {
+                if self.cursor < self.buffer.len() {
                     self.cursor += 1;
                     text
                 } else {
@@ -55,11 +56,11 @@ impl LocalDisplay {
             }
             KeyCode::KeyUp => {
                 if let Some(u_pop) = self.u_stack.pop() {
-                    if !self.command.is_empty() {
-                        self.d_stack.push(self.command.clone());
+                    if !self.buffer.is_empty() {
+                        self.d_stack.push(self.buffer.clone());
                     }
-                    self.command = u_pop;
-                    self.cursor = self.command.len();
+                    self.buffer = u_pop;
+                    self.cursor = self.buffer.len();
 
                     self.get_redisplay_text()
                 } else {
@@ -68,11 +69,11 @@ impl LocalDisplay {
             }
             KeyCode::KeyDown => {
                 if let Some(d_pop) = self.d_stack.pop() {
-                    if !self.command.is_empty() {
-                        self.u_stack.push(self.command.clone());
+                    if !self.buffer.is_empty() {
+                        self.u_stack.push(self.buffer.clone());
                     }
-                    self.command = d_pop;
-                    self.cursor = self.command.len();
+                    self.buffer = d_pop;
+                    self.cursor = self.buffer.len();
 
                     self.get_redisplay_text()
                 } else {
@@ -85,21 +86,21 @@ impl LocalDisplay {
                 format!("\x1B[{};{}H", cursor_pos.0, cursor_pos.1)
             }
             KeyCode::KeyEnd => {
-                self.cursor = self.command.len();
+                self.cursor = self.buffer.len();
                 let cursor_pos = self.cursor_to_position();
                 format!("\x1B[{};{}H", cursor_pos.0, cursor_pos.1)
             }
             KeyCode::KeyEnter => {
                 self.is_executing = true;
-                self.u_stack.push(self.command.clone());
-                self.command.clear();
+                self.u_stack.push(self.buffer.clone());
+                self.buffer.clear();
                 self.cursor = 0;
                 text
             }
             KeyCode::KeyBackspace => {
                 if self.cursor != 0 {
                     self.cursor -= 1;
-                    self.command.remove(self.cursor);
+                    self.buffer.remove(self.cursor);
 
                     text.push_str("\x1B[0K");
                     text.push_str(&self.get_display_string_from(self.cursor));
@@ -114,10 +115,10 @@ impl LocalDisplay {
                 if !str.is_empty() {
                     let utf16_text = WideString::from_str(&str);
                     let len = utf16_text.len();
-                    self.command
+                    self.buffer
                         .splice(self.cursor..self.cursor, utf16_text.into_vec());
                     self.cursor += len;
-                    "\u{002B}".to_string()
+                    "\u{200B}".to_string()
                 } else {
                     text
                 }
@@ -130,7 +131,7 @@ impl LocalDisplay {
         if self.is_executing {
             return String::new();
         }
-        let start_index = (self.cursor.max(1) - 1).min(self.command.len());
+        let start_index = (self.cursor.max(1) - 1).min(self.buffer.len());
         self.get_display_string_from(start_index)
     }
 
@@ -141,7 +142,7 @@ impl LocalDisplay {
 
     #[inline]
     fn get_display_string_from(&self, from: usize) -> String {
-        let slice = &self.command[from..];
+        let slice = &self.buffer[from..];
         let mut string = WideString::from_vec(slice.to_vec()).to_string_lossy();
         let cursor_pos = self.cursor_to_position();
         string.push_str(&format!("\x1B[{};{}H", cursor_pos.0, cursor_pos.1));
