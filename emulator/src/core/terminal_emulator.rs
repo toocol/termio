@@ -1,6 +1,8 @@
 #![allow(dead_code)]
 use std::cell::RefCell;
 
+use crate::pty::Pty;
+
 use super::terminal_panel::TerminalPanel;
 use cli::{constant::ProtocolType, session::SessionPropsId};
 use derivative::Derivative;
@@ -63,7 +65,15 @@ impl TerminalEmulator {
 
     #[inline]
     pub fn start_session(&mut self, id: SessionPropsId, protocol_type: ProtocolType) {
+        if protocol_type == ProtocolType::Custom {
+            panic!("Use `create_custom_session` instead")
+        }
         self.terminal_panel.create_session(id, protocol_type);
+    }
+
+    #[inline]
+    pub fn start_custom_session(&mut self, id: SessionPropsId, custom_pty: Box<dyn Pty>) {
+        self.terminal_panel.create_custom_session(id, custom_pty);
     }
 
     #[inline]
