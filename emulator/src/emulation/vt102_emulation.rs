@@ -2241,9 +2241,7 @@ impl Emulation for VT102Emulation {
             }
 
             let text_to_send = String::from_utf8(text_to_send).unwrap();
-            if event.key_code() == KeyCode::KeyEnter {
-                emit!(self, send_data(text_to_send.as_str()));
-            }
+            emit!(self, send_data(text_to_send.as_str()));
 
             if self.emulation().use_local_display {
                 let text_to_send = self
