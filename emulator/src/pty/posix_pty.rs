@@ -32,7 +32,7 @@ impl ObjectSubclass for PosixPty {
 impl ObjectImpl for PosixPty {}
 
 impl Pty for PosixPty {
-    fn start(&mut self, program: &str, arguments: Vec<&str>) -> bool {
+    fn start(&mut self, id: SessionPropsId, program: &str, arguments: Vec<&str>) -> bool {
         // Generate the program arguments.
         let mut args = String::new();
         arguments.iter().for_each(|arg| {
@@ -60,7 +60,7 @@ impl Pty for PosixPty {
             self.pid = Some(master.as_raw_fd())
         }
 
-        pty_receive_pool().add_pty(self.id(), pty_ref!(self).clone(), self.receive_data());
+        pty_receive_pool().add_pty(id, pty_ref!(self).clone());
 
         true
     }
@@ -116,8 +116,14 @@ impl Pty for PosixPty {
         self.timeout = timeout
     }
 
+    #[inline]
     fn send_data(&mut self, data: String) {
         todo!()
+    }
+
+    #[inline]
+    fn read_data(&mut self) -> Vec<u8> {
+        unreachable!()
     }
 }
 

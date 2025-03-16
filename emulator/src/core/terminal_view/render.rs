@@ -24,8 +24,6 @@ impl TerminalView {
     /// fragments according to their colors and styles and calls
     /// drawTextFragment() to draw the fragments
     pub(super) fn draw_contents(&mut self, painter: &mut Painter, rect: FRect) {
-        let _image = self.image();
-
         let tl = self.contents_rect(Some(Coordinate::Widget)).top_left();
         let tlx = tl.x();
         let tly = tl.y();
@@ -134,7 +132,8 @@ impl TerminalView {
                 if line_draw {
                     self.fixed_font = false;
                 }
-                unistr.resize(p, 0);
+                // unistr.resize(p, 0);
+                unistr.truncate(p);
 
                 // Create a text scaling matrix for double width and double height lines.
                 let mut text_scale = Matrix::new_identity();
@@ -192,7 +191,8 @@ impl TerminalView {
 
                 x += len - 1;
                 x += 1;
-            }
+            } // while x <= rlx end
+
             y += 1;
         }
     }

@@ -2,7 +2,6 @@
 use std::cell::RefCell;
 
 use super::terminal_panel::TerminalPanel;
-use crate::pty::pty_receive_pool;
 use cli::{constant::ProtocolType, session::SessionPropsId};
 use derivative::Derivative;
 use tmui::{prelude::*, tlib::object::ObjectSubclass};
@@ -42,11 +41,6 @@ impl ObjectImpl for TerminalEmulator {
 
         EMULATOR_ID.with(|e| *e.borrow_mut() = self.id())
     }
-
-    #[inline]
-    fn initialize(&mut self) {
-        pty_receive_pool().start();
-    }
 }
 
 impl WidgetImpl for TerminalEmulator {
@@ -75,5 +69,11 @@ impl TerminalEmulator {
     #[inline]
     pub fn set_blinking_cursor(&mut self, id: SessionPropsId, blink: bool) {
         self.terminal_panel.set_blinking_cursor(id, blink);
+    }
+
+    #[inline]
+    pub fn set_use_local_display(&mut self, id: SessionPropsId, use_local_display: bool) {
+        self.terminal_panel
+            .set_use_local_display(id, use_local_display);
     }
 }

@@ -4,13 +4,13 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-tmui = { git = "https://github.com/toocol/tmui", features = [
-    "verbose_logging",
-] }
+tmui = { git = "https://github.com/toocol/tmui" }
 
 cli = { path = "../cli/" }
-libs = { path = "../libs/" }
 emulator = { path = "../emulator/" }
 
-log = "0.4"
 log4rs = "1.1.1"
+
+[profile.release]
+lto = "fat"
+codegen-units = 1

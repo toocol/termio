@@ -180,9 +180,10 @@ impl Screen {
     /// Fills the buffer @p dest with @p count instances of the default (ie. blank) Character style.
     #[inline]
     pub fn fill_with_default_char(character: &mut [Character], count: i32) {
-        for c in character.iter_mut().take(count as usize) {
-            *c = Character::default()
-        }
+        let count = count as usize;
+        character
+            .get_mut(..count)
+            .map(|slice| slice.fill(Character::default()));
     }
 
     #[inline]
@@ -1409,7 +1410,7 @@ impl Screen {
         // default character, the affected lines can simply be shrunk.
         let is_default_ch = clear_ch == Character::default();
 
-        for y in top_line..bottom_line {
+        for y in top_line..=bottom_line {
             self.line_properties[y as usize] = 0;
 
             let end_col = if y == bottom_line {
@@ -1432,7 +1433,7 @@ impl Screen {
                     line.resize(end_col as usize + 1, clear_ch);
                 }
 
-                for i in start_col..end_col {
+                for i in start_col..=end_col {
                     line[i as usize] = clear_ch;
                 }
             }
@@ -1453,6 +1454,7 @@ impl Screen {
         // the source and destination areas of the image may overlap,
         // so it matters that we do the copy in the right order - forwards if dest < sourceBegin or backwards otherwise.
         //(search the web for 'memmove implementation' for details)
+
         if dest < source_begin {
             for i in 0..=lines {
                 self.screen_lines[(dest / self.columns as usize) + i] =
@@ -1461,15 +1463,17 @@ impl Screen {
                     self.line_properties[(source_begin / self.columns as usize) + i];
             }
         } else {
+            let mut idx = lines as i32;
             let mut i = lines;
             loop {
-                if i > lines {
+                if idx < 0 {
                     break;
                 }
                 self.screen_lines[(dest / self.columns as usize) + i] =
                     self.screen_lines[(source_begin / self.columns as usize) + i].clone();
                 self.line_properties[(dest / self.columns as usize) + i] =
                     self.line_properties[(source_begin / self.columns as usize) + i];
+                idx -= 1;
                 i -= 1;
             }
         }

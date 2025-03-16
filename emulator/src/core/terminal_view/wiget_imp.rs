@@ -100,8 +100,10 @@ impl TerminalView {
         self.act_sel = 0;
 
         if self.has_blinking_cursor {
-            self.blink_cursor_timer
-                .start(Duration::from_millis(cursor_blinking_time() as u64));
+            if !self.blink_cursor_timer.is_active() {
+                self.blink_cursor_timer
+                    .start(Duration::from_millis(cursor_blinking_time() as u64));
+            }
 
             if self.cursor_blinking {
                 self.blink_cursor_event()
@@ -591,6 +593,9 @@ impl TerminalView {
         let rect = self.rect_record();
         if size.width() < rect.width() || size.height() < rect.height() {
             self.clear_margin = true;
+        }
+        if size == rect.size() {
+            return;
         }
         self.update_image_size();
         self.process_filters();

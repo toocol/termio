@@ -4,6 +4,7 @@ pub mod con_pty;
 #[cfg(not(target_os = "windows"))]
 pub mod posix_pty;
 
+use cli::session::SessionPropsId;
 use once_cell::sync::Lazy;
 #[cfg(not(target_os = "windows"))]
 use pty::prelude::Fork;
@@ -13,7 +14,7 @@ use std::{
     collections::HashMap,
     path::PathBuf,
     ptr::addr_of_mut,
-    sync::{Arc, Mutex, Once},
+    sync::{mpsc::Sender, Arc, Mutex, Once},
     thread,
     time::Duration,
 };
@@ -28,7 +29,13 @@ pub trait Pty: PtySignals {
     /// Start the terminal process.
     ///
     /// Return true if the process was started successfully or non-zero otherwise.
-    fn start(&mut self, program: &str, arguments: Vec<&str>, enviroment: Vec<&str>) -> bool;
+    fn start(
+        &mut self,
+        id: SessionPropsId,
+        program: &str,
+        arguments: Vec<&str>,
+        enviroment: Vec<&str>,
+    ) -> bool;
 
     /// Set the terminal process was writeable or not.
     fn set_writeable(&mut self, writeable: bool);
@@ -66,17 +73,14 @@ pub trait Pty: PtySignals {
     ///
     /// @param data: the data to send.
     fn send_data(&mut self, data: String);
+
+    /// Read data from the process.
+    fn read_data(&mut self) -> Vec<u8>;
 }
 
 pub trait PtySignals: ActionExt {
     signals! {
         PtySignals:
-
-        /// Emitted when a new block of data was received from the teletype.
-        ///
-        /// @param data [`String`] the data received.
-        receive_data();
-
         /// Emitted when terminal process was finished. <br>
         ///
         /// @param exit_code [`i32`] <br>
@@ -86,9 +90,9 @@ pub trait PtySignals: ActionExt {
 }
 
 #[cfg(target_os = "windows")]
-type PtyMap = HashMap<ObjectId, (Arc<Mutex<PTY>>, Signal)>;
+type PtyMap = HashMap<SessionPropsId, Arc<Mutex<PTY>>>;
 #[cfg(not(target_os = "windows"))]
-type PtyMap = HashMap<ObjectId, (Arc<Mutex<Fork>>, Signal)>;
+type PtyMap = HashMap<SessionPropsId, Arc<Mutex<Fork>>>;
 
 #[derive(Default)]
 pub struct PtyReceivePool {
@@ -104,18 +108,23 @@ pub fn pty_receive_pool() -> &'static mut PtyReceivePool {
 /// Make sure PtyReceivePool::start() only execute once.
 static ONCE: Once = Once::new();
 impl PtyReceivePool {
-    pub fn start(&self) {
+    pub fn start(&self, sender: Sender<(SessionPropsId, Vec<u8>)>) {
         ONCE.call_once(|| {
             let ptys = self.ptys.clone();
 
             thread::spawn(move || loop {
                 #[cfg(target_os = "windows")]
-                ptys.lock().unwrap().iter().for_each(|(_, (pty, _signal))| {
-                    if let Ok(data) = pty.lock().unwrap().read(u32::MAX, false) {
-                        if !data.is_empty() {
-                            // TODO: Figure out a way to receive pty data from another thread
-                            // emit!(signal.clone(), data.to_str().unwrap())
+                ptys.lock().unwrap().iter().for_each(|(id, pty)| {
+                    let mut data = vec![];
+                    while let Ok(d) = pty.lock().unwrap().read(u32::MAX, false) {
+                        if !d.is_empty() {
+                            data.extend_from_slice(&d.into_encoded_bytes());
+                        } else {
+                            break;
                         }
+                    }
+                    if !data.is_empty() {
+                        let _ = sender.send((*id, data));
                     }
                 });
 
@@ -123,7 +132,7 @@ impl PtyReceivePool {
                 {
                     let ptys = ptys.clone();
                     tasync!(move {
-                        ptys.lock().unwrap().iter().for_each(|(_, (pty, signal))| {
+                        ptys.lock().unwrap().iter().for_each(|(_, pty)| {
                             if let Some(mut master) = pty.lock().unwrap().is_parent().ok() {
                                 let mut data = String::new();
                                 // Is that blocked read?
@@ -144,18 +153,18 @@ impl PtyReceivePool {
 
     #[inline]
     #[cfg(target_os = "windows")]
-    pub fn add_pty(&mut self, id: ObjectId, pty: Arc<Mutex<PTY>>, signal: Signal) {
-        self.ptys.lock().unwrap().insert(id, (pty, signal));
+    pub fn add_pty(&mut self, id: SessionPropsId, pty: Arc<Mutex<PTY>>) {
+        self.ptys.lock().unwrap().insert(id, pty);
     }
 
     #[inline]
     #[cfg(not(target_os = "windows"))]
-    pub fn add_pty(&mut self, id: ObjectId, pty: Arc<Mutex<Fork>>, signal: Signal) {
+    pub fn add_pty(&mut self, id: SessionPropsId, pty: Arc<Mutex<Fork>>) {
         self.ptys.lock().unwrap().insert(id, (pty, signal));
     }
 
     #[inline]
-    pub fn remove_pty(&mut self, id: ObjectId) {
+    pub fn remove_pty(&mut self, id: SessionPropsId) {
         self.ptys.lock().unwrap().remove(&id);
     }
 }
