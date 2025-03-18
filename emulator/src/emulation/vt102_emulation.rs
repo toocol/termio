@@ -358,16 +358,16 @@ impl VT102Emulation {
         wrapper
     }
 
-    //////////////////////////////////////////////////////// Private function
     #[inline]
-    fn emulation(&self) -> &BaseEmulation {
+    pub fn emulation(&self) -> &BaseEmulation {
         self.emulation.as_deref().unwrap()
     }
     #[inline]
-    fn emulation_mut(&mut self) -> &mut BaseEmulation {
+    pub fn emulation_mut(&mut self) -> &mut BaseEmulation {
         self.emulation.as_deref_mut().unwrap()
     }
 
+    //////////////////////////////////////////////////////// Private function
     fn init_tokenizer(&mut self) {
         for i in 0..256 {
             self.char_class[i] = 0;
