@@ -702,3 +702,15 @@ impl Emulation for BaseEmulation {
         self.use_local_display = use_local_display;
     }
 }
+
+impl BaseEmulation {
+    #[inline]
+    pub fn current_screen(&self) -> &Screen {
+        unsafe { self.current_screen.as_ref().unwrap().as_ref() }
+    }
+
+    #[inline]
+    pub fn current_screen_mut(&mut self) -> &mut Screen {
+        unsafe { self.current_screen.as_mut().unwrap().as_mut() }
+    }
+}
