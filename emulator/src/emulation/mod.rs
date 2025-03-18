@@ -1,6 +1,6 @@
 #![allow(dead_code)]
-pub(super) mod data_sender;
-pub(super) mod local_display;
+pub mod data_sender;
+pub mod local_display;
 pub mod vt102_emulation;
 
 use data_sender::DataSender;
