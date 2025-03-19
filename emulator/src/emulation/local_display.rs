@@ -157,7 +157,7 @@ impl LocalDisplay {
     fn get_redisplay_text(&self) -> String {
         let mut text = String::new();
         text.push_str(&format!(
-            "\x1B[{};{}H",
+            "\x1B[{};{}H\x1B[K",
             self.cursor_origin.y(),
             self.cursor_origin.x()
         ));
