@@ -401,7 +401,6 @@ impl Session {
     // private
     ///////////////////////////////////////////////////////////////////////////////////////////
     fn update_terminal_size(&mut self) {
-        debug!("TerminalView's size has changed, update the terminal size.");
         let mut min_lines = -1;
         let mut min_columns = -1;
 
@@ -420,6 +419,7 @@ impl Session {
             min_columns = view.columns();
         }
 
+        debug!("TerminalView's size has changed, update the terminal size. min_lines {}, min_columns {}", min_lines, min_columns);
         if min_lines > 0 && min_columns > 0 {
             self.emulation_mut().set_image_size(min_lines, min_columns);
             self.shell_process

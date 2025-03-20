@@ -249,11 +249,7 @@ impl CharacterColor {
                 } else {
                     0
                 },
-                if u % 6 > 0 {
-                    40 * (u % 6) + 55
-                } else {
-                    0
-                },
+                if u % 6 > 0 { 40 * (u % 6) + 55 } else { 0 },
             );
         }
         u -= 216;
@@ -274,12 +270,11 @@ pub const TABLE_COLORS: usize = INTENSITIES * BASE_COLORS;
 pub const DEFAULT_FORE_COLOR: u32 = 0;
 pub const DEFAULT_BACK_COLOR: u32 = 1;
 
-pub const VT100_GRAPHICS:[wchar_t; 32] = [
+pub const VT100_GRAPHICS: [wchar_t; 32] = [
     // 0/8     1/9    2/10    3/11    4/12    5/13    6/14    7/15
-    0x0020, 0x25C6, 0x2592, 0x2409, 0x240c, 0x240d, 0x240a, 0x00b0,
-    0x00b1, 0x2424, 0x240b, 0x2518, 0x2510, 0x250c, 0x2514, 0x253c,
-    0xF800, 0xF801, 0x2500, 0xF803, 0xF804, 0x251c, 0x2524, 0x2534,
-    0x252c, 0x2502, 0x2264, 0x2265, 0x03C0, 0x2260, 0x00A3, 0x00b7
+    0x0020, 0x25C6, 0x2592, 0x2409, 0x240c, 0x240d, 0x240a, 0x00b0, 0x00b1, 0x2424, 0x240b, 0x2518,
+    0x2510, 0x250c, 0x2514, 0x253c, 0xF800, 0xF801, 0x2500, 0xF803, 0xF804, 0x251c, 0x2524, 0x2534,
+    0x252c, 0x2502, 0x2264, 0x2265, 0x03C0, 0x2260, 0x00A3, 0x00b7,
 ];
 
 /// A standard set of colors using black text on a white background.
@@ -291,20 +286,20 @@ pub const BASE_COLOR_TABLE: [ColorEntry; TABLE_COLORS] = [
     ////// Normal color
     ColorEntry {
         color: Color {
-            r: 0x00,
-            g: 0x00,
-            b: 0x00,
+            r: 0xCC,
+            g: 0xCC,
+            b: 0xCC,
             a: 0xFF,
             valid: true,
         },
-        transparent: false,
+        transparent: true,
         font_weight: FontWeight::UseCurrentFormat,
     }, // Dfore
     ColorEntry {
         color: Color {
-            r: 0xB2,
-            g: 0xB2,
-            b: 0xB2,
+            r: 0x0A,
+            g: 0x0A,
+            b: 0x0A,
             a: 0xFF,
             valid: true,
         },
@@ -313,9 +308,9 @@ pub const BASE_COLOR_TABLE: [ColorEntry; TABLE_COLORS] = [
     }, // Dback
     ColorEntry {
         color: Color {
-            r: 0x00,
-            g: 0x00,
-            b: 0x00,
+            r: 0x0A,
+            g: 0x0A,
+            b: 0x0A,
             a: 0xFF,
             valid: true,
         },
@@ -324,9 +319,9 @@ pub const BASE_COLOR_TABLE: [ColorEntry; TABLE_COLORS] = [
     }, // Black
     ColorEntry {
         color: Color {
-            r: 0xB2,
-            g: 0x18,
-            b: 0x18,
+            r: 0xC5,
+            g: 0x0F,
+            b: 0x1F,
             a: 0xFF,
             valid: true,
         },
@@ -335,9 +330,9 @@ pub const BASE_COLOR_TABLE: [ColorEntry; TABLE_COLORS] = [
     }, // Red
     ColorEntry {
         color: Color {
-            r: 0x18,
-            g: 0xB2,
-            b: 0x18,
+            r: 0x13,
+            g: 0xA1,
+            b: 0x0E,
             a: 0xFF,
             valid: true,
         },
@@ -346,9 +341,9 @@ pub const BASE_COLOR_TABLE: [ColorEntry; TABLE_COLORS] = [
     }, // Green
     ColorEntry {
         color: Color {
-            r: 0xB2,
-            g: 0x68,
-            b: 0x18,
+            r: 0xC1,
+            g: 0x9C,
+            b: 0x00,
             a: 0xFF,
             valid: true,
         },
@@ -357,9 +352,9 @@ pub const BASE_COLOR_TABLE: [ColorEntry; TABLE_COLORS] = [
     }, // Yellow
     ColorEntry {
         color: Color {
-            r: 0x18,
-            g: 0x18,
-            b: 0xB2,
+            r: 0x00,
+            g: 0x37,
+            b: 0xDA,
             a: 0xFF,
             valid: true,
         },
@@ -368,9 +363,9 @@ pub const BASE_COLOR_TABLE: [ColorEntry; TABLE_COLORS] = [
     }, // Blue
     ColorEntry {
         color: Color {
-            r: 0xB2,
-            g: 0x18,
-            b: 0xB2,
+            r: 0x88,
+            g: 0x17,
+            b: 0x98,
             a: 0xFF,
             valid: true,
         },
@@ -379,9 +374,9 @@ pub const BASE_COLOR_TABLE: [ColorEntry; TABLE_COLORS] = [
     }, // Magenta
     ColorEntry {
         color: Color {
-            r: 0x18,
-            g: 0xB2,
-            b: 0xB2,
+            r: 0x3A,
+            g: 0x96,
+            b: 0xDD,
             a: 0xFF,
             valid: true,
         },
@@ -390,9 +385,9 @@ pub const BASE_COLOR_TABLE: [ColorEntry; TABLE_COLORS] = [
     }, // Cyan
     ColorEntry {
         color: Color {
-            r: 0xB2,
-            g: 0xB2,
-            b: 0xB2,
+            r: 0xCC,
+            g: 0xCC,
+            b: 0xCC,
             a: 0xFF,
             valid: true,
         },
@@ -402,9 +397,9 @@ pub const BASE_COLOR_TABLE: [ColorEntry; TABLE_COLORS] = [
     ////// Intensive color
     ColorEntry {
         color: Color {
-            r: 0x00,
-            g: 0x00,
-            b: 0x00,
+            r: 0xCC,
+            g: 0xCC,
+            b: 0xCC,
             a: 0xFF,
             valid: true,
         },
@@ -413,9 +408,9 @@ pub const BASE_COLOR_TABLE: [ColorEntry; TABLE_COLORS] = [
     }, // Dfore
     ColorEntry {
         color: Color {
-            r: 0xFF,
-            g: 0xFF,
-            b: 0xFF,
+            r: 0x0A,
+            g: 0x0A,
+            b: 0x0A,
             a: 0xFF,
             valid: true,
         },
@@ -424,9 +419,9 @@ pub const BASE_COLOR_TABLE: [ColorEntry; TABLE_COLORS] = [
     }, // Dback
     ColorEntry {
         color: Color {
-            r: 0x68,
-            g: 0x68,
-            b: 0x68,
+            r: 0x76,
+            g: 0x76,
+            b: 0x76,
             a: 0xFF,
             valid: true,
         },
@@ -435,9 +430,9 @@ pub const BASE_COLOR_TABLE: [ColorEntry; TABLE_COLORS] = [
     }, // Black
     ColorEntry {
         color: Color {
-            r: 0xFF,
-            g: 0x54,
-            b: 0x54,
+            r: 0xE7,
+            g: 0x48,
+            b: 0x56,
             a: 0xFF,
             valid: true,
         },
@@ -446,9 +441,9 @@ pub const BASE_COLOR_TABLE: [ColorEntry; TABLE_COLORS] = [
     }, // Red
     ColorEntry {
         color: Color {
-            r: 0x54,
-            g: 0xFF,
-            b: 0x54,
+            r: 0x16,
+            g: 0xC6,
+            b: 0x0C,
             a: 0xFF,
             valid: true,
         },
@@ -457,9 +452,9 @@ pub const BASE_COLOR_TABLE: [ColorEntry; TABLE_COLORS] = [
     }, // Green
     ColorEntry {
         color: Color {
-            r: 0xFF,
-            g: 0xFF,
-            b: 0x54,
+            r: 0xF9,
+            g: 0xF1,
+            b: 0xA5,
             a: 0xFF,
             valid: true,
         },
@@ -468,8 +463,8 @@ pub const BASE_COLOR_TABLE: [ColorEntry; TABLE_COLORS] = [
     }, // Yellow
     ColorEntry {
         color: Color {
-            r: 0x54,
-            g: 0x54,
+            r: 0x3B,
+            g: 0x78,
             b: 0xFF,
             a: 0xFF,
             valid: true,
@@ -479,9 +474,9 @@ pub const BASE_COLOR_TABLE: [ColorEntry; TABLE_COLORS] = [
     }, // Blue
     ColorEntry {
         color: Color {
-            r: 0xFF,
-            g: 0x54,
-            b: 0xFF,
+            r: 0xB4,
+            g: 0x00,
+            b: 0x9E,
             a: 0xFF,
             valid: true,
         },
@@ -490,9 +485,9 @@ pub const BASE_COLOR_TABLE: [ColorEntry; TABLE_COLORS] = [
     }, // Magenta
     ColorEntry {
         color: Color {
-            r: 0x54,
-            g: 0xFF,
-            b: 0xFF,
+            r: 0x61,
+            g: 0xD6,
+            b: 0xD6,
             a: 0xFF,
             valid: true,
         },
@@ -501,9 +496,9 @@ pub const BASE_COLOR_TABLE: [ColorEntry; TABLE_COLORS] = [
     }, // Cyan
     ColorEntry {
         color: Color {
-            r: 0xFF,
-            g: 0xFF,
-            b: 0xFF,
+            r: 0xF2,
+            g: 0xF2,
+            b: 0xF2,
             a: 0xFF,
             valid: true,
         },
@@ -518,47 +513,68 @@ mod tests {
 
     #[test]
     fn test_color_table() {
+        // Fore
         let color: (i32, i32, i32) = BASE_COLOR_TABLE[0].color.into();
-        assert_eq!(color, (0x00, 0x00, 0x00));
+        assert_eq!(color, (0xCC, 0xCC, 0xCC));
+        // Back
         let color: (i32, i32, i32) = BASE_COLOR_TABLE[1].color.into();
-        assert_eq!(color, (0xB2, 0xB2, 0xB2));
+        assert_eq!(color, (0x0A, 0x0A, 0x0A));
+        // Black
         let color: (i32, i32, i32) = BASE_COLOR_TABLE[2].color.into();
-        assert_eq!(color, (0x00, 0x00, 0x00));
+        assert_eq!(color, (0x0A, 0x0A, 0x0A));
+        // Red
         let color: (i32, i32, i32) = BASE_COLOR_TABLE[3].color.into();
-        assert_eq!(color, (0xB2, 0x18, 0x18));
+        assert_eq!(color, (0xC5, 0x0F, 0x1F));
+        // Green
         let color: (i32, i32, i32) = BASE_COLOR_TABLE[4].color.into();
-        assert_eq!(color, (0x18, 0xB2, 0x18));
+        assert_eq!(color, (0x13, 0xA1, 0x0E));
+        // Yellow
         let color: (i32, i32, i32) = BASE_COLOR_TABLE[5].color.into();
-        assert_eq!(color, (0xB2, 0x68, 0x18));
+        assert_eq!(color, (0xC1, 0x9C, 0x00));
+        // Blue
         let color: (i32, i32, i32) = BASE_COLOR_TABLE[6].color.into();
-        assert_eq!(color, (0x18, 0x18, 0xB2));
+        assert_eq!(color, (0x00, 0x37, 0xDA));
+        // Magenta
         let color: (i32, i32, i32) = BASE_COLOR_TABLE[7].color.into();
-        assert_eq!(color, (0xB2, 0x18, 0xB2));
+        assert_eq!(color, (0x88, 0x17, 0x98));
+        // Cyan
         let color: (i32, i32, i32) = BASE_COLOR_TABLE[8].color.into();
-        assert_eq!(color, (0x18, 0xB2, 0xB2));
+        assert_eq!(color, (0x3A, 0x96, 0xDD));
+        // White
         let color: (i32, i32, i32) = BASE_COLOR_TABLE[9].color.into();
-        assert_eq!(color, (0xB2, 0xB2, 0xB2));
+        assert_eq!(color, (0xCC, 0xCC, 0xCC));
 
+        // Intensive:
+        // Fore
         let color: (i32, i32, i32) = BASE_COLOR_TABLE[10].color.into();
-        assert_eq!(color, (0x00, 0x00, 0x00));
+        assert_eq!(color, (0xCC, 0xCC, 0xCC));
+        // Back
         let color: (i32, i32, i32) = BASE_COLOR_TABLE[11].color.into();
-        assert_eq!(color, (0xFF, 0xFF, 0xFF));
+        assert_eq!(color, (0x0A, 0x0A, 0x0A));
+        // Black
         let color: (i32, i32, i32) = BASE_COLOR_TABLE[12].color.into();
-        assert_eq!(color, (0x68, 0x68, 0x68));
+        assert_eq!(color, (0x76, 0x76, 0x76));
+        // Red
         let color: (i32, i32, i32) = BASE_COLOR_TABLE[13].color.into();
-        assert_eq!(color, (0xFF, 0x54, 0x54));
+        assert_eq!(color, (0xE7, 0x48, 0x56));
+        // Green
         let color: (i32, i32, i32) = BASE_COLOR_TABLE[14].color.into();
-        assert_eq!(color, (0x54, 0xFF, 0x54));
+        assert_eq!(color, (0x16, 0xC6, 0x0C));
+        // Yellow
         let color: (i32, i32, i32) = BASE_COLOR_TABLE[15].color.into();
-        assert_eq!(color, (0xFF, 0xFF, 0x54));
+        assert_eq!(color, (0xF9, 0xF1, 0xA5));
+        // Blue
         let color: (i32, i32, i32) = BASE_COLOR_TABLE[16].color.into();
-        assert_eq!(color, (0x54, 0x54, 0xFF));
+        assert_eq!(color, (0x3B, 0x78, 0xFF));
+        // Magenta
         let color: (i32, i32, i32) = BASE_COLOR_TABLE[17].color.into();
-        assert_eq!(color, (0xFF, 0x54, 0xFF));
+        assert_eq!(color, (0xB4, 0x00, 0x9E));
+        // Cyan
         let color: (i32, i32, i32) = BASE_COLOR_TABLE[18].color.into();
-        assert_eq!(color, (0x54, 0xFF, 0xFF));
+        assert_eq!(color, (0x61, 0xD6, 0xD6));
+        // White
         let color: (i32, i32, i32) = BASE_COLOR_TABLE[19].color.into();
-        assert_eq!(color, (0xFF, 0xFF, 0xFF));
+        assert_eq!(color, (0xF2, 0xF2, 0xF2));
     }
 
     #[test]
