@@ -378,7 +378,9 @@ impl TerminalView {
     pub fn set_color_table(&mut self, table: &[ColorEntry]) {
         self.color_table[..TABLE_COLORS].copy_from_slice(&table[..TABLE_COLORS]);
 
-        self.set_background_color(self.color_table[DEFAULT_BACK_COLOR as usize].color)
+        self.set_background_color(self.color_table[DEFAULT_BACK_COLOR as usize].color);
+
+        self.update();
     }
 
     /// Sets the seed used to generate random colors for the view
