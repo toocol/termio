@@ -39,6 +39,7 @@ impl ObjectImpl for CtxMenu {
             None,
             Some(ShadowSide::new(&[ShadowSide::RIGHT, ShadowSide::BOTTOM])),
             None,
+            None,
         ));
 
         self.selection_list.set_vexpand(true);
@@ -54,17 +55,18 @@ impl ObjectImpl for CtxMenu {
         scroll_bar.set_visible_in_valid(true);
 
         let ctx_menu_id = self.id();
-        self.selection_list.register_node_pressed(move |node, _, evt| {
-            let selection_str = node.get_value::<String>(0).unwrap();
-            let view = node.get_view();
-            let ctx_menu = ApplicationWindow::window_of(view.window_id())
-                .find_id_mut(ctx_menu_id)
-                .unwrap()
-                .downcast_mut::<CtxMenu>()
-                .unwrap();
+        self.selection_list
+            .register_node_pressed(move |node, _, evt| {
+                let selection_str = node.get_value::<String>(0).unwrap();
+                let view = node.get_view();
+                let ctx_menu = ApplicationWindow::window_of(view.window_id())
+                    .find_id_mut(ctx_menu_id)
+                    .unwrap()
+                    .downcast_mut::<CtxMenu>()
+                    .unwrap();
 
-            SelectionEnum::from_str(&selection_str).handle_mouse_pressed(ctx_menu, node, evt);
-        });
+                SelectionEnum::from_str(&selection_str).handle_mouse_pressed(ctx_menu, node, evt);
+            });
 
         self.loc.bld_selections(&mut self.selection_list);
     }
