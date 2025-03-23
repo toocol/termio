@@ -10,7 +10,7 @@ use crate::util::string_const::*;
 /// - **Move/save/restore** the cursor position to display inputing text on terminal.
 /// ### Example
 /// ```
-/// use utilities::ansi::AnsiString;
+/// use libs::ansi::AnsiString;
 ///
 /// let mut ansi_string = AnsiString::new();
 /// ansi_string.foreground_256(45) // Change the foreground color to 45(256-Color).
