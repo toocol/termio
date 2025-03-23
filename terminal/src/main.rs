@@ -29,6 +29,7 @@ fn build_ui(window: &mut ApplicationWindow) {
         if let Some(w) = win.find_id_mut(id) {
             let emulator = w.downcast_mut::<TerminalEmulator>().unwrap();
             emulator.start_session(0, ProtocolType::LocalShell);
+            // emulator.set_use_local_display(0, true);
         }
     });
 }

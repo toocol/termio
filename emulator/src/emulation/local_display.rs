@@ -111,8 +111,7 @@ impl LocalDisplay {
                 }
             }
             KeyCode::KeyTab => {
-                println!();
-                text
+                String::new()
             }
             _ => {
                 let str = evt.text();
