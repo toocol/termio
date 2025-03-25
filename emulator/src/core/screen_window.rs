@@ -411,8 +411,7 @@ impl ScreenWindow {
         emit!(self, screen_window_output_changed());
     }
 
-    pub fn handle_command_from_keyboard(&mut self, command: u16) {
-        let command = Command::from(command);
+    pub fn handle_command_from_keyboard(&mut self, command: Command) {
         let mut update = false;
 
         // EraseCommand is handled in Vt102Emulation.

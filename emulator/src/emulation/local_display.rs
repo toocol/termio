@@ -110,9 +110,7 @@ impl LocalDisplay {
                     String::new()
                 }
             }
-            KeyCode::KeyTab => {
-                String::new()
-            }
+            KeyCode::KeyTab => String::new(),
             _ => {
                 let str = evt.text();
                 if !str.is_empty() {

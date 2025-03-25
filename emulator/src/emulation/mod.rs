@@ -413,7 +413,7 @@ impl Emulation for BaseEmulation {
             self,
             handle_command_from_keyboard(),
             self.windows.last_mut().unwrap(),
-            handle_command_from_keyboard(u16)
+            handle_command_from_keyboard(Command)
         );
         connect!(
             self,
