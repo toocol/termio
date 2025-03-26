@@ -2388,14 +2388,15 @@ is missing."#;
         self.direct_update();
 
         if data_sender == DataSender::Pty && self.emulation().use_local_display {
-            let screen = nonnull_ref!(self.emulation_mut().current_screen);
-            self.emulation_mut().local_display.set_terminal_info(
-                screen.get_cursor_x() + 1,
-                screen.get_cursor_y() + 1,
-                screen.get_columns(),
-            );
-
             if execution_finish {
+                let screen = nonnull_ref!(self.emulation_mut().current_screen);
+
+                self.emulation_mut().local_display.set_terminal_info(
+                    screen.get_cursor_x() + 1,
+                    screen.get_cursor_y() + 1,
+                    screen.get_columns(),
+                );
+
                 self.emulation_mut().local_display.executed();
                 let display_text = self.emulation().local_display.get_all_display_string();
                 if !display_text.is_empty() {
