@@ -14,7 +14,7 @@ use std::{
     rc::Rc,
     sync::mpsc::{channel, Receiver},
 };
-use tlib::iter_executor;
+use tlib::{close_handler, iter_executor};
 use tmui::{
     prelude::*,
     tlib::{events::KeyEvent, object::ObjectSubclass},
@@ -28,6 +28,7 @@ use tmui::{
 #[extends(Widget, Layout(SplitPane))]
 #[allow(clippy::vec_box)]
 #[iter_executor]
+#[close_handler]
 pub struct TerminalPanel {
     /// All the terminal sessions.
     sessions: IntMap<SessionPropsId, Box<Session>>,
@@ -164,6 +165,17 @@ impl IterExecutor for TerminalPanel {
                 } else {
                     warn!("The custom pty is not assigned.");
                 }
+            }
+        }
+    }
+}
+
+impl CloseHandler for TerminalPanel {
+    #[inline]
+    fn handle(&mut self) {
+        for session in self.sessions.values_mut() {
+            if let Some(shell_process) = session.get_pty() {
+                shell_process.on_window_closed();
             }
         }
     }

@@ -169,6 +169,9 @@ impl Pty for ConPty {
     fn read_data(&mut self) -> Vec<u8> {
         unreachable!()
     }
+
+    #[inline]
+    fn on_window_closed(&mut self) {}
 }
 
 impl PtySignals for ConPty {}

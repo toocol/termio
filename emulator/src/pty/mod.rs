@@ -76,6 +76,9 @@ pub trait Pty: PtySignals {
 
     /// Read data from the process.
     fn read_data(&mut self) -> Vec<u8>;
+
+    /// Execute when app exited.
+    fn on_window_closed(&mut self);
 }
 
 pub trait PtySignals: ActionExt {
