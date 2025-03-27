@@ -125,6 +125,9 @@ impl Pty for PosixPty {
     fn read_data(&mut self) -> Vec<u8> {
         unreachable!()
     }
+
+    #[inline]
+    fn on_app_exit(&mut self) {}
 }
 
 impl PtySignals for PosixPty {}
