@@ -17,8 +17,8 @@ fn instance() -> &'static mut Config {
 impl Config {
     #[inline]
     fn new() -> Self {
-        Config { 
-            font: Font::with_families(&["Courier New"]),
+        Config {
+            font: Font::with_families(&["Courier New", "SimSun"]),
         }
     }
 

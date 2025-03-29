@@ -28,7 +28,9 @@ use crate::{
 };
 use std::{cell::RefCell, collections::HashMap, ptr::NonNull, rc::Rc};
 use tmui::{
+    clipboard::ClipboardLevel,
     prelude::*,
+    system::System,
     tlib::{
         emit,
         figure::Size,
@@ -2388,6 +2390,11 @@ is missing."#;
         self.direct_update();
 
         if data_sender == DataSender::Pty && self.emulation().use_local_display {
+            if self.emulation().local_display.is_tabing() {
+                let ld = &mut self.emulation_mut().local_display;
+                ld.set_tabing(false);
+            }
+
             if execution_finish {
                 let screen = nonnull_ref!(self.emulation_mut().current_screen);
 
@@ -2450,5 +2457,35 @@ is missing."#;
     #[inline]
     fn set_use_local_display(&mut self, use_local_display: bool) {
         self.emulation_mut().use_local_display = use_local_display;
+    }
+
+    #[inline]
+    fn handle_control_insert(&mut self) {
+        if self.emulation().current_screen().has_selected() {
+            let origin_selection = self.emulation().current_screen().selected_text(true);
+            let selection = origin_selection
+                .trim_end_matches('\n')
+                .trim_start_matches('\n');
+
+            if !selection.is_empty() {
+                System::clipboard().set_text(selection, ClipboardLevel::Os);
+            }
+        }
+    }
+
+    #[inline]
+    fn handle_shift_insert(&mut self) {
+        if let Some(text) = System::clipboard().text(ClipboardLevel::Os) {
+            text.split('\n').for_each(|line| {
+                if line.trim().is_empty() {
+                    return
+                }
+
+                let data = format!("{}\n", line);
+                let evt =
+                    KeyPressedEvent::new(KeyCode::Unknown, data, KeyboardModifier::NoModifier);
+                self.send_key_event(evt, true);
+            });
+        }
     }
 }

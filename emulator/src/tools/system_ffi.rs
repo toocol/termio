@@ -73,7 +73,10 @@ pub fn chsize(file_handle: i32, size: i32) -> i32 {
 #[inline]
 pub fn wcwidth(ucs: wchar_t) -> c_int {
     let char = char::from_u32(ucs as u32).unwrap();
-    char.width().unwrap() as c_int
+    match char.width() {
+        Some(c) => c as c_int,
+        None => 0,
+    }
 }
 
 #[inline]

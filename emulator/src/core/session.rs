@@ -280,6 +280,18 @@ impl Session {
         );
         connect!(
             terminal_view,
+            control_insert_detected(),
+            emulation,
+            handle_control_insert()
+        );
+        connect!(
+            terminal_view,
+            shift_insert_detected(),
+            emulation,
+            handle_shift_insert()
+        );
+        connect!(
+            terminal_view,
             mouse_signal(),
             emulation,
             send_mouse_event(i32, i32, i32, u8)

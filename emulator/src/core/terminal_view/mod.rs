@@ -333,6 +333,9 @@ pub trait TerminalViewSignals: ActionExt {
 
         notify_bell(&str);
         uses_mouse_changed();
+
+        control_insert_detected();
+        shift_insert_detected();
     );
 }
 impl TerminalViewSignals for TerminalView {}

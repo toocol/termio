@@ -1147,6 +1147,12 @@ impl Screen {
         pos >= self.select_top_left && pos <= self.select_bottom_right && column_in_selection
     }
 
+    /// Return true if there has selection.
+    #[inline]
+    pub fn has_selected(&self) -> bool {
+        self.select_begin != -1 && self.select_top_left != -1 && self.select_bottom_right != -1
+    }
+
     /// Returns the currently selected text.
     ///
     /// @param preserve_line_breaks Specifies whether new line characters should
@@ -1714,7 +1720,7 @@ impl Screen {
 
         assert!(top >= 0 && left >= 0 && bottom >= 0 && right >= 0);
 
-        for y in top..bottom {
+        for y in top..=bottom {
             let mut start = 0;
             if y == top || self.block_selection_mode {
                 start = left;
