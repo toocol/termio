@@ -8,6 +8,7 @@ use crate::{
     },
 };
 use std::time::Duration;
+use tlib::namespace::KeyCode;
 use tmui::{
     application::cursor_blinking_time,
     font::FontCalculation,
@@ -110,7 +111,21 @@ impl TerminalView {
             }
         }
 
-        self.screen_window_mut().unwrap().clear_selection();
+        if event.modifier().has(KeyboardModifier::ControlModifier)
+            && event.key_code() == KeyCode::KeyInsert
+        {
+            emit!(self, control_insert_detected());
+        }
+
+        if event.modifier().has(KeyboardModifier::ShiftModifier)
+            && event.key_code() == KeyCode::KeyInsert
+        {
+            emit!(self, shift_insert_detected());
+        }
+
+        if event.key_code() != KeyCode::KeyControl {
+            self.screen_window_mut().unwrap().clear_selection();
+        }
 
         emit!(
             self,

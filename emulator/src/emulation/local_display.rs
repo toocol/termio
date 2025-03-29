@@ -15,6 +15,7 @@ pub struct LocalDisplay {
     colmuns: i32,
     #[derivative(Default(value = "true"))]
     is_executing: bool,
+    is_tabing: bool,
 
     u_stack: Vec<Vec<wchar_t>>,
     d_stack: Vec<Vec<wchar_t>>,
@@ -110,7 +111,10 @@ impl LocalDisplay {
                     String::new()
                 }
             }
-            KeyCode::KeyTab => String::new(),
+            KeyCode::KeyTab => {
+                self.is_tabing = true;
+                String::new()
+            }
             _ => {
                 let str = evt.text();
                 if !str.is_empty() {
@@ -125,6 +129,16 @@ impl LocalDisplay {
                 }
             }
         }
+    }
+
+    #[inline]
+    pub fn is_tabing(&self) -> bool {
+        self.is_tabing
+    }
+
+    #[inline]
+    pub fn set_tabing(&mut self, tabing: bool) {
+        self.is_tabing = tabing
     }
 
     #[inline]

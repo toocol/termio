@@ -337,6 +337,10 @@ pub trait Emulation: 'static + EmulationSignal + ActionExt {
     fn set_key_binding(&mut self, id: &str);
 
     fn set_use_local_display(&mut self, use_local_display: bool);
+
+    fn handle_control_insert(&mut self);
+
+    fn handle_shift_insert(&mut self);
 }
 
 impl BaseEmulation {
@@ -701,6 +705,12 @@ impl Emulation for BaseEmulation {
     fn set_use_local_display(&mut self, use_local_display: bool) {
         self.use_local_display = use_local_display;
     }
+
+    #[inline]
+    fn handle_control_insert(&mut self) {}
+
+    #[inline]
+    fn handle_shift_insert(&mut self) {}
 }
 
 impl BaseEmulation {

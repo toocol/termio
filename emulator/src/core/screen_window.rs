@@ -248,6 +248,12 @@ impl ScreenWindow {
             .is_selected(column, (line + current_line).min(end_line))
     }
 
+    /// Return true if there has selection.
+    #[inline]
+    pub fn has_selected(&self) -> bool {
+        self.screen().has_selected()
+    }
+
     /// Clears the current selection.
     pub fn clear_selection(&mut self) {
         unsafe { self.screen.as_mut().unwrap().as_mut().clear_selection() };
