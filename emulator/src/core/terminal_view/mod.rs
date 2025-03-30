@@ -21,6 +21,7 @@ use crate::tools::{
 };
 use derivative::Derivative;
 use std::{ptr::NonNull, sync::atomic::Ordering, time::Duration};
+use tlib::global_watch;
 use tmui::{
     application,
     clipboard::ClipboardLevel,
@@ -46,6 +47,7 @@ use tmui::{
 
 #[extends(Widget, Layout(Stack))]
 #[derive(Childrenable)]
+#[global_watch(MouseMove)]
 pub struct TerminalView {
     extended_char_table: ExtendedCharTable,
 
@@ -942,5 +944,16 @@ impl TerminalView {
     #[inline]
     pub fn enable_bell(&mut self) {
         self.allow_bell = true;
+    }
+}
+
+impl GlobalWatchImpl for TerminalView {
+    fn on_global_mouse_move(&mut self, evt: &MouseEvent) -> bool {
+        if self.act_sel != 0 {
+            self.handle_mouse_move(evt);
+            true
+        } else {
+            false
+        }
     }
 }
