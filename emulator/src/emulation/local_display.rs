@@ -3,7 +3,7 @@ use tmui::{prelude::Point, tlib::namespace::KeyCode};
 use wchar::wchar_t;
 use widestring::WideString;
 
-use crate::tools::event::KeyPressedEvent;
+use crate::{core::uwchar_t, tools::event::KeyPressedEvent};
 
 #[derive(Debug, Derivative)]
 #[derivative(Default)]
@@ -120,8 +120,10 @@ impl LocalDisplay {
                 if !str.is_empty() {
                     let utf16_text = WideString::from_str(&str);
                     let len = utf16_text.len();
+                    #[allow(clippy::useless_transmute)]
+                    let slice: Vec<wchar_t> = unsafe { std::mem::transmute(utf16_text.into_vec()) };
                     self.buffer
-                        .splice(self.cursor..self.cursor, utf16_text.into_vec());
+                        .splice(self.cursor..self.cursor, slice);
                     self.cursor += len;
                     "\u{200B}".to_string()
                 } else {
@@ -158,6 +160,8 @@ impl LocalDisplay {
     #[inline]
     fn get_display_string_from(&self, from: usize) -> String {
         let slice = &self.buffer[from..];
+        #[allow(clippy::useless_transmute)]
+        let slice: &[uwchar_t] = unsafe { std::mem::transmute(slice) };
         let mut string = WideString::from_vec(slice.to_vec()).to_string_lossy();
         let cursor_pos = self.cursor_to_position();
         string.push_str(&format!("\x1B[{};{}H", cursor_pos.0, cursor_pos.1));

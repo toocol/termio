@@ -245,7 +245,7 @@ impl ExtendedCharTable {
         let buffer = map.get(&hash);
         if let Some(buffer) = buffer {
             *length = buffer[0];
-            let mut ret = vec![0u16; buffer.len() - 1];
+            let mut ret = vec![wchar_t::default(); buffer.len() - 1];
             ret.copy_from_slice(&buffer[1..]);
             Some(ret)
         } else {

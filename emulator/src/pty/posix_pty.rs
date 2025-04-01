@@ -1,6 +1,6 @@
 use crate::{pty_mut, pty_ref};
-
 use super::{pty_receive_pool, Pty, PtySignals};
+use cli::session::SessionPropsId;
 use pty::prelude::Fork;
 use std::{
     os::fd::{AsRawFd, RawFd},
@@ -32,7 +32,13 @@ impl ObjectSubclass for PosixPty {
 impl ObjectImpl for PosixPty {}
 
 impl Pty for PosixPty {
-    fn start(&mut self, id: SessionPropsId, program: &str, arguments: Vec<&str>) -> bool {
+    fn start(
+        &mut self,
+        id: SessionPropsId,
+        program: &str,
+        arguments: Vec<&str>,
+        enviroment: Vec<&str>,
+    ) -> bool{
         // Generate the program arguments.
         let mut args = String::new();
         arguments.iter().for_each(|arg| {
@@ -42,7 +48,7 @@ impl Pty for PosixPty {
 
         // Generate the program envs.
         let mut envs = String::new();
-        enviroments.iter().for_each(|env| {
+        enviroment.iter().for_each(|env| {
             envs.push_str("export ");
             envs.push_str(env);
             envs.push('\n');
@@ -127,7 +133,9 @@ impl Pty for PosixPty {
     }
 
     #[inline]
-    fn on_app_exit(&mut self) {}
+    fn on_window_closed(&mut self) {
+        
+    }
 }
 
 impl PtySignals for PosixPty {}

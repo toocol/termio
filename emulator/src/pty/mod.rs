@@ -8,8 +8,6 @@ use cli::session::SessionPropsId;
 use once_cell::sync::Lazy;
 #[cfg(not(target_os = "windows"))]
 use pty::prelude::Fork;
-#[cfg(not(target_os = "windows"))]
-use std::io::Read;
 use std::{
     collections::HashMap,
     path::PathBuf,
@@ -133,20 +131,20 @@ impl PtyReceivePool {
 
                 #[cfg(not(target_os = "windows"))]
                 {
-                    let ptys = ptys.clone();
-                    tasync!(move {
-                        ptys.lock().unwrap().iter().for_each(|(_, pty)| {
-                            if let Some(mut master) = pty.lock().unwrap().is_parent().ok() {
-                                let mut data = String::new();
-                                // Is that blocked read?
-                                master.read_to_string(&mut data).unwrap();
-                                if !data.is_empty() {
-                                    emit!(signal.clone(), data);
-                                }
-                            }
-                        });
-                        ()
-                    });
+                    // let ptys = ptys.clone();
+                    // tasync!(move {
+                    //     ptys.lock().unwrap().iter().for_each(|(_, pty)| {
+                    //         if let Some(mut master) = pty.lock().unwrap().is_parent().ok() {
+                    //             let mut data = String::new();
+                    //             // Is that blocked read?
+                    //             master.read_to_string(&mut data).unwrap();
+                    //             if !data.is_empty() {
+                    //                 emit!(signal.clone(), data);
+                    //             }
+                    //         }
+                    //     });
+                    //     ()
+                    // });
                 }
 
                 std::thread::park_timeout(Duration::from_millis(10));
@@ -163,7 +161,7 @@ impl PtyReceivePool {
     #[inline]
     #[cfg(not(target_os = "windows"))]
     pub fn add_pty(&mut self, id: SessionPropsId, pty: Arc<Mutex<Fork>>) {
-        self.ptys.lock().unwrap().insert(id, (pty, signal));
+        self.ptys.lock().unwrap().insert(id, pty);
     }
 
     #[inline]

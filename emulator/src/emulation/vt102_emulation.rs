@@ -2369,10 +2369,14 @@ is missing."#;
         let text_slice = utf16_text.as_slice();
         let mut execution_finish = false;
         for &ts in text_slice.iter() {
-            if ts == wch!('\u{200B}') {
+            #[allow(clippy::useless_transmute)]
+            let end: uwchar_t = unsafe { std::mem::transmute(wch!('\u{200B}')) };
+
+            if ts == end {
                 execution_finish = true;
                 continue;
             }
+
             self.receive_char(ts as wchar_t);
         }
 
