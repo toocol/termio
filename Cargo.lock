@@ -1047,9 +1047,9 @@ dependencies = [
 
 [[package]]
 name = "flate2"
-version = "1.1.0"
+version = "1.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "11faaf5a5236997af9848be0bef4db95824b1d534ebc64d0f0c6cf3e67bd38dc"
+checksum = "7ced92e76e966ca2fd84c8f7aa01a4aea65b0eb6648d72f7c8f3e2764a67fece"
 dependencies = [
  "crc32fast",
  "libz-ng-sys",
@@ -1672,10 +1672,11 @@ checksum = "8eaf4bc02d17cbdd7ff4c7438cafcdf7fb9a4613313ad11b4f8fefe7d3fa0130"
 
 [[package]]
 name = "jobserver"
-version = "0.1.32"
+version = "0.1.33"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "48d1dbcbbeb6a7fec7e059840aa538bd62aaccf972c7346c4d9d2059312853d0"
+checksum = "38f262f097c174adebe41eb73d66ae9c06b2844fb0da69969647bbddd9b0538a"
 dependencies = [
+ "getrandom 0.3.2",
  "libc",
 ]
 
@@ -1892,7 +1893,7 @@ dependencies = [
 [[package]]
 name = "macros"
 version = "0.1.0"
-source = "git+https://github.com/toocol/tmui#a30108f5ce488fdc07fec0705ed7370cf9af0eee"
+source = "git+https://github.com/toocol/tmui#483bfee73e64d1dc54ca606fdfed9f4e03664b72"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3435,7 +3436,7 @@ checksum = "1f3ccbac311fea05f86f61904b462b55fb3df8837a366dfc601a0161d0532f20"
 [[package]]
 name = "tipc"
 version = "0.1.0"
-source = "git+https://github.com/toocol/tmui#a30108f5ce488fdc07fec0705ed7370cf9af0eee"
+source = "git+https://github.com/toocol/tmui#483bfee73e64d1dc54ca606fdfed9f4e03664b72"
 dependencies = [
  "lazy_static",
  "log",
@@ -3453,7 +3454,7 @@ dependencies = [
 [[package]]
 name = "tlib"
 version = "0.1.0"
-source = "git+https://github.com/toocol/tmui#a30108f5ce488fdc07fec0705ed7370cf9af0eee"
+source = "git+https://github.com/toocol/tmui#483bfee73e64d1dc54ca606fdfed9f4e03664b72"
 dependencies = [
  "ahash 0.8.11",
  "bitflags 2.9.0",
@@ -3481,7 +3482,7 @@ dependencies = [
 [[package]]
 name = "tmui"
 version = "0.1.0"
-source = "git+https://github.com/toocol/tmui#a30108f5ce488fdc07fec0705ed7370cf9af0eee"
+source = "git+https://github.com/toocol/tmui#483bfee73e64d1dc54ca606fdfed9f4e03664b72"
 dependencies = [
  "ahash 0.8.11",
  "beep",

@@ -239,7 +239,7 @@ impl Session {
         let scroll_bar = scroll_area.scroll_bar_mut();
         scroll_bar.set_background(Color::TRANSPARENT);
         scroll_bar.set_color(Color::GREY_MEDIUM.with_a(150));
-        scroll_bar.set_active_color(Some(Color::GREY_MEDIUM.with_a(170)));
+        scroll_bar.set_active_color(Some(Color::GREY_LIGHT));
         scroll_bar.set_slider_radius(5.);
         scroll_bar.set_auto_hide(false);
 

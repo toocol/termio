@@ -156,6 +156,8 @@ impl TerminalView {
             return;
         }
 
+        self.act_sel = 0;
+
         let (char_line, char_column) = self.get_character_position(event.position().into());
         if event.mouse_button() == MouseButton::LeftButton {
             if self.drag_info.state == DragState::DiPending {
@@ -168,8 +170,6 @@ impl TerminalView {
                             .selected_text(self.preserve_line_breaks),
                     );
                 }
-
-                self.act_sel = 0;
 
                 if !self.mouse_marks && !event.modifier().has(KeyboardModifier::ShiftModifier) {
                     let scroll_bar = self.scroll_bar().unwrap();
