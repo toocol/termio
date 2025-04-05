@@ -145,7 +145,10 @@ impl TerminalPanel {
 
     #[inline]
     pub fn set_theme(&mut self, id: SessionPropsId, theme: Theme) {
+        self.set_background(theme.background_color());
+
         if let Some(session) = self.sessions.get_mut(&id) {
+            session.scrolled_view_mut().set_background(theme.background_color());
             session.view_mut().set_color_table(&theme.convert_entry());
         }
     }

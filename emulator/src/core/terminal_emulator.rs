@@ -89,6 +89,7 @@ impl TerminalEmulator {
 
     #[inline]
     pub fn set_theme(&mut self, id: SessionPropsId, theme: Theme) {
+        self.set_background(theme.background_color());
         self.terminal_panel.set_theme(id, theme);
     }
 }
