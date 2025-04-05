@@ -56,4 +56,9 @@ impl Theme {
     pub fn background_color(&self) -> Color {
         Color::hex(&self.background)
     }
+
+    #[inline]
+    pub fn foreground_color(&self) -> Color {
+        Color::hex(&self.foreground)
+    }
 }
