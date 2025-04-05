@@ -4,7 +4,7 @@ use std::cell::RefCell;
 use crate::pty::Pty;
 
 use super::terminal_panel::TerminalPanel;
-use cli::{constant::ProtocolType, session::SessionPropsId};
+use cli::{constant::ProtocolType, session::SessionPropsId, theme::Theme};
 use derivative::Derivative;
 use tmui::{prelude::*, tlib::object::ObjectSubclass};
 
@@ -85,5 +85,10 @@ impl TerminalEmulator {
     pub fn set_use_local_display(&mut self, id: SessionPropsId, use_local_display: bool) {
         self.terminal_panel
             .set_use_local_display(id, use_local_display);
+    }
+
+    #[inline]
+    pub fn set_theme(&mut self, id: SessionPropsId, theme: Theme) {
+        self.terminal_panel.set_theme(id, theme);
     }
 }

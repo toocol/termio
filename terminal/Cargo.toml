@@ -8,6 +8,7 @@ tmui = { git = "https://github.com/toocol/tmui" }
 
 cli = { path = "../cli/" }
 emulator = { path = "../emulator/" }
+asset = { path = "../asset/" }
 
 log4rs = "1.1.1"
 

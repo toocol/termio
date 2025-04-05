@@ -3,9 +3,12 @@ use crate::{
     config::Config,
     emulation::data_sender::DataSender,
     pty::{pty_receive_pool, Pty},
-    tools::{event::ToKeyPressedEvent, history::HistoryTypeBuffer},
+    tools::{
+        character_color::color_convert::ColorConvert, event::ToKeyPressedEvent,
+        history::HistoryTypeBuffer,
+    },
 };
-use cli::{constant::ProtocolType, session::SessionPropsId};
+use cli::{constant::ProtocolType, session::SessionPropsId, theme::Theme};
 use derivative::Derivative;
 use log::{error, warn};
 use nohash_hasher::IntMap;
@@ -137,6 +140,13 @@ impl TerminalPanel {
             session
                 .emulation_mut()
                 .set_use_local_display(use_local_display);
+        }
+    }
+
+    #[inline]
+    pub fn set_theme(&mut self, id: SessionPropsId, theme: Theme) {
+        if let Some(session) = self.sessions.get_mut(&id) {
+            session.view_mut().set_color_table(&theme.convert_entry());
         }
     }
 }
