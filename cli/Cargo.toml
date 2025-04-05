@@ -6,7 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-tmui = { git = "https://github.com/toocol/tmui"}
+tmui = { git = "https://github.com/toocol/tmui" }
 libs = { path = "../libs" }
 
 lazy_static = { workspace = true }
@@ -15,3 +15,6 @@ ssh2 = { workspace = true }
 parking_lot = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+rust-embed = { workspace = true }
+ahash = { workspace = true }
+getset = { workspace = true }

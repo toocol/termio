@@ -9,10 +9,6 @@ path = "src/lib.rs"
 name = "termio"
 path = "src/main.rs"
 
-[[bin]]
-name = "terminal"
-path = "terminal/src/main.rs"
-
 [package]
 name = "termio"
 version = "0.1.0"
@@ -54,6 +50,8 @@ flate2 = { version = "1.0.34", features = ["zlib-ng"] }
 local_ipaddress = "0.1.3"
 terminal_size = "0.2.3"
 chrono = "0.4"
+ahash = "0.8.11"
+getset = "0.1.5"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]

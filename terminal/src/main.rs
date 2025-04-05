@@ -1,11 +1,14 @@
 // #![windows_subsystem = "windows"]
-use cli::constant::ProtocolType;
+use asset::Asset;
+use cli::{constant::ProtocolType, theme::theme_mgr::ThemeMgr};
 use emulator::core::terminal_emulator::TerminalEmulator;
 use tmui::{
     application::Application, application_window::ApplicationWindow, prelude::*, widget::ChildOp,
 };
 
 fn main() {
+    ThemeMgr::loads::<Asset>("themes/builtin_themes.json");
+
     log4rs::init_file("terminal/log4rs.yaml", Default::default()).unwrap();
 
     let app = Application::builder()
@@ -29,6 +32,7 @@ fn build_ui(window: &mut ApplicationWindow) {
         if let Some(w) = win.find_id_mut(id) {
             let emulator = w.downcast_mut::<TerminalEmulator>().unwrap();
             emulator.start_session(0, ProtocolType::LocalShell);
+            emulator.set_theme(0, ThemeMgr::get("Dark").unwrap());
         }
     });
 }

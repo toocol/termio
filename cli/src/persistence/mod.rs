@@ -1,9 +1,6 @@
 pub mod mgr;
 
-use libs::{
-    err,
-    error::Error,
-};
+use libs::{err, error::Error};
 use serde::Serialize;
 use std::{
     fs::{self, File},
@@ -16,6 +13,7 @@ use crate::constant::paths::PERSISTENCE_PATH;
 pub trait Persistence: Sized + Serialize {
     const EXTENSION: &'static str;
 
+    /// If the name is "*", with load all the
     fn name() -> &'static str;
 
     fn parse(data: &str) -> Result<Self, Error>;
@@ -54,7 +52,7 @@ pub trait Persistence: Sized + Serialize {
             let mut buf = String::new();
             err!(file.read_to_string(&mut buf))?;
             if buf.is_empty() {
-                return Ok(vec![])
+                return Ok(vec![]);
             }
             Ok(vec![err!(Self::parse(&buf))?])
         }
@@ -95,12 +93,14 @@ pub trait Persistence: Sized + Serialize {
 
 #[cfg(test)]
 mod tests {
-    use std::{fs, path::PathBuf};
     use crate::{
-        auth::{connect_info::ConnectInfo, credential::Credential}, constant::{paths::PERSISTENCE_PATH, ProtocolType}, persistence::Persistence, prelude::*, session::{
-            cfg::SessionCfg, session_grp::SessionGroup, session_grp_pers::SessionGrpPers,
-        }
+        auth::{connect_info::ConnectInfo, credential::Credential},
+        constant::{paths::PERSISTENCE_PATH, ProtocolType},
+        persistence::Persistence,
+        prelude::*,
+        session::{cfg::SessionCfg, session_grp_pers::SessionGrpPers},
     };
+    use std::{fs, path::PathBuf};
 
     #[test]
     fn test_persistence() {
@@ -108,7 +108,7 @@ mod tests {
             Credential::new(
                 None,
                 ProtocolType::Ssh,
-                ConnectInfo::LocalShell("~".to_string())
+                ConnectInfo::LocalShell("~".to_string()),
             ),
             "group".to_string(),
         );
