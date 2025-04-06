@@ -155,8 +155,7 @@ pub struct TerminalView {
 
     #[children]
     resize_widget: Box<Label>,
-    resize_timer: Timer,
-
+    // resize_timer: Timer,
     line_spacing: u32,
     #[derivative(Default(value = "1."))]
     opacity: f64,

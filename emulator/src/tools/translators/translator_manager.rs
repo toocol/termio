@@ -2,7 +2,10 @@ use super::{KeyboardTranslator, KeyboardTranslatorReader};
 use crate::asset::Asset;
 use log::warn;
 use once_cell::sync::Lazy;
-use std::{collections::HashMap, ptr::{addr_of_mut, NonNull}};
+use std::{
+    collections::HashMap,
+    ptr::{addr_of_mut, NonNull},
+};
 
 const LAYOUT_PATH_PREFIX: &str = "kb-layouts/";
 const LAYOUT_PATH_SUFFIX: &str = ".keytab";
@@ -16,6 +19,13 @@ pub struct KeyboardTranslatorManager {
     translators: HashMap<String, Box<KeyboardTranslator>>,
     valid_translator_names: Vec<String>,
     have_load_all: bool,
+}
+
+impl Default for KeyboardTranslatorManager {
+    #[inline]
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl KeyboardTranslatorManager {

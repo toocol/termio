@@ -304,11 +304,7 @@ pub struct CompactHistoryScroll {
 }
 impl CompactHistoryScroll {
     pub fn new(max_nb_lines: Option<i32>) -> Self {
-        let max_nb_lines = if let Some(line) = max_nb_lines {
-            line
-        } else {
-            1000
-        };
+        let max_nb_lines = max_nb_lines.unwrap_or(1000);
 
         let mut scroll = Self {
             history_type: Rc::new(RefCell::new(CompactHistoryType::new(max_nb_lines as usize))),

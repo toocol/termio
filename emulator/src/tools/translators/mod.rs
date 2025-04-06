@@ -252,6 +252,13 @@ pub struct Entry {
     is_null: bool,
 }
 
+impl Default for Entry {
+    #[inline]
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Entry {
     pub fn new() -> Self {
         Self {

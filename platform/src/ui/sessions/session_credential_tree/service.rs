@@ -94,7 +94,6 @@ impl SessionCredentialService {
                 .register_key_released(|w, evt| {
                     if evt.key_code() == KeyCode::KeyEnter {
                         w.get_parent_mut().unwrap().hide();
-                        return;
                     }
                 });
             input_dialog.register_visibility_changed(move |w, visible| {

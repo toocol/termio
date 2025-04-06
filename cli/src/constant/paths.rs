@@ -1,1 +1,1 @@
-pub static PERSISTENCE_PATH: &'static str = "pers/";
+pub static PERSISTENCE_PATH: &str = "pers/";

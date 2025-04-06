@@ -24,7 +24,7 @@ use tmui::{
     widget::widget_ext::WidgetExt,
 };
 
-pub const SESSION_CREDENTIAL_TREE: &'static str = "SessionCredentialTree";
+pub const SESSION_CREDENTIAL_TREE: &str = "SessionCredentialTree";
 
 pub struct SessionCredentialTree;
 
@@ -43,16 +43,14 @@ impl SessionCredentialTree {
                 Ordering::Less
             } else if !a.is_extensible() && b.is_extensible() {
                 Ordering::Greater
+            } else if a.is_extensible() {
+                use SessionGrpIdx::*;
+                a.get_value::<u64>(Timestamp)
+                    .cmp(&b.get_value::<u64>(Timestamp))
             } else {
-                if a.is_extensible() {
-                    use SessionGrpIdx::*;
-                    a.get_value::<u64>(Timestamp)
-                        .cmp(&b.get_value::<u64>(Timestamp))
-                } else {
-                    use CredentialIdx::*;
-                    a.get_value::<CredentialId>(Id)
-                        .cmp(&b.get_value::<CredentialId>(Id))
-                }
+                use CredentialIdx::*;
+                a.get_value::<CredentialId>(Id)
+                    .cmp(&b.get_value::<CredentialId>(Id))
             }
         }));
         view
@@ -61,11 +59,11 @@ impl SessionCredentialTree {
 
 fn node_pressed(node: &mut TreeNode, evt: &MouseEvent) {
     match evt.mouse_button() {
-        MouseButton::LeftButton => match evt.n_press() {
-            2 => SessionCredentialService::session_node_pressed(node),
-
-            _ => {}
-        },
+        MouseButton::LeftButton => {
+            if evt.n_press() == 2 {
+                SessionCredentialService::session_node_pressed(node)
+            }
+        }
         MouseButton::RightButton => {}
         _ => {}
     }
@@ -92,7 +90,7 @@ fn node_released(node: &mut TreeNode, evt: &MouseEvent) {
                     .set_property(PROP_TREE_NODE_ID, node_id.to_value());
                 view.get_popup_mut()
                     .unwrap()
-                    .set_property(&PROP_TREE_VIEW_ID, view_id.to_value());
+                    .set_property(PROP_TREE_VIEW_ID, view_id.to_value());
             }
         }
         _ => {}
@@ -110,5 +108,5 @@ impl CtxMenuSelectionCreator for SessionCredentialTree {
 }
 
 // Constants:
-pub const PROP_TREE_NODE_ID: &'static str = "tree_node_id";
-pub const PROP_TREE_VIEW_ID: &'static str = "tree_view_id";
+pub const PROP_TREE_NODE_ID: &str = "tree_node_id";
+pub const PROP_TREE_VIEW_ID: &str = "tree_view_id";

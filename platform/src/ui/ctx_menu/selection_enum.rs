@@ -1,4 +1,5 @@
 use crate::ui::sessions::session_credential_tree;
+use std::fmt::Display;
 use tmui::{tlib::events::MouseEvent, views::list_view::list_node::ListNode};
 
 use super::CtxMenu;
@@ -9,16 +10,16 @@ pub enum SelectionEnum {
     NewGroup,
 }
 
-impl ToString for SelectionEnum {
-    #[inline]
-    fn to_string(&self) -> String {
+impl Display for SelectionEnum {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::NewSession => STR_NEW_SESSION.to_string(),
-            Self::NewGroup => STR_NEW_GROUP.to_string(),
+            Self::NewSession => f.write_str(STR_NEW_SESSION),
+            Self::NewGroup => f.write_str(STR_NEW_GROUP),
         }
     }
 }
 
+#[allow(clippy::should_implement_trait)]
 impl SelectionEnum {
     #[inline]
     pub fn from_str(str: &str) -> Self {
@@ -33,7 +34,7 @@ impl SelectionEnum {
         &self,
         ctx_menu: &mut CtxMenu,
         node: &mut ListNode,
-        evt: &MouseEvent,
+        _evt: &MouseEvent,
     ) {
         match self {
             Self::NewSession => {
@@ -51,5 +52,5 @@ impl SelectionEnum {
 }
 
 /// Constants:
-pub const STR_NEW_SESSION: &'static str = "New Session";
-pub const STR_NEW_GROUP: &'static str = "New Group";
+pub const STR_NEW_SESSION: &str = "New Session";
+pub const STR_NEW_GROUP: &str = "New Group";

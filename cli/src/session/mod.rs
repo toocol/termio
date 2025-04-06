@@ -10,7 +10,7 @@ use tmui::tlib::utils::{SnowflakeGuidGenerator, Timestamp};
 
 pub type SessionPropsId = u64;
 
-pub const ROOT_SESSION: &'static str = "Sessions";
+pub const ROOT_SESSION: &str = "Sessions";
 
 lazy_static! {
     pub static ref SESSION_MAP: Mutex<HashMap<u64, SessionProps>> = Mutex::new(HashMap::new());
@@ -29,7 +29,7 @@ pub trait SessionExt {
 
     /// Get the copy of session.
     fn get(id: SessionPropsId) -> Option<SessionProps> {
-        SESSION_MAP.lock().get(&id).map(|s| s.clone())
+        SESSION_MAP.lock().get(&id).cloned()
     }
 
     /// Remove the session.
@@ -69,7 +69,7 @@ impl SessionExt for SessionProps {
         let props = SessionProps {
             id: gen_id(),
             establish_time: Timestamp::now(),
-            credential: credential,
+            credential,
         };
 
         let id = props.id();
