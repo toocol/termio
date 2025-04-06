@@ -1909,7 +1909,7 @@ dependencies = [
 [[package]]
 name = "macros"
 version = "0.1.0"
-source = "git+https://github.com/toocol/tmui#9643aa2901803ab848770bf7021bfec179265f82"
+source = "git+https://github.com/toocol/tmui#f1fd4acf56d0cae989a6409e7f943e93eb3ff721"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3484,7 +3484,7 @@ checksum = "1f3ccbac311fea05f86f61904b462b55fb3df8837a366dfc601a0161d0532f20"
 [[package]]
 name = "tipc"
 version = "0.1.0"
-source = "git+https://github.com/toocol/tmui#9643aa2901803ab848770bf7021bfec179265f82"
+source = "git+https://github.com/toocol/tmui#f1fd4acf56d0cae989a6409e7f943e93eb3ff721"
 dependencies = [
  "lazy_static",
  "log",
@@ -3502,7 +3502,7 @@ dependencies = [
 [[package]]
 name = "tlib"
 version = "0.1.0"
-source = "git+https://github.com/toocol/tmui#9643aa2901803ab848770bf7021bfec179265f82"
+source = "git+https://github.com/toocol/tmui#f1fd4acf56d0cae989a6409e7f943e93eb3ff721"
 dependencies = [
  "ahash 0.8.11",
  "bitflags 2.9.0",
@@ -3530,7 +3530,7 @@ dependencies = [
 [[package]]
 name = "tmui"
 version = "0.1.0"
-source = "git+https://github.com/toocol/tmui#9643aa2901803ab848770bf7021bfec179265f82"
+source = "git+https://github.com/toocol/tmui#f1fd4acf56d0cae989a6409e7f943e93eb3ff721"
 dependencies = [
  "ahash 0.8.11",
  "beep",
