@@ -2480,16 +2480,23 @@ is missing."#;
     #[inline]
     fn handle_shift_insert(&mut self) {
         if let Some(text) = System::clipboard().text(ClipboardLevel::Os) {
-            text.split('\n').for_each(|line| {
+            let text: Vec<&str> = text.split('\n').collect();
+            let len = text.len();
+            text.into_iter().enumerate().for_each(|(idx, line)| {
                 if line.trim().is_empty() {
                     return;
                 }
 
-                let plain_line = strip_ansi_escapes::strip_str(line.replace("\t", ""));
+                let mut plain_line = strip_ansi_escapes::strip_str(line.replace("\t", ""));
 
-                let data = format!("{}\r\n", plain_line);
-                let evt =
-                    KeyPressedEvent::new(KeyCode::Unknown, data, KeyboardModifier::NoModifier);
+                if idx != len - 1 {
+                    plain_line = format!("{}\r\n", plain_line);
+                }
+                let evt = KeyPressedEvent::new(
+                    KeyCode::Unknown,
+                    plain_line,
+                    KeyboardModifier::NoModifier,
+                );
                 self.send_key_event(evt, true);
             });
         }
