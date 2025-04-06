@@ -24,6 +24,7 @@ derivative = { workspace = true }
 once_cell = { workspace = true }
 unicode-width = { workspace = true }
 rust-embed = { workspace = true }
+strip-ansi-escapes = { workspace = true }
 
 [target.'cfg(target_os = "windows")'.dependencies]
 winpty-rs = "0.3.11"

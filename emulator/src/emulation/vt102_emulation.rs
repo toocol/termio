@@ -2466,10 +2466,13 @@ is missing."#;
             let origin_selection = self.emulation().current_screen().selected_text(true);
             let selection = origin_selection
                 .trim_end_matches('\n')
-                .trim_start_matches('\n');
+                .trim_start_matches('\n')
+                .replace("\n", "\r\n");
 
-            if !selection.is_empty() {
-                System::clipboard().set_text(selection, ClipboardLevel::Os);
+            let plain_selection = strip_ansi_escapes::strip_str(selection);
+
+            if !plain_selection.is_empty() {
+                System::clipboard().set_text(&plain_selection, ClipboardLevel::Os);
             }
         }
     }
@@ -2482,7 +2485,9 @@ is missing."#;
                     return;
                 }
 
-                let data = format!("{}\n", line);
+                let plain_line = strip_ansi_escapes::strip_str(line.replace("\t", ""));
+
+                let data = format!("{}\r\n", plain_line);
                 let evt =
                     KeyPressedEvent::new(KeyCode::Unknown, data, KeyboardModifier::NoModifier);
                 self.send_key_event(evt, true);
