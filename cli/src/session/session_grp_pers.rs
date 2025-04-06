@@ -22,7 +22,7 @@ impl SessionGrpPers {
             name: name.to_string(),
             expand: true,
             children: HashMap::new(),
-            timestamp: Timestamp::now().as_millis()
+            timestamp: Timestamp::now().as_millis(),
         }
     }
 
@@ -79,16 +79,16 @@ impl SessionGrpPers {
         if self.name == parent {
             let grp = SessionGrpPers::new(group);
             self.children.insert(group.to_string(), grp);
-            return true
+            return true;
         }
 
         for (_, c) in self.children.iter_mut() {
             if c.add_group(parent, group) {
-                return true
+                return true;
             }
         }
 
-        return false
+        false
     }
 }
 

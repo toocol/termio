@@ -181,9 +181,9 @@ impl Screen {
     #[inline]
     pub fn fill_with_default_char(character: &mut [Character], count: i32) {
         let count = count as usize;
-        character
-            .get_mut(..count)
-            .map(|slice| slice.fill(Character::default()));
+        if let Some(slice) = character.get_mut(..count) {
+            slice.fill(Character::default())
+        }
     }
 
     #[inline]

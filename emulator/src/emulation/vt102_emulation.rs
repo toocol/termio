@@ -2058,7 +2058,7 @@ impl Emulation for VT102Emulation {
                     // ESC[ ... 48;2;<red>;<green>;<blue> ... m -or- ESC[ ...
                     // 38;2;<red>;<green>;<blue> ... m
                     i += 2;
-                    let q = self.argv[i] << 16 | self.argv[i + 1] << 8 | self.argv[i + 2];
+                    let q = (self.argv[i] << 16) | (self.argv[i + 1] << 8) | self.argv[i + 2];
                     self.process_token(
                         ty_csi_ps!(cc, self.argv[i - 2]),
                         COLOR_SPACE_RGB as wchar_t,
@@ -2482,7 +2482,7 @@ is missing."#;
         if let Some(text) = System::clipboard().text(ClipboardLevel::Os) {
             text.split('\n').for_each(|line| {
                 if line.trim().is_empty() {
-                    return
+                    return;
                 }
 
                 let data = format!("{}\n", line);

@@ -1767,7 +1767,7 @@ checksum = "c0ff37bd590ca25063e35af745c343cb7a0271906fb7b37e4813e8f79f00268d"
 dependencies = [
  "bitflags 2.9.0",
  "libc",
- "redox_syscall 0.5.10",
+ "redox_syscall 0.5.11",
 ]
 
 [[package]]
@@ -1908,7 +1908,7 @@ dependencies = [
 [[package]]
 name = "macros"
 version = "0.1.0"
-source = "git+https://github.com/toocol/tmui#fc47dc73da9eb06018662ba3e5a4412420d5c2d0"
+source = "git+https://github.com/toocol/tmui#9643aa2901803ab848770bf7021bfec179265f82"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2268,7 +2268,7 @@ checksum = "1e401f977ab385c9e4e3ab30627d6f26d00e2c73eef317493c4ec6d468726cf8"
 dependencies = [
  "cfg-if 1.0.0",
  "libc",
- "redox_syscall 0.5.10",
+ "redox_syscall 0.5.11",
  "smallvec",
  "windows-targets 0.52.6",
 ]
@@ -2709,9 +2709,9 @@ dependencies = [
 
 [[package]]
 name = "redox_syscall"
-version = "0.5.10"
+version = "0.5.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0b8c0c260b63a8219631167be35e6a988e9554dbd323f8bd08439c8ed1302bd1"
+checksum = "d2f103c6d277498fbceb16e84d317e2a400f160f46904d5f5410848c829511a3"
 dependencies = [
  "bitflags 2.9.0",
 ]
@@ -3474,7 +3474,7 @@ checksum = "1f3ccbac311fea05f86f61904b462b55fb3df8837a366dfc601a0161d0532f20"
 [[package]]
 name = "tipc"
 version = "0.1.0"
-source = "git+https://github.com/toocol/tmui#fc47dc73da9eb06018662ba3e5a4412420d5c2d0"
+source = "git+https://github.com/toocol/tmui#9643aa2901803ab848770bf7021bfec179265f82"
 dependencies = [
  "lazy_static",
  "log",
@@ -3492,7 +3492,7 @@ dependencies = [
 [[package]]
 name = "tlib"
 version = "0.1.0"
-source = "git+https://github.com/toocol/tmui#fc47dc73da9eb06018662ba3e5a4412420d5c2d0"
+source = "git+https://github.com/toocol/tmui#9643aa2901803ab848770bf7021bfec179265f82"
 dependencies = [
  "ahash 0.8.11",
  "bitflags 2.9.0",
@@ -3520,7 +3520,7 @@ dependencies = [
 [[package]]
 name = "tmui"
 version = "0.1.0"
-source = "git+https://github.com/toocol/tmui#fc47dc73da9eb06018662ba3e5a4412420d5c2d0"
+source = "git+https://github.com/toocol/tmui#9643aa2901803ab848770bf7021bfec179265f82"
 dependencies = [
  "ahash 0.8.11",
  "beep",
@@ -3556,9 +3556,9 @@ dependencies = [
 
 [[package]]
 name = "tokio"
-version = "1.44.1"
+version = "1.44.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f382da615b842244d4b8738c82ed1275e6c5dd90c459a30941cd07080b06c91a"
+checksum = "e6b88822cbe49de4185e3a4cbf8321dd487cf5fe0c5c65695fef6346371e9c48"
 dependencies = [
  "backtrace",
  "bytes",

@@ -100,7 +100,7 @@ impl EditWindow {
 
         self.window().call_response(move |win| {
             let sct = win
-                .find_name_mut(&SESSION_CREDENTIAL_TREE)
+                .find_name_mut(SESSION_CREDENTIAL_TREE)
                 .unwrap()
                 .downcast_mut::<TreeView>()
                 .unwrap();

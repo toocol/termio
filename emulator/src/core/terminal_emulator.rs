@@ -9,7 +9,7 @@ use derivative::Derivative;
 use tmui::{prelude::*, tlib::object::ObjectSubclass};
 
 thread_local! {
-    static EMULATOR_ID: RefCell<ObjectId> = RefCell::new(0);
+    static EMULATOR_ID: RefCell<ObjectId> = const { RefCell::new(0) };
 }
 
 /*
@@ -88,13 +88,13 @@ impl TerminalEmulator {
     }
 
     #[inline]
-    pub fn set_theme(&mut self, id: SessionPropsId, theme: &Theme) {
+    pub fn set_theme(&mut self, theme: &Theme) {
         self.set_background(theme.background_color());
-        self.terminal_panel.set_theme(id, theme);
+        self.terminal_panel.set_theme(theme);
     }
 
     #[inline]
-    pub fn set_font(&mut self, font: Font) {
+    pub fn set_terminal_font(&mut self, font: Font) {
         self.terminal_panel.set_terminal_font(font);
     }
 }

@@ -55,7 +55,7 @@ pub struct PlainTextDecoder<'a> {
     line_positions: Vec<i32>,
 }
 
-impl<'a> PlainTextDecoder<'a> {
+impl PlainTextDecoder<'_> {
     pub fn new() -> Self {
         Self {
             output: None,
