@@ -488,10 +488,11 @@ impl Screen {
                 .resize(self.cursor_x as usize, Character::default())
         }
 
-        for _ in 0..n {
-            self.screen_lines[self.cursor_y as usize]
-                .insert(self.cursor_x as usize, Character::default());
-        }
+        let line = &mut self.screen_lines[self.cursor_y as usize];
+        line.splice(
+            self.cursor_x as usize..self.cursor_x as usize,
+            std::iter::repeat(Character::default()).take(n as usize),
+        );
 
         if self.screen_lines[self.cursor_y as usize].len() > self.columns as usize {
             self.screen_lines[self.cursor_y as usize]
@@ -822,9 +823,9 @@ impl Screen {
 
         // ensure current line vector has enough elements.
         let size = self.screen_lines[self.cursor_y as usize].len();
-        if size < self.cursor_x as usize + w as usize {
-            self.screen_lines[self.cursor_y as usize]
-                .resize(self.cursor_x as usize + w as usize, Character::default());
+        let required = (self.cursor_x + w) as usize;
+        if size < required {
+            self.screen_lines[self.cursor_y as usize].resize(required, Character::default());
         }
 
         if self.get_mode(MODE_INSERT) {
@@ -1226,7 +1227,7 @@ impl Screen {
         let scr_tl = self.loc(0, self.history.get_lines());
         // Clear entire selection if it overlaps region [from, to]
         if self.select_bottom_right >= from + scr_tl && self.select_top_left <= to + scr_tl {
-            self.clear()
+            self.clear_selection();
         }
     }
 
