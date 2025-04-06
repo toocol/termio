@@ -723,4 +723,14 @@ impl BaseEmulation {
     pub fn current_screen_mut(&mut self) -> &mut Screen {
         unsafe { self.current_screen.as_mut().unwrap().as_mut() }
     }
+
+    #[inline]
+    pub fn keyboard_translator(&self) -> &KeyboardTranslator {
+        unsafe { self.key_translator.as_ref().unwrap().as_ref() }
+    }
+
+    #[inline]
+    pub fn keyboard_translator_mut(&mut self) -> &mut KeyboardTranslator {
+        unsafe { self.key_translator.as_mut().unwrap().as_mut() }
+    }
 }

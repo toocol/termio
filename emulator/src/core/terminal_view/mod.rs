@@ -850,7 +850,7 @@ impl TerminalView {
     /// @param [`suspended`] True if terminal output has been suspended and the warning
     /// message should be shown or false to indicate that terminal output has been
     /// resumed and that the warning message should disappear.
-    pub fn output_suspended(&mut self, suspended: bool) {
+    pub fn output_suspended(&mut self, _suspended: bool) {
         todo!()
     }
 
@@ -949,7 +949,11 @@ impl TerminalView {
 impl GlobalWatchImpl for TerminalView {
     fn on_global_mouse_move(&mut self, evt: &MouseEvent) -> bool {
         if self.act_sel != 0 {
-            self.handle_mouse_move(evt);
+            let mut evt = evt.clone();
+            let widget_pos = self.map_to_widget(&evt.position().into());
+            evt.set_position((widget_pos.x(), widget_pos.y()));
+
+            self.handle_mouse_move(&evt);
             true
         } else {
             false
