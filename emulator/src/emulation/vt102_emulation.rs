@@ -2466,8 +2466,7 @@ is missing."#;
             let origin_selection = self.emulation().current_screen().selected_text(true);
             let selection = origin_selection
                 .trim_end_matches('\n')
-                .trim_start_matches('\n')
-                .replace("\n", "\r\n");
+                .trim_start_matches('\n');
 
             let plain_selection = strip_ansi_escapes::strip_str(selection);
 
@@ -2490,7 +2489,7 @@ is missing."#;
                 let mut plain_line = strip_ansi_escapes::strip_str(line.replace("\t", ""));
 
                 if idx != len - 1 {
-                    plain_line = format!("{}\r\n", plain_line);
+                    plain_line = format!("{}\r", plain_line);
                 }
                 let evt = KeyPressedEvent::new(
                     KeyCode::Unknown,
