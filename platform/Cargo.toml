@@ -5,8 +5,12 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[features]
+default = []
+x11 = ["tmui/x11"]
+
 [dependencies]
-tmui = { workspace = true }
+tmui = { git = "https://github.com/toocol/tmui" }
 
 asset = { path = "../asset/" }
 emulator = { path = "../emulator/" }

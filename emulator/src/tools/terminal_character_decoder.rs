@@ -155,7 +155,7 @@ impl<'a> TerminalCharacterDecoder<'a> for PlainTextDecoder<'a> {
             if i >= output_count {
                 break;
             }
-            #[cfg(target_os = "macos")]
+            #[cfg(not(target_os = "windows"))]
             plain_text.push_slice([character[i as usize].character_union.data() as u32]);
             #[cfg(target_os = "windows")]
             plain_text.push_slice([character[i as usize].character_union.data()]);

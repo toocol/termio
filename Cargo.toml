@@ -16,11 +16,9 @@ edition = "2021"
 
 [features]
 default = []
-x11 = ["cli/x11", "emulator/x11", "tmui/x11"]
+x11 = ["cli/x11", "emulator/x11", "platform/x11", "tmui/x11"]
 
 [workspace.dependencies]
-tmui = { git = "https://github.com/toocol/tmui" }
-
 log = "0.4"
 log4rs = "1.1.1"
 serde = { version = "1.0", features = ["derive"] }
@@ -60,7 +58,7 @@ strip-ansi-escapes = "0.2.1"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
-tmui = { workspace = true }
+tmui = { git = "https://github.com/toocol/tmui" }
 
 libs = { path = "libs/" }
 cli = { path = "cli/" }

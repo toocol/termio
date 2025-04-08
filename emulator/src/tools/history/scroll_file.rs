@@ -50,7 +50,7 @@ impl HistoryFile {
 
         self.read_write_balance += 1;
 
-        #[cfg(target_os = "macos")]
+        #[cfg(not(target_os = "windows"))]
         let rc = unsafe { lseek(self.ion, self.length as i64, SEEK_SET) };
         #[cfg(target_os = "windows")]
         let rc = unsafe { lseek(self.ion, self.length as i32, SEEK_SET) };
@@ -59,7 +59,7 @@ impl HistoryFile {
             return;
         }
 
-        #[cfg(target_os = "macos")]
+        #[cfg(not(target_os = "windows"))]
         let rc = unsafe { write(self.ion, bytes as *const c_void, len as usize) };
         #[cfg(target_os = "windows")]
         let rc = unsafe { write(self.ion, bytes as *const c_void, len as u32) };
@@ -93,7 +93,7 @@ impl HistoryFile {
                 return;
             }
 
-            #[cfg(target_os = "macos")]
+            #[cfg(not(target_os = "windows"))]
             let rc = unsafe { lseek(self.ion, loc as i64, SEEK_SET) };
             #[cfg(target_os = "windows")]
             let rc = unsafe { lseek(self.ion, loc, SEEK_SET) };
@@ -101,7 +101,7 @@ impl HistoryFile {
                 error!("`HistoryFile` get(): lseek failed.");
                 return;
             }
-            #[cfg(target_os = "macos")]
+            #[cfg(not(target_os = "windows"))]
             let rc = unsafe { read(self.ion, bytes as *mut c_void, len as usize) };
             #[cfg(target_os = "windows")]
             let rc = unsafe { read(self.ion, bytes as *mut c_void, len as u32) };
