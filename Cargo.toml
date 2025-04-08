@@ -14,8 +14,12 @@ name = "termio"
 version = "0.1.0"
 edition = "2021"
 
+[features]
+default = []
+x11 = ["cli/x11", "emulator/x11", "tmui/x11"]
+
 [workspace.dependencies]
-tmui = { git = "https://github.com/toocol/tmui", features = [] }
+tmui = { git = "https://github.com/toocol/tmui" }
 
 log = "0.4"
 log4rs = "1.1.1"
