@@ -1,25 +1,16 @@
 #![allow(dead_code)]
 #[cfg(target_os = "windows")]
 pub mod con_pty;
+pub mod ffi;
 #[cfg(not(target_os = "windows"))]
 pub mod posix_pty;
 
 use cli::session::SessionPropsId;
-use once_cell::sync::Lazy;
 #[cfg(not(target_os = "windows"))]
 use pty::prelude::Fork;
-use std::{
-    collections::HashMap,
-    path::PathBuf,
-    ptr::addr_of_mut,
-    sync::{mpsc::Sender, Arc, Mutex, Once},
-    thread,
-    time::Duration,
-};
+use std::path::PathBuf;
 use tlib::namespace::ExitStatus;
 use tmui::{prelude::*, tlib::signals};
-#[cfg(target_os = "windows")]
-use winptyrs::PTY;
 
 impl AsMutPtr for dyn Pty {}
 
@@ -88,97 +79,4 @@ pub trait PtySignals: ActionExt {
         /// @param exit_status [`ExitStatus`](tmui::tlib::namespace::ExitStatus)
         finished(i32, ExitStatus);
     }
-}
-
-#[cfg(target_os = "windows")]
-type PtyMap = HashMap<SessionPropsId, Arc<Mutex<PTY>>>;
-#[cfg(not(target_os = "windows"))]
-type PtyMap = HashMap<SessionPropsId, Arc<Mutex<Fork>>>;
-
-#[derive(Default)]
-pub struct PtyReceivePool {
-    ptys: Arc<Mutex<PtyMap>>,
-}
-
-#[inline]
-pub fn pty_receive_pool() -> &'static mut PtyReceivePool {
-    static mut PTY_RECEIVE_POOL: Lazy<PtyReceivePool> = Lazy::new(PtyReceivePool::default);
-    unsafe { addr_of_mut!(PTY_RECEIVE_POOL).as_mut().unwrap() }
-}
-
-/// Make sure PtyReceivePool::start() only execute once.
-static ONCE: Once = Once::new();
-impl PtyReceivePool {
-    pub fn start(&self, sender: Sender<(SessionPropsId, Vec<u8>)>) {
-        ONCE.call_once(|| {
-            let ptys = self.ptys.clone();
-
-            thread::spawn(move || loop {
-                #[cfg(target_os = "windows")]
-                ptys.lock().unwrap().iter().for_each(|(id, pty)| {
-                    let mut data = vec![];
-                    while let Ok(d) = pty.lock().unwrap().read(u32::MAX, false) {
-                        if !d.is_empty() {
-                            data.extend_from_slice(&d.into_encoded_bytes());
-                        } else {
-                            break;
-                        }
-                    }
-                    if !data.is_empty() {
-                        let _ = sender.send((*id, data));
-                    }
-                });
-
-                #[cfg(not(target_os = "windows"))]
-                {
-                    // let ptys = ptys.clone();
-                    // tasync!(move {
-                    //     ptys.lock().unwrap().iter().for_each(|(_, pty)| {
-                    //         if let Some(mut master) = pty.lock().unwrap().is_parent().ok() {
-                    //             let mut data = String::new();
-                    //             // Is that blocked read?
-                    //             master.read_to_string(&mut data).unwrap();
-                    //             if !data.is_empty() {
-                    //                 emit!(signal.clone(), data);
-                    //             }
-                    //         }
-                    //     });
-                    //     ()
-                    // });
-                }
-
-                std::thread::park_timeout(Duration::from_millis(10));
-            });
-        });
-    }
-
-    #[inline]
-    #[cfg(target_os = "windows")]
-    pub fn add_pty(&mut self, id: SessionPropsId, pty: Arc<Mutex<PTY>>) {
-        self.ptys.lock().unwrap().insert(id, pty);
-    }
-
-    #[inline]
-    #[cfg(not(target_os = "windows"))]
-    pub fn add_pty(&mut self, id: SessionPropsId, pty: Arc<Mutex<Fork>>) {
-        self.ptys.lock().unwrap().insert(id, pty);
-    }
-
-    #[inline]
-    pub fn remove_pty(&mut self, id: SessionPropsId) {
-        self.ptys.lock().unwrap().remove(&id);
-    }
-}
-
-#[macro_export]
-macro_rules! pty_ref {
-    ( $obj:ident ) => {
-        $obj.pty.as_ref().unwrap()
-    };
-}
-#[macro_export]
-macro_rules! pty_mut {
-    ( $obj:ident ) => {
-        $obj.pty.as_mut().unwrap()
-    };
 }

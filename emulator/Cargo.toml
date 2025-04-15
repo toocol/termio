@@ -30,9 +30,6 @@ unicode-width = { workspace = true }
 rust-embed = { workspace = true }
 strip-ansi-escapes = { workspace = true }
 
-[target.'cfg(target_os = "windows")'.dependencies]
-winpty-rs = "0.3.11"
-
 [target.'cfg(not(target_os = "windows"))'.dependencies]
 pty = "0.2.2"
 termios = "0.3.3"

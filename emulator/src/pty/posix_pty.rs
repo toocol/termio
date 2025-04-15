@@ -1,5 +1,4 @@
-use crate::{pty_mut, pty_ref};
-use super::{pty_receive_pool, Pty, PtySignals};
+use super::{Pty, PtySignals};
 use cli::session::SessionPropsId;
 use pty::prelude::Fork;
 use std::{
@@ -65,8 +64,6 @@ impl Pty for PosixPty {
         if let Some(master) = pty_mut!(self).lock().unwrap().is_parent().ok() {
             self.pid = Some(master.as_raw_fd())
         }
-
-        pty_receive_pool().add_pty(id, pty_ref!(self).clone());
 
         true
     }

@@ -6,8 +6,8 @@ fn main() {
         let library_system = "native-system";
         println!("cargo:rustc-link-lib=static={}", library_system);
 
-        let library_winpty = "winpty";
-        println!("cargo:rustc-link-lib=static={}", library_winpty);
+        let library_system = "winconpty";
+        println!("cargo:rustc-link-lib=static={}", library_system);
 
         let library_mman = "mman";
         println!("cargo:rustc-link-lib=static={}", library_mman);

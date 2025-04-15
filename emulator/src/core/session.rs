@@ -394,7 +394,7 @@ impl Session {
                 self.shell_process.as_mut().unwrap().start(
                     self.session_id,
                     "cmd.exe",
-                    vec!["/K", "prompt $P$G\u{200B}"],
+                    vec!["/K"],
                     vec![],
                 );
             }

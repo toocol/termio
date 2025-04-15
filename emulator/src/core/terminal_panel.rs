@@ -2,7 +2,7 @@ use super::session::Session;
 use crate::{
     config::Config,
     emulation::data_sender::DataSender,
-    pty::{pty_receive_pool, Pty},
+    pty::Pty,
     tools::{
         character_color::color_convert::ColorConvert, event::ToKeyPressedEvent,
         history::HistoryTypeBuffer,
@@ -10,12 +10,11 @@ use crate::{
 };
 use cli::{constant::ProtocolType, session::SessionPropsId, theme::Theme};
 use derivative::Derivative;
-use log::{error, warn};
+use log::warn;
 use nohash_hasher::IntMap;
 use std::{
     cell::RefCell,
     rc::Rc,
-    sync::mpsc::{channel, Receiver},
 };
 use tlib::{close_handler, iter_executor};
 use tmui::{
@@ -35,8 +34,6 @@ use tmui::{
 pub struct TerminalPanel {
     /// All the terminal sessions.
     sessions: IntMap<SessionPropsId, Box<Session>>,
-
-    receiver: Option<Receiver<(SessionPropsId, Vec<u8>)>>,
 }
 
 impl ObjectSubclass for TerminalPanel {
@@ -49,14 +46,6 @@ impl ObjectImpl for TerminalPanel {
 
         self.set_hexpand(true);
         self.set_vexpand(true);
-    }
-
-    #[inline]
-    fn initialize(&mut self) {
-        let (sender, receiver) = channel();
-        self.receiver = Some(receiver);
-
-        pty_receive_pool().start(sender);
     }
 }
 
@@ -158,28 +147,14 @@ impl TerminalPanel {
 
 impl IterExecutor for TerminalPanel {
     fn iter_execute(&mut self) {
-        if let Some(receiver) = self.receiver.as_ref() {
-            while let Ok((id, data)) = receiver.try_recv() {
-                if let Some(session) = self.sessions.get_mut(&id) {
-                    session
-                        .emulation_mut()
-                        .receive_data(&data, data.len() as i32, DataSender::Pty);
-                } else {
-                    error!("Get session with id `{}` is None.", id);
-                }
-            }
-        }
-
         for session in self.sessions.values_mut() {
-            if session.get_protocol_type() == ProtocolType::Custom {
-                if let Some(shell_process) = session.get_pty() {
-                    let data = shell_process.read_data();
-                    session
-                        .emulation_mut()
-                        .receive_data(&data, data.len() as i32, DataSender::Pty);
-                } else {
-                    warn!("The custom pty is not assigned.");
-                }
+            if let Some(shell_process) = session.get_pty() {
+                let data = shell_process.read_data();
+                session
+                    .emulation_mut()
+                    .receive_data(&data, data.len() as i32, DataSender::Pty);
+            } else {
+                warn!("The custom pty is not assigned.");
             }
         }
     }

@@ -1311,7 +1311,7 @@ impl VT102Emulation {
         // ignored, only the second char in ST ("\e\\") is appended to tokenBuffer.
         let mut new_value = WideString::new();
         let slice: &[uwchar_t] = unsafe {
-            std::mem::transmute(&self.token_buffer[i + 1..(self.token_buffer_pos - i - 2)])
+            std::mem::transmute(&self.token_buffer[i + 1..(self.token_buffer_pos - i - 2).max(i + 1)])
         };
         new_value.push_slice(slice);
 
