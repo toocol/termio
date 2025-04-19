@@ -184,13 +184,13 @@ impl Session {
         );
 
         let mut shell_process: Option<Box<dyn Pty>> = match protocol_type {
+            #[cfg(target_os = "windows")]
             ProtocolType::Cmd => {
-                #[cfg(target_os = "windows")]
                 let shell_process = ConPty::new();
                 Some(shell_process)
             }
+            #[cfg(target_os = "windows")]
             ProtocolType::PowerShell => {
-                #[cfg(target_os = "windows")]
                 let shell_process = ConPty::new();
                 Some(shell_process)
             }

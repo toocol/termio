@@ -10,6 +10,7 @@ use tmui::{prelude::*, tlib::object::ObjectSubclass};
 
 #[extends(Object)]
 pub struct PosixPty {
+    id: SessionPropsId,
     cols: i32,
     rows: i32,
     #[derivative(Default(value = "std::env::current_dir().unwrap()"))]
@@ -38,6 +39,7 @@ impl Pty for PosixPty {
         arguments: Vec<&str>,
         enviroment: Vec<&str>,
     ) -> bool{
+        self.id = id;
         // Generate the program arguments.
         let mut args = String::new();
         arguments.iter().for_each(|arg| {
@@ -61,7 +63,7 @@ impl Pty for PosixPty {
         let static_program = Box::leak(envs.into_boxed_str());
         self.pty = Some(Arc::new(Mutex::new(Fork::new(static_program).unwrap())));
 
-        if let Some(master) = pty_mut!(self).lock().unwrap().is_parent().ok() {
+        if let Some(master) = self.pty.as_mut().unwrap().lock().unwrap().is_parent().ok() {
             self.pid = Some(master.as_raw_fd())
         }
 
