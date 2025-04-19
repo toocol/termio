@@ -2382,7 +2382,7 @@ is missing."#;
             #[allow(clippy::char_lit_as_u8)]
             if buffer[i] == '\u{0030}' as u8
                 && len as usize - i - 1 > 3
-                && String::from_utf8(buffer[i + 1..i + 4].to_vec()).unwrap() == "B00"
+                && std::str::from_utf8(&buffer[i + 1..i + 4]) == Ok("B00")
             {
                 emit!(self, zmodem_detected());
             }

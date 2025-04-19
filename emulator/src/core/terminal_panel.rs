@@ -1,6 +1,7 @@
 use super::session::Session;
 use crate::{
     config::Config,
+    core::session::SessionSignal,
     emulation::data_sender::DataSender,
     pty::Pty,
     tools::{
@@ -8,15 +9,12 @@ use crate::{
         history::HistoryTypeBuffer,
     },
 };
-use cli::{constant::ProtocolType, session::SessionPropsId, theme::Theme};
+use cli::{constant::ProtocolType, scheme::ColorScheme, session::SessionPropsId};
 use derivative::Derivative;
 use log::warn;
 use nohash_hasher::IntMap;
-use std::{
-    cell::RefCell,
-    rc::Rc,
-};
-use tlib::{close_handler, iter_executor};
+use std::{cell::RefCell, rc::Rc};
+use tlib::{close_handler, iter_executor, signals};
 use tmui::{
     prelude::*,
     tlib::{events::KeyEvent, object::ObjectSubclass},
@@ -51,7 +49,25 @@ impl ObjectImpl for TerminalPanel {
 
 impl WidgetImpl for TerminalPanel {}
 
+pub trait TerminalPanelSignals: ActionExt {
+    signals! {
+        TerminalPanel:
+
+        /// Emit when session finished
+        session_finished(ObjectId, SessionPropsId);
+
+        /// Emit when all session closed.
+        finished(ObjectId);
+    }
+}
+impl TerminalPanelSignals for TerminalPanel {}
+
 impl TerminalPanel {
+    #[inline]
+    pub fn new() -> Box<Self> {
+        Object::new(&[])
+    }
+
     pub fn create_session(
         &mut self,
         id: SessionPropsId,
@@ -71,6 +87,13 @@ impl TerminalPanel {
         ApplicationWindow::window().layout_change(self);
 
         session.start_shell_process();
+
+        connect!(
+            session,
+            finished(),
+            self,
+            handle_session_finished(SessionPropsId)
+        );
 
         self.sessions.insert(id, session);
         self.sessions.get_mut(&id).unwrap()
@@ -133,7 +156,7 @@ impl TerminalPanel {
     }
 
     #[inline]
-    pub fn set_theme(&mut self, theme: &Theme) {
+    pub fn set_theme(&mut self, theme: &ColorScheme) {
         self.set_background(theme.background_color());
 
         self.sessions.iter_mut().for_each(|(_, session)| {
@@ -143,6 +166,29 @@ impl TerminalPanel {
             session.view_mut().set_color_table(&theme.convert_entry());
         });
     }
+
+    #[inline]
+    pub fn set_session_focus(&mut self, session_id: SessionPropsId) {
+        if let Some(session) = self.sessions.get_mut(&session_id) {
+            session.view_mut().set_focus(true);
+        }
+    }
+}
+
+/// Private functions:
+impl TerminalPanel {
+    #[inline]
+    fn handle_session_finished(&mut self, id: SessionPropsId) {
+        let panel_id = self.id();
+        if let Some(session) = self.sessions.remove(&id) {
+            self.remove_children(session.scrolled_view().id());
+            emit!(self, session_finished(panel_id, id));
+        }
+
+        if self.sessions.is_empty() {
+            emit!(self, finished(panel_id));
+        }
+    }
 }
 
 impl IterExecutor for TerminalPanel {
@@ -150,9 +196,11 @@ impl IterExecutor for TerminalPanel {
         for session in self.sessions.values_mut() {
             if let Some(shell_process) = session.get_pty() {
                 let data = shell_process.read_data();
-                session
-                    .emulation_mut()
-                    .receive_data(&data, data.len() as i32, DataSender::Pty);
+                if !data.is_empty() {
+                    session
+                        .emulation_mut()
+                        .receive_data(&data, data.len() as i32, DataSender::Pty);
+                }
             } else {
                 warn!("The custom pty is not assigned.");
             }

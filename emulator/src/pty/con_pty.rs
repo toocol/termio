@@ -8,11 +8,20 @@ use super::{
 use cli::session::SessionPropsId;
 use derivative::Derivative;
 use log::warn;
-use std::{path::PathBuf, sync::Arc, thread};
+use std::{
+    path::PathBuf,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
+    thread,
+};
+use tlib::namespace::ExitStatus;
 use tmui::{prelude::*, tipc::parking_lot::Mutex, tlib::object::ObjectSubclass};
 
 #[extends(Object)]
 pub struct ConPty {
+    id: SessionPropsId,
     cols: i32,
     rows: i32,
     #[derivative(Default(value = "std::env::current_dir().unwrap()"))]
@@ -23,7 +32,8 @@ pub struct ConPty {
     timeout: u32,
     /// Xon/Xoff flow control.
     xon_xoff: bool,
-    running: bool,
+    running: Arc<AtomicBool>,
+    emit_finished: Arc<AtomicBool>,
     data_buffer: Arc<Mutex<Vec<u8>>>,
     fd: i32,
 }
@@ -37,11 +47,12 @@ impl ObjectImpl for ConPty {}
 impl Pty for ConPty {
     fn start(
         &mut self,
-        _id: SessionPropsId,
+        id: SessionPropsId,
         program: &str,
         arguments: Vec<&str>,
         enviroments: Vec<&str>,
     ) -> bool {
+        self.id = id;
         set_utf8_mode(self.utf8_mode);
 
         let mut cmd = program.to_string();
@@ -53,13 +64,13 @@ impl Pty for ConPty {
 
         let data_buffer = self.data_buffer.clone();
         start_read_listener(fd, move |data| {
-            data_buffer.lock().extend_from_slice(&data.as_bytes());
+            data_buffer.lock().extend_from_slice(data.as_bytes());
         });
 
         // Generate the program arguments.
         if !arguments.is_empty() {
             arguments.iter().for_each(|arg| {
-                cmd.push_str(" ");
+                cmd.push(' ');
                 cmd.push_str(arg);
             });
         };
@@ -67,15 +78,20 @@ impl Pty for ConPty {
         // Generate the program envs.
         if !enviroments.is_empty() {
             enviroments.iter().for_each(|env| {
-                cmd.push_str(" ");
+                cmd.push(' ');
                 cmd.push_str(env);
             });
         };
 
+        let running = self.running.clone();
+        let emit_finished = self.emit_finished.clone();
         thread::spawn(move || {
             start_sub_process(fd, &cmd);
+            running.store(false, Ordering::Release);
+            emit_finished.store(true, Ordering::Release);
         });
-        self.running = true;
+
+        self.running.store(true, Ordering::Release);
         self.fd = fd;
         true
     }
@@ -122,7 +138,7 @@ impl Pty for ConPty {
 
     #[inline]
     fn is_running(&self) -> bool {
-        self.running
+        self.running.load(Ordering::Relaxed)
     }
 
     #[inline]
@@ -137,6 +153,9 @@ impl Pty for ConPty {
 
     #[inline]
     fn send_data(&mut self, data: String) {
+        if !self.is_running() {
+            return;
+        }
         if !self.writeable {
             warn!("The `ConPTY` is not writeable.");
             return;
@@ -146,6 +165,13 @@ impl Pty for ConPty {
 
     #[inline]
     fn read_data(&mut self) -> Vec<u8> {
+        if self.emit_finished.load(Ordering::Relaxed) {
+            self.emit_finished.store(false, Ordering::Release);
+            emit!(self, finished(self.id, ExitStatus::NormalExit));
+        }
+        if !self.is_running() {
+            return vec![];
+        }
         let mut data = vec![];
 
         let mut guard = self.data_buffer.lock();

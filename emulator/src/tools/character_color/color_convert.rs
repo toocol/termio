@@ -1,12 +1,12 @@
 use super::{ColorEntry, FontWeight, TABLE_COLORS};
-use cli::theme::Theme;
+use cli::scheme::ColorScheme;
 use tmui::prelude::Color;
 
 pub trait ColorConvert {
     fn convert_entry(&self) -> [ColorEntry; TABLE_COLORS];
 }
 
-impl ColorConvert for Theme {
+impl ColorConvert for ColorScheme {
     fn convert_entry(&self) -> [ColorEntry; TABLE_COLORS] {
         [
             // Normal colors:

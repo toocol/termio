@@ -75,8 +75,8 @@ pub trait PtySignals: ActionExt {
         PtySignals:
         /// Emitted when terminal process was finished. <br>
         ///
-        /// @param exit_code [`i32`] <br>
+        /// @param session id <br>
         /// @param exit_status [`ExitStatus`](tmui::tlib::namespace::ExitStatus)
-        finished(i32, ExitStatus);
+        finished(SessionPropsId, ExitStatus);
     }
 }

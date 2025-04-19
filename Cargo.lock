@@ -1734,9 +1734,9 @@ checksum = "830d08ce1d1d941e6b30645f1a0eb5643013d835ce3779a5fc208261dbe10f55"
 
 [[package]]
 name = "libc"
-version = "0.2.171"
+version = "0.2.172"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c19937216e9d3aa9956d9bb8dfc0b0c8beb6058fc4f7a4dc4d850edf86a237d6"
+checksum = "d750af042f7ef4f724306de029d18836c26c1765a54a6a3f094cbd23a7267ffa"
 
 [[package]]
 name = "libloading"
@@ -1897,7 +1897,7 @@ dependencies = [
 [[package]]
 name = "macros"
 version = "0.1.0"
-source = "git+https://github.com/toocol/tmui#833cb745453b72cf111a032ccd685bc6c62e244b"
+source = "git+https://github.com/toocol/tmui#4ebf1b27ba0645ce0328397f380351a70660a623"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2407,9 +2407,9 @@ dependencies = [
 
 [[package]]
 name = "proc-macro2"
-version = "1.0.94"
+version = "1.0.95"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a31971752e70b8b2686d7e46ec17fb38dad4051d94024c88df49b667caea9c84"
+checksum = "02b3e5e68a3a1a02aad3ec490a98007cbc13c37cbe84a3cd7b8e406d76e7f778"
 dependencies = [
  "unicode-ident",
 ]
@@ -2595,13 +2595,12 @@ dependencies = [
 
 [[package]]
 name = "rand"
-version = "0.9.0"
+version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3779b94aeb87e8bd4e834cee3650289ee9e0d5677f976ecdb6d219e5f4f6cd94"
+checksum = "9fbfd9d094a40bf3ae768db9361049ace4c0e04a4fd6b359518bd7b73a73dd97"
 dependencies = [
  "rand_chacha 0.9.0",
  "rand_core 0.9.3",
- "zerocopy 0.8.24",
 ]
 
 [[package]]
@@ -2663,7 +2662,7 @@ dependencies = [
  "cfg-if 0.1.10",
  "libc",
  "nix 0.29.0",
- "rand 0.9.0",
+ "rand 0.9.1",
  "winapi 0.3.9",
 ]
 
@@ -3472,7 +3471,7 @@ checksum = "1f3ccbac311fea05f86f61904b462b55fb3df8837a366dfc601a0161d0532f20"
 [[package]]
 name = "tipc"
 version = "0.1.0"
-source = "git+https://github.com/toocol/tmui#833cb745453b72cf111a032ccd685bc6c62e244b"
+source = "git+https://github.com/toocol/tmui#4ebf1b27ba0645ce0328397f380351a70660a623"
 dependencies = [
  "lazy_static",
  "log",
@@ -3490,7 +3489,7 @@ dependencies = [
 [[package]]
 name = "tlib"
 version = "0.1.0"
-source = "git+https://github.com/toocol/tmui#833cb745453b72cf111a032ccd685bc6c62e244b"
+source = "git+https://github.com/toocol/tmui#4ebf1b27ba0645ce0328397f380351a70660a623"
 dependencies = [
  "ahash 0.8.11",
  "bitflags 2.9.0",
@@ -3518,7 +3517,7 @@ dependencies = [
 [[package]]
 name = "tmui"
 version = "0.1.0"
-source = "git+https://github.com/toocol/tmui#833cb745453b72cf111a032ccd685bc6c62e244b"
+source = "git+https://github.com/toocol/tmui#4ebf1b27ba0645ce0328397f380351a70660a623"
 dependencies = [
  "ahash 0.8.11",
  "beep",

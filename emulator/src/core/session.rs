@@ -83,7 +83,7 @@ pub trait SessionSignal: ActionExt {
         started();
 
         /// Emitted when the terminal process exits.
-        finished();
+        finished(SessionPropsId);
 
         /// Emitted when output is received from the terminal process.
         ///
@@ -184,11 +184,14 @@ impl Session {
         );
 
         let mut shell_process: Option<Box<dyn Pty>> = match protocol_type {
-            ProtocolType::LocalShell => {
+            ProtocolType::Cmd => {
                 #[cfg(target_os = "windows")]
                 let shell_process = ConPty::new();
-                #[cfg(not(target_os = "windows"))]
-                let mut shell_process = PosixPty::new();
+                Some(shell_process)
+            }
+            ProtocolType::PowerShell => {
+                #[cfg(target_os = "windows")]
+                let shell_process = ConPty::new();
                 Some(shell_process)
             }
             ProtocolType::Custom => pty,
@@ -198,7 +201,12 @@ impl Session {
         if let Some(ref mut shell_process) = shell_process {
             // Bind connections between `session` and it's `shell_process`:
             shell_process.set_utf8_mode(true);
-            connect!(shell_process, finished(), session, done(i32, ExitStatus));
+            connect!(
+                shell_process,
+                finished(),
+                session,
+                done(SessionPropsId, ExitStatus)
+            );
 
             connect!(emulation, send_data(), shell_process, send_data(String));
             connect!(
@@ -264,7 +272,7 @@ impl Session {
 
     pub fn bind_view_to_emulation(&mut self) {
         let terminal_view = nonnull_mut!(self.view);
-        connect!(self, finished(), terminal_view, terminate());
+        connect!(self, finished(), terminal_view, terminate(SessionPropsId));
 
         let emulation = self.emulation_mut();
 
@@ -389,12 +397,21 @@ impl Session {
     #[inline]
     pub fn start_shell_process(&mut self) {
         match self.protocol_type {
-            ProtocolType::LocalShell => {
+            ProtocolType::Cmd => {
                 #[cfg(target_os = "windows")]
                 self.shell_process.as_mut().unwrap().start(
                     self.session_id,
                     "cmd.exe",
                     vec!["/K"],
+                    vec![],
+                );
+            }
+            ProtocolType::PowerShell => {
+                #[cfg(target_os = "windows")]
+                self.shell_process.as_mut().unwrap().start(
+                    self.session_id,
+                    "PowerShell.exe",
+                    vec![""],
                     vec![],
                 );
             }
@@ -413,6 +430,10 @@ impl Session {
     // private
     ///////////////////////////////////////////////////////////////////////////////////////////
     fn update_terminal_size(&mut self) {
+        if self.shell_process.is_none() {
+            return;
+        }
+
         let mut min_lines = -1;
         let mut min_columns = -1;
 
@@ -469,7 +490,7 @@ impl Session {
     }
 
     #[inline]
-    pub fn done(&mut self, _exit_code: i32, _exit_status: ExitStatus) {
-        emit!(self, finished());
+    pub fn done(&mut self, id: SessionPropsId, _exit_status: ExitStatus) {
+        emit!(self, finished(id));
     }
 }
