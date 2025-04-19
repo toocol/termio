@@ -1311,7 +1311,7 @@ impl VT102Emulation {
         // ignored, only the second char in ST ("\e\\") is appended to tokenBuffer.
         let mut new_value = WideString::new();
         let slice: &[uwchar_t] = unsafe {
-            std::mem::transmute(&self.token_buffer[i + 1..(self.token_buffer_pos - i - 2)])
+            std::mem::transmute(&self.token_buffer[i + 1..(self.token_buffer_pos - i - 2).max(i + 1)])
         };
         new_value.push_slice(slice);
 
@@ -2382,7 +2382,7 @@ is missing."#;
             #[allow(clippy::char_lit_as_u8)]
             if buffer[i] == '\u{0030}' as u8
                 && len as usize - i - 1 > 3
-                && String::from_utf8(buffer[i + 1..i + 4].to_vec()).unwrap() == "B00"
+                && std::str::from_utf8(&buffer[i + 1..i + 4]) == Ok("B00")
             {
                 emit!(self, zmodem_detected());
             }

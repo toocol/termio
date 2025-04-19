@@ -1,19 +1,27 @@
-use crate::{pty_mut, pty_ref};
+use super::{
+    ffi::winconpty::{
+        close_conpty, open_conpty, resize_conpty, set_utf8_mode, start_read_listener,
+        start_sub_process, write_data,
+    },
+    Pty, PtySignals,
+};
 use cli::session::SessionPropsId;
 use derivative::Derivative;
 use log::warn;
 use std::{
-    ffi::OsString,
     path::PathBuf,
-    sync::{Arc, Mutex},
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
+    thread,
 };
-use winptyrs::{AgentConfig, MouseMode, PTYArgs, PTYBackend, PTY};
-
-use super::{pty_receive_pool, Pty, PtySignals};
-use tmui::{prelude::*, tlib::object::ObjectSubclass};
+use tlib::namespace::ExitStatus;
+use tmui::{prelude::*, tipc::parking_lot::Mutex, tlib::object::ObjectSubclass};
 
 #[extends(Object)]
 pub struct ConPty {
+    id: SessionPropsId,
     cols: i32,
     rows: i32,
     #[derivative(Default(value = "std::env::current_dir().unwrap()"))]
@@ -24,8 +32,10 @@ pub struct ConPty {
     timeout: u32,
     /// Xon/Xoff flow control.
     xon_xoff: bool,
-    running: bool,
-    pty: Option<Arc<Mutex<PTY>>>,
+    running: Arc<AtomicBool>,
+    emit_finished: Arc<AtomicBool>,
+    data_buffer: Arc<Mutex<Vec<u8>>>,
+    fd: i32,
 }
 
 impl ObjectSubclass for ConPty {
@@ -42,59 +52,47 @@ impl Pty for ConPty {
         arguments: Vec<&str>,
         enviroments: Vec<&str>,
     ) -> bool {
-        let cmd = OsString::from(program);
+        self.id = id;
+        set_utf8_mode(self.utf8_mode);
 
-        let pty_args = PTYArgs {
-            cols: self.cols,
-            rows: self.rows,
-            mouse_mode: MouseMode::WINPTY_MOUSE_MODE_NONE,
-            timeout: self.timeout,
-            agent_config: AgentConfig::WINPTY_FLAG_COLOR_ESCAPES,
-        };
+        let mut cmd = program.to_string();
 
-        self.pty = Some(Arc::new(Mutex::new(
-            PTY::new_with_backend(&pty_args, PTYBackend::ConPTY).unwrap(),
-        )));
+        let fd = open_conpty(self.cols, self.rows);
+        if fd == 0 {
+            return false;
+        }
+
+        let data_buffer = self.data_buffer.clone();
+        start_read_listener(fd, move |data| {
+            data_buffer.lock().extend_from_slice(data.as_bytes());
+        });
 
         // Generate the program arguments.
-        let args = if arguments.is_empty() {
-            None
-        } else {
-            let mut args = OsString::new();
+        if !arguments.is_empty() {
             arguments.iter().for_each(|arg| {
-                args.push(arg);
-                args.push(" ");
+                cmd.push(' ');
+                cmd.push_str(arg);
             });
-            Some(args)
         };
 
         // Generate the program envs.
-        let envs = if enviroments.is_empty() {
-            None
-        } else {
-            let mut envs = OsString::new();
+        if !enviroments.is_empty() {
             enviroments.iter().for_each(|env| {
-                envs.push(env);
-                envs.push(" ");
+                cmd.push(' ');
+                cmd.push_str(env);
             });
-            Some(envs)
         };
 
-        pty_mut!(self)
-            .lock()
-            .unwrap()
-            .spawn(
-                cmd,
-                args,
-                Some(self.working_directory.as_os_str().to_os_string()),
-                envs,
-            )
-            .unwrap();
+        let running = self.running.clone();
+        let emit_finished = self.emit_finished.clone();
+        thread::spawn(move || {
+            start_sub_process(fd, &cmd);
+            running.store(false, Ordering::Release);
+            emit_finished.store(true, Ordering::Release);
+        });
 
-        pty_receive_pool().add_pty(id, pty_ref!(self).clone());
-
-        self.running = true;
-
+        self.running.store(true, Ordering::Release);
+        self.fd = fd;
         true
     }
 
@@ -122,9 +120,10 @@ impl Pty for ConPty {
     fn set_window_size(&mut self, cols: i32, rows: i32) {
         self.cols = cols;
         self.rows = rows;
-        if let Some(ref pty) = self.pty {
-            pty.lock().unwrap().set_size(cols, rows).unwrap()
+        if self.fd == 0 {
+            return;
         }
+        resize_conpty(self.fd, cols, rows);
     }
 
     #[inline]
@@ -139,7 +138,7 @@ impl Pty for ConPty {
 
     #[inline]
     fn is_running(&self) -> bool {
-        self.running
+        self.running.load(Ordering::Relaxed)
     }
 
     #[inline]
@@ -154,24 +153,38 @@ impl Pty for ConPty {
 
     #[inline]
     fn send_data(&mut self, data: String) {
+        if !self.is_running() {
+            return;
+        }
         if !self.writeable {
             warn!("The `ConPTY` is not writeable.");
             return;
         }
-        pty_mut!(self)
-            .lock()
-            .unwrap()
-            .write(OsString::from(data))
-            .unwrap();
+        write_data(self.fd, &data);
     }
 
     #[inline]
     fn read_data(&mut self) -> Vec<u8> {
-        unreachable!()
+        if self.emit_finished.load(Ordering::Relaxed) {
+            self.emit_finished.store(false, Ordering::Release);
+            emit!(self, finished(self.id, ExitStatus::NormalExit));
+        }
+        if !self.is_running() {
+            return vec![];
+        }
+        let mut data = vec![];
+
+        let mut guard = self.data_buffer.lock();
+        data.extend_from_slice(guard.as_slice());
+        guard.clear();
+
+        data
     }
 
     #[inline]
-    fn on_window_closed(&mut self) {}
+    fn on_window_closed(&mut self) {
+        close_conpty(self.fd);
+    }
 }
 
 impl PtySignals for ConPty {}

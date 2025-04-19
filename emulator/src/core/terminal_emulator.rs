@@ -1,11 +1,13 @@
 #![allow(dead_code)]
 use std::cell::RefCell;
 
-use crate::pty::Pty;
+use crate::{core::terminal_panel::TerminalPanelSignals, pty::Pty};
 
 use super::terminal_panel::TerminalPanel;
-use cli::{constant::ProtocolType, session::SessionPropsId, theme::Theme};
+use cli::{constant::ProtocolType, scheme::ColorScheme, session::SessionPropsId};
 use derivative::Derivative;
+use log::warn;
+use nohash_hasher::IntMap;
 use tmui::{prelude::*, tlib::object::ObjectSubclass};
 
 thread_local! {
@@ -24,10 +26,9 @@ thread_local! {
 /// The terminal's main widget. Responsible for all layouts management of `TerminalView`,
 /// forward the client's input information from the ipc channel.
 #[extends(Widget, Layout(Stack))]
-#[derive(Childrenable)]
 pub struct TerminalEmulator {
-    #[children]
-    terminal_panel: Box<TerminalPanel>,
+    index_map: IntMap<SessionPropsId, usize>,
+    session_id_map: IntMap<ObjectId, Vec<SessionPropsId>>,
 }
 
 impl ObjectSubclass for TerminalEmulator {
@@ -41,14 +42,17 @@ impl ObjectImpl for TerminalEmulator {
         self.set_vexpand(true);
         self.set_hexpand(true);
 
-        EMULATOR_ID.with(|e| *e.borrow_mut() = self.id())
+        EMULATOR_ID.with(|e| *e.borrow_mut() = self.id());
     }
 }
 
 impl WidgetImpl for TerminalEmulator {
     #[inline]
     fn font_changed(&mut self) {
-        self.terminal_panel.set_terminal_font(self.font().clone())
+        let font = self.font().clone();
+        if let Some(terminal_panel) = self.cur_terminal_panel_mut() {
+            terminal_panel.set_terminal_font(font)
+        }
     }
 }
 
@@ -68,33 +72,160 @@ impl TerminalEmulator {
         if protocol_type == ProtocolType::Custom {
             panic!("Use `create_custom_session` instead")
         }
-        self.terminal_panel.create_session(id, protocol_type);
+        let terminal_panel = TerminalPanel::new();
+        connect!(
+            terminal_panel,
+            session_finished(),
+            self,
+            handle_session_finished(ObjectId, SessionPropsId)
+        );
+        connect!(
+            terminal_panel,
+            finished(),
+            self,
+            handle_session_panel_finished(ObjectId)
+        );
+        self.session_id_map
+            .entry(terminal_panel.id())
+            .or_default()
+            .push(id);
+        self.add_child(terminal_panel);
+
+        self.switch();
+
+        let index = self.current_index;
+        self.index_map.insert(id, index);
+
+        if let Some(terminal_panel) = self.cur_terminal_panel_mut() {
+            terminal_panel.create_session(id, protocol_type);
+        }
     }
 
     #[inline]
     pub fn start_custom_session(&mut self, id: SessionPropsId, custom_pty: Box<dyn Pty>) {
-        self.terminal_panel.create_custom_session(id, custom_pty);
+        let terminal_panel = TerminalPanel::new();
+        connect!(
+            terminal_panel,
+            session_finished(),
+            self,
+            handle_session_finished(ObjectId, SessionPropsId)
+        );
+        connect!(
+            terminal_panel,
+            finished(),
+            self,
+            handle_session_panel_finished(ObjectId)
+        );
+        self.session_id_map
+            .entry(terminal_panel.id())
+            .or_default()
+            .push(id);
+        self.add_child(terminal_panel);
+
+        self.switch();
+
+        let index = self.current_index;
+        self.index_map.insert(id, index);
+
+        if let Some(terminal_panel) = self.cur_terminal_panel_mut() {
+            terminal_panel.create_custom_session(id, custom_pty);
+        }
+    }
+
+    #[inline]
+    pub fn switch_session(&mut self, id: SessionPropsId) {
+        if let Some(idx) = self.index_map.get(&id).copied() {
+            self.switch_index(idx);
+        } else {
+            warn!(
+                "[TerminalEmulator::switch_session] Get index with session id {} is None.",
+                id
+            );
+        }
+    }
+
+    #[inline]
+    pub fn remove_session(&mut self, id: SessionPropsId) {
+        if let Some(idx) = self.index_map.get(&id).copied() {
+            self.remove_index(idx);
+        } else {
+            warn!(
+                "[TerminalEmulator::switch_session] Get index with session id {} is None.",
+                id
+            );
+        }
     }
 
     #[inline]
     pub fn set_blinking_cursor(&mut self, id: SessionPropsId, blink: bool) {
-        self.terminal_panel.set_blinking_cursor(id, blink);
+        if let Some(terminal_panel) = self.cur_terminal_panel_mut() {
+            terminal_panel.set_blinking_cursor(id, blink);
+        }
     }
 
     #[inline]
     pub fn set_use_local_display(&mut self, id: SessionPropsId, use_local_display: bool) {
-        self.terminal_panel
-            .set_use_local_display(id, use_local_display);
+        if let Some(terminal_panel) = self.cur_terminal_panel_mut() {
+            terminal_panel.set_use_local_display(id, use_local_display);
+        }
     }
 
     #[inline]
-    pub fn set_theme(&mut self, theme: &Theme) {
+    pub fn set_theme(&mut self, theme: &ColorScheme) {
         self.set_background(theme.background_color());
-        self.terminal_panel.set_theme(theme);
+        if let Some(terminal_panel) = self.cur_terminal_panel_mut() {
+            terminal_panel.set_theme(theme);
+        }
     }
 
     #[inline]
     pub fn set_terminal_font(&mut self, font: Font) {
-        self.terminal_panel.set_terminal_font(font);
+        if let Some(terminal_panel) = self.cur_terminal_panel_mut() {
+            terminal_panel.set_terminal_font(font);
+        }
+    }
+
+    #[inline]
+    pub fn cur_terminal_panel_mut(&mut self) -> Option<&mut TerminalPanel> {
+        self.current_child_mut()
+            .map(|c| c.downcast_mut::<TerminalPanel>().unwrap())
+    }
+
+    #[inline]
+    pub fn cur_terminal_panel(&self) -> Option<&TerminalPanel> {
+        self.current_child()
+            .map(|c| c.downcast_ref::<TerminalPanel>().unwrap())
+    }
+}
+
+impl TerminalEmulator {
+    #[inline]
+    fn handle_session_finished(&mut self, panel_id: ObjectId, id: SessionPropsId) {
+        self.index_map.remove(&id);
+        if let Some(ids) = self.session_id_map.get_mut(&panel_id) {
+            ids.retain(|i| *i != id);
+        }
+    }
+
+    #[inline]
+    fn handle_session_panel_finished(&mut self, id: ObjectId) {
+        self.remove_children(id);
+
+        let panel_id = match self.cur_terminal_panel() {
+            Some(cur) => cur.id(),
+            None => return,
+        };
+
+        let session_id = match self.session_id_map.get(&panel_id) {
+            Some(ids) => match ids.first().copied() {
+                Some(id) => id,
+                None => return,
+            },
+            None => return,
+        };
+
+        self.cur_terminal_panel_mut()
+            .unwrap()
+            .set_session_focus(session_id);
     }
 }

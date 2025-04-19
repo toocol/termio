@@ -1,11 +1,11 @@
-pub mod theme_mgr;
+pub mod color_scheme_mgr;
 
 use getset::Getters;
 use serde::{Deserialize, Serialize};
 use tmui::prelude::Color;
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone, Getters)]
-pub struct Theme {
+pub struct ColorScheme {
     #[getset(get = "pub")]
     name: String,
     #[getset(get = "pub")]
@@ -51,7 +51,7 @@ pub struct Theme {
     bright_white: String,
 }
 
-impl Theme {
+impl ColorScheme {
     #[inline]
     pub fn background_color(&self) -> Color {
         Color::hex(&self.background)

@@ -1,23 +1,20 @@
 use super::session::Session;
 use crate::{
     config::Config,
+    core::session::SessionSignal,
     emulation::data_sender::DataSender,
-    pty::{pty_receive_pool, Pty},
+    pty::Pty,
     tools::{
         character_color::color_convert::ColorConvert, event::ToKeyPressedEvent,
         history::HistoryTypeBuffer,
     },
 };
-use cli::{constant::ProtocolType, session::SessionPropsId, theme::Theme};
+use cli::{constant::ProtocolType, scheme::ColorScheme, session::SessionPropsId};
 use derivative::Derivative;
-use log::{error, warn};
+use log::warn;
 use nohash_hasher::IntMap;
-use std::{
-    cell::RefCell,
-    rc::Rc,
-    sync::mpsc::{channel, Receiver},
-};
-use tlib::{close_handler, iter_executor};
+use std::{cell::RefCell, rc::Rc};
+use tlib::{close_handler, iter_executor, signals};
 use tmui::{
     prelude::*,
     tlib::{events::KeyEvent, object::ObjectSubclass},
@@ -35,8 +32,6 @@ use tmui::{
 pub struct TerminalPanel {
     /// All the terminal sessions.
     sessions: IntMap<SessionPropsId, Box<Session>>,
-
-    receiver: Option<Receiver<(SessionPropsId, Vec<u8>)>>,
 }
 
 impl ObjectSubclass for TerminalPanel {
@@ -50,19 +45,29 @@ impl ObjectImpl for TerminalPanel {
         self.set_hexpand(true);
         self.set_vexpand(true);
     }
-
-    #[inline]
-    fn initialize(&mut self) {
-        let (sender, receiver) = channel();
-        self.receiver = Some(receiver);
-
-        pty_receive_pool().start(sender);
-    }
 }
 
 impl WidgetImpl for TerminalPanel {}
 
+pub trait TerminalPanelSignals: ActionExt {
+    signals! {
+        TerminalPanel:
+
+        /// Emit when session finished
+        session_finished(ObjectId, SessionPropsId);
+
+        /// Emit when all session closed.
+        finished(ObjectId);
+    }
+}
+impl TerminalPanelSignals for TerminalPanel {}
+
 impl TerminalPanel {
+    #[inline]
+    pub fn new() -> Box<Self> {
+        Object::new(&[])
+    }
+
     pub fn create_session(
         &mut self,
         id: SessionPropsId,
@@ -82,6 +87,13 @@ impl TerminalPanel {
         ApplicationWindow::window().layout_change(self);
 
         session.start_shell_process();
+
+        connect!(
+            session,
+            finished(),
+            self,
+            handle_session_finished(SessionPropsId)
+        );
 
         self.sessions.insert(id, session);
         self.sessions.get_mut(&id).unwrap()
@@ -144,7 +156,7 @@ impl TerminalPanel {
     }
 
     #[inline]
-    pub fn set_theme(&mut self, theme: &Theme) {
+    pub fn set_theme(&mut self, theme: &ColorScheme) {
         self.set_background(theme.background_color());
 
         self.sessions.iter_mut().for_each(|(_, session)| {
@@ -154,32 +166,43 @@ impl TerminalPanel {
             session.view_mut().set_color_table(&theme.convert_entry());
         });
     }
+
+    #[inline]
+    pub fn set_session_focus(&mut self, session_id: SessionPropsId) {
+        if let Some(session) = self.sessions.get_mut(&session_id) {
+            session.view_mut().set_focus(true);
+        }
+    }
+}
+
+/// Private functions:
+impl TerminalPanel {
+    #[inline]
+    fn handle_session_finished(&mut self, id: SessionPropsId) {
+        let panel_id = self.id();
+        if let Some(session) = self.sessions.remove(&id) {
+            self.remove_children(session.scrolled_view().id());
+            emit!(self, session_finished(panel_id, id));
+        }
+
+        if self.sessions.is_empty() {
+            emit!(self, finished(panel_id));
+        }
+    }
 }
 
 impl IterExecutor for TerminalPanel {
     fn iter_execute(&mut self) {
-        if let Some(receiver) = self.receiver.as_ref() {
-            while let Ok((id, data)) = receiver.try_recv() {
-                if let Some(session) = self.sessions.get_mut(&id) {
-                    session
-                        .emulation_mut()
-                        .receive_data(&data, data.len() as i32, DataSender::Pty);
-                } else {
-                    error!("Get session with id `{}` is None.", id);
-                }
-            }
-        }
-
         for session in self.sessions.values_mut() {
-            if session.get_protocol_type() == ProtocolType::Custom {
-                if let Some(shell_process) = session.get_pty() {
-                    let data = shell_process.read_data();
+            if let Some(shell_process) = session.get_pty() {
+                let data = shell_process.read_data();
+                if !data.is_empty() {
                     session
                         .emulation_mut()
                         .receive_data(&data, data.len() as i32, DataSender::Pty);
-                } else {
-                    warn!("The custom pty is not assigned.");
                 }
+            } else {
+                warn!("The custom pty is not assigned.");
             }
         }
     }

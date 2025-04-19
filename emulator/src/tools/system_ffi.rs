@@ -1,6 +1,6 @@
 #![allow(dead_code)]
-use std::ffi::c_int;
 use libc::c_void;
+use std::ffi::c_int;
 use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 use wchar::wchar_t;
 use widestring::WideString;
@@ -49,25 +49,37 @@ pub fn mmap(
     offset_type: i64,
 ) -> *const u8 {
     #[cfg(not(target_os = "windows"))]
-    unsafe { libc::mmap(addr as *mut c_void, len, prot, flags, fildes, offset_type) as *const u8 }
+    unsafe {
+        libc::mmap(addr as *mut c_void, len, prot, flags, fildes, offset_type) as *const u8
+    }
     #[cfg(target_os = "windows")]
-    unsafe { mmap_ffi(addr, len, prot, flags, fildes, offset_type) }
+    unsafe {
+        mmap_ffi(addr, len, prot, flags, fildes, offset_type)
+    }
 }
 
 #[inline]
 pub fn munmap(addr: *const u8, len: usize) -> i32 {
     #[cfg(not(target_os = "windows"))]
-    unsafe { libc::munmap(addr as *mut c_void, len) }
+    unsafe {
+        libc::munmap(addr as *mut c_void, len)
+    }
     #[cfg(target_os = "windows")]
-    unsafe { munmap_ffi(addr, len) }
+    unsafe {
+        munmap_ffi(addr, len)
+    }
 }
 
 #[inline]
 pub fn chsize(file_handle: i32, size: i32) -> i32 {
     #[cfg(not(target_os = "windows"))]
-    unsafe { libc::ftruncate(file_handle, size as i64) }
+    unsafe {
+        libc::ftruncate(file_handle, size as i64)
+    }
     #[cfg(target_os = "windows")]
-    unsafe { chsize_ffi(file_handle, size) }
+    unsafe {
+        chsize_ffi(file_handle, size)
+    }
 }
 
 #[inline]
@@ -87,11 +99,11 @@ pub fn string_width(wstr: &WideString) -> c_int {
 
 #[cfg(test)]
 mod tests {
-    use std::ptr::null;
+    use super::*;
     use libc::{close, dup, fileno, tmpfile};
+    use std::ptr::null;
     use wchar::wch;
     use widestring::WideString;
-    use super::*;
 
     #[test]
     fn test_mmap() {

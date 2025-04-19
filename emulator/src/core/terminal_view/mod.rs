@@ -19,6 +19,7 @@ use crate::tools::{
     event::KeyPressedEvent,
     filter::{FilterChainImpl, TerminalImageFilterChain},
 };
+use cli::session::SessionPropsId;
 use derivative::Derivative;
 use std::{ptr::NonNull, sync::atomic::Ordering, time::Duration};
 use tlib::global_watch;
@@ -363,7 +364,7 @@ impl TerminalView {
     }
 
     #[inline]
-    pub fn terminate(&mut self) {
+    pub fn terminate(&mut self, _: SessionPropsId) {
         self.terminate = true
     }
 
@@ -949,7 +950,7 @@ impl TerminalView {
 impl GlobalWatchImpl for TerminalView {
     fn on_global_mouse_move(&mut self, evt: &MouseEvent) -> bool {
         if self.act_sel != 0 {
-            let mut evt = evt.clone();
+            let mut evt = *evt;
             let widget_pos = self.map_to_widget(&evt.position().into());
             evt.set_position((widget_pos.x(), widget_pos.y()));
 
