@@ -64,8 +64,8 @@ impl TerminalPanelSignals for TerminalPanel {}
 
 impl TerminalPanel {
     #[inline]
-    pub fn new() -> Box<Self> {
-        Object::new(&[])
+    pub fn new() -> Tr<Self> {
+        Self::new_alloc()
     }
 
     pub fn create_session(
@@ -156,14 +156,16 @@ impl TerminalPanel {
     }
 
     #[inline]
-    pub fn set_theme(&mut self, theme: &ColorScheme) {
-        self.set_background(theme.background_color());
+    pub fn set_color_scheme(&mut self, color_scheme: &ColorScheme) {
+        self.set_background(color_scheme.background_color());
 
         self.sessions.iter_mut().for_each(|(_, session)| {
             session
                 .scrolled_view_mut()
-                .set_background(theme.background_color());
-            session.view_mut().set_color_table(&theme.convert_entry());
+                .set_background(color_scheme.background_color());
+            session
+                .view_mut()
+                .set_color_table(&color_scheme.convert_entry());
         });
     }
 

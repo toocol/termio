@@ -58,8 +58,8 @@ impl WidgetImpl for TerminalEmulator {
 
 impl TerminalEmulator {
     #[inline]
-    pub fn new() -> Box<Self> {
-        Object::new(&[])
+    pub fn new() -> Tr<Self> {
+        Self::new_alloc()
     }
 
     #[inline]
@@ -171,10 +171,10 @@ impl TerminalEmulator {
     }
 
     #[inline]
-    pub fn set_theme(&mut self, theme: &ColorScheme) {
+    pub fn set_color_scheme(&mut self, theme: &ColorScheme) {
         self.set_background(theme.background_color());
         if let Some(terminal_panel) = self.cur_terminal_panel_mut() {
-            terminal_panel.set_theme(theme);
+            terminal_panel.set_color_scheme(theme);
         }
     }
 

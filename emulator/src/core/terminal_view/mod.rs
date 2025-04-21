@@ -152,10 +152,10 @@ pub struct TerminalView {
     colors_inverted: bool,
 
     #[children]
-    output_suspend_label: Box<Label>,
+    output_suspend_label: Tr<Label>,
 
     #[children]
-    resize_widget: Box<Label>,
+    resize_widget: Tr<Label>,
     // resize_timer: Timer,
     line_spacing: u32,
     #[derivative(Default(value = "1."))]
@@ -347,8 +347,8 @@ impl TerminalViewSignals for TerminalView {}
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
 impl TerminalView {
     /// Constructor to build `TerminalView`
-    pub fn new(session_id: ObjectId) -> Box<Self> {
-        let mut view: Box<Self> = Object::new(&[]);
+    pub fn new(session_id: ObjectId) -> Tr<Self> {
+        let mut view = Self::new_alloc();
         view.bind_session = session_id;
         view
     }

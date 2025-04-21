@@ -1897,7 +1897,7 @@ dependencies = [
 [[package]]
 name = "macros"
 version = "0.1.0"
-source = "git+https://github.com/toocol/tmui#4ebf1b27ba0645ce0328397f380351a70660a623"
+source = "git+https://github.com/toocol/tmui#7ea48ff32f04573221c0c49dbe43a88af7e627fe"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3083,9 +3083,9 @@ checksum = "0fda2ff0d084019ba4d7c6f371c95d8fd75ce3524c3cb8fb653a3023f6323e64"
 
 [[package]]
 name = "signal-hook-registry"
-version = "1.4.2"
+version = "1.4.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a9e9e0b4211b72e7b8b6e85c807d36c212bdb33ea8587f7569562a84df5465b1"
+checksum = "9203b8055f63a2a00e2f593bb0510367fe707d7ff1e5c872de2f537b339e5410"
 dependencies = [
  "libc",
 ]
@@ -3471,7 +3471,7 @@ checksum = "1f3ccbac311fea05f86f61904b462b55fb3df8837a366dfc601a0161d0532f20"
 [[package]]
 name = "tipc"
 version = "0.1.0"
-source = "git+https://github.com/toocol/tmui#4ebf1b27ba0645ce0328397f380351a70660a623"
+source = "git+https://github.com/toocol/tmui#7ea48ff32f04573221c0c49dbe43a88af7e627fe"
 dependencies = [
  "lazy_static",
  "log",
@@ -3489,7 +3489,7 @@ dependencies = [
 [[package]]
 name = "tlib"
 version = "0.1.0"
-source = "git+https://github.com/toocol/tmui#4ebf1b27ba0645ce0328397f380351a70660a623"
+source = "git+https://github.com/toocol/tmui#7ea48ff32f04573221c0c49dbe43a88af7e627fe"
 dependencies = [
  "ahash 0.8.11",
  "bitflags 2.9.0",
@@ -3517,7 +3517,7 @@ dependencies = [
 [[package]]
 name = "tmui"
 version = "0.1.0"
-source = "git+https://github.com/toocol/tmui#4ebf1b27ba0645ce0328397f380351a70660a623"
+source = "git+https://github.com/toocol/tmui#7ea48ff32f04573221c0c49dbe43a88af7e627fe"
 dependencies = [
  "ahash 0.8.11",
  "beep",

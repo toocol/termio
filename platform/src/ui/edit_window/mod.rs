@@ -23,23 +23,23 @@ use tmui::{
 pub struct EditWindow {
     #[children]
     #[derivative(Default(value = r#"TextBundle::new("Remote Host:")"#))]
-    remote_host: Box<TextBundle>,
+    remote_host: Tr<TextBundle>,
 
     #[children]
     #[derivative(Default(value = r#"TextBundle::new("Specifiy User:")"#))]
-    user: Box<TextBundle>,
+    user: Tr<TextBundle>,
 
     #[children]
     #[derivative(Default(value = r#"PasswordBundle::new("Password:")"#))]
-    password: Box<PasswordBundle>,
+    password: Tr<PasswordBundle>,
 
     #[children]
     #[derivative(Default(value = r#"NumberBundle::new("Port:")"#))]
-    port: Box<NumberBundle>,
+    port: Tr<NumberBundle>,
 
     #[children]
     #[derivative(Default(value = r#"Button::new(Some("Submit"))"#))]
-    submit_btn: Box<Button>,
+    submit_btn: Tr<Button>,
 }
 
 impl ObjectSubclass for EditWindow {
@@ -75,8 +75,8 @@ impl WidgetImpl for EditWindow {}
 
 impl EditWindow {
     #[inline]
-    pub fn new() -> Box<Self> {
-        Object::new(&[])
+    pub fn new() -> Tr<Self> {
+        Self::new_alloc()
     }
 
     pub fn submit(&mut self, _: MouseEvent) {

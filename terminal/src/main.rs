@@ -37,7 +37,7 @@ fn build_ui(window: &mut ApplicationWindow) {
 
             emulator.start_session(0, ProtocolType::Cmd);
             emulator.start_session(1, ProtocolType::PowerShell);
-            emulator.set_theme(&theme);
+            emulator.set_color_scheme(&theme);
         }
     });
 }

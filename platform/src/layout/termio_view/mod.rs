@@ -9,13 +9,13 @@ use tmui::{
 #[derive(Childrenable)]
 pub struct TermioView {
     #[children]
-    title_bar: Box<TitleBar>,
+    title_bar: Tr<TitleBar>,
 
     #[children]
-    central_panel: Box<CentralPanel>,
+    central_panel: Tr<CentralPanel>,
 
     #[children]
-    status_bar: Box<StatusBar>,
+    status_bar: Tr<StatusBar>,
 }
 
 impl ObjectSubclass for TermioView {
@@ -33,7 +33,7 @@ impl WidgetImpl for TermioView {}
 
 impl TermioView {
     #[inline]
-    pub fn new() -> Box<Self> {
-        Object::new(&[])
+    pub fn new() -> Tr<Self> {
+        Self::new_alloc()
     }
 }

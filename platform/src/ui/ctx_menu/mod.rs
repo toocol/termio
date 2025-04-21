@@ -19,7 +19,7 @@ pub struct CtxMenu {
     loc: CtxMenuLoc,
 
     #[child]
-    selection_list: Box<ListView>,
+    selection_list: Tr<ListView>,
 }
 
 impl ObjectSubclass for CtxMenu {
@@ -88,8 +88,8 @@ impl PopupImpl for CtxMenu {
 
 impl CtxMenu {
     #[inline]
-    pub fn new(loc: CtxMenuLoc) -> Box<Self> {
-        let mut menu: Box<Self> = Object::new(&[]);
+    pub fn new(loc: CtxMenuLoc) -> Tr<Self> {
+        let mut menu = Self::new_alloc();
         menu.loc = loc;
         menu
     }

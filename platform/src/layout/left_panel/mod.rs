@@ -12,10 +12,10 @@ use super::workspace_panel::WorkspacePanel;
 #[derive(Childrenable)]
 pub struct LeftPanel {
     #[children]
-    activity_bar: Box<ActivityBar>,
+    activity_bar: Tr<ActivityBar>,
 
     #[children]
-    workspace: Box<WorkspacePanel>,
+    workspace: Tr<WorkspacePanel>,
 }
 
 impl ObjectSubclass for LeftPanel {
@@ -35,8 +35,8 @@ impl WidgetImpl for LeftPanel {}
 
 impl LeftPanel {
     #[inline]
-    pub fn new() -> Box<Self> {
-        Object::new(&[])
+    pub fn new() -> Tr<Self> {
+        Self::new_alloc()
     }
 
     #[inline]
