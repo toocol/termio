@@ -14,7 +14,7 @@ use tmui::{
 pub struct WorkspacePanel {
     #[derivative(Default(value = "SessionCredentialTree::view()"))]
     #[children]
-    session_tree: Box<TreeView>,
+    session_tree: Tr<TreeView>,
 }
 
 impl ObjectSubclass for WorkspacePanel {

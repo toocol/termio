@@ -10,10 +10,10 @@ use tmui::{
 #[derive(Childrenable)]
 pub struct NumberBundle {
     #[children]
-    label: Box<Label>,
+    label: Tr<Label>,
 
     #[children]
-    number: Box<Number>,
+    number: Tr<Number>,
 }
 
 impl ObjectSubclass for NumberBundle {
@@ -26,8 +26,8 @@ impl WidgetImpl for NumberBundle {}
 
 impl NumberBundle {
     #[inline]
-    pub fn new(label: &str) -> Box<Self> {
-        let mut nb: Box<Self> = Object::new(&[]);
+    pub fn new(label: &str) -> Tr<Self> {
+        let mut nb = Self::new_alloc();
         nb.label.set_margin_top(3);
         nb.label.set_text(label);
         nb

@@ -11,10 +11,10 @@ use tmui::{
 #[derive(Childrenable)]
 pub struct CentralPanel {
     #[children]
-    left_panel: Box<LeftPanel>,
+    left_panel: Tr<LeftPanel>,
 
     #[children]
-    terminal: Box<TerminalEmulator>,
+    terminal: Tr<TerminalEmulator>,
 }
 
 impl ObjectSubclass for CentralPanel {

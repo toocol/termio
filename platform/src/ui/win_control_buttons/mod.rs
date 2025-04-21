@@ -14,7 +14,7 @@ pub struct WinControlButtons {
         SvgIcon::from_bytes(file.data.as_ref())
     }"))]
     #[children]
-    minimize: Box<SvgIcon>,
+    minimize: Tr<SvgIcon>,
 
     #[derivative(Default(value = "{
         let maximize = Asset::get(\"icons/large.svg\").unwrap();
@@ -22,14 +22,14 @@ pub struct WinControlButtons {
         SvgToggleIcon::from_bytes(&[maximize.data.as_ref(), restore.data.as_ref()])
     }"))]
     #[children]
-    maximize_restore: Box<SvgToggleIcon>,
+    maximize_restore: Tr<SvgToggleIcon>,
 
     #[derivative(Default(value = "{
         let file = Asset::get(\"icons/close.svg\").unwrap();
         SvgIcon::from_bytes(file.data.as_ref())
     }"))]
     #[children]
-    close: Box<SvgIcon>,
+    close: Tr<SvgIcon>,
 }
 
 impl ObjectSubclass for WinControlButtons {
@@ -48,30 +48,46 @@ impl ObjectImpl for WinControlButtons {
 
         self.minimize.width_request(45);
         self.minimize.height_request(30);
-        self.minimize.register_mouse_enter(|w| w.set_background(CTRL_BTN_GREY));
-        self.minimize.register_mouse_leave(move |w| w.set_background(background));
-        self.minimize.register_mouse_released(|w, _| w.window().minimize());
+        self.minimize
+            .register_mouse_enter(|w| w.set_background(CTRL_BTN_GREY));
+        self.minimize
+            .register_mouse_leave(move |w| w.set_background(background));
+        self.minimize
+            .register_mouse_released(|w, _| w.window().minimize());
 
         self.maximize_restore.width_request(45);
         self.maximize_restore.height_request(30);
-        self.maximize_restore.register_mouse_enter(|w| w.set_background(CTRL_BTN_GREY));
-        self.maximize_restore.register_mouse_leave(move |w| w.set_background(background));
+        self.maximize_restore
+            .register_mouse_enter(|w| w.set_background(CTRL_BTN_GREY));
+        self.maximize_restore
+            .register_mouse_leave(move |w| w.set_background(background));
         self.maximize_restore.register_mouse_released(|w, _| {
             let icon = w.downcast_mut::<SvgToggleIcon>().unwrap();
             match icon.current_icon() {
                 0 => icon.window().maximize(),
                 1 => icon.window().restore(),
-                _ => unreachable!()
+                _ => unreachable!(),
             }
         });
-        self.maximize_restore.register_window_maximized(|w| w.downcast_mut::<SvgToggleIcon>().unwrap().set_current_icon(1));
-        self.maximize_restore.register_window_restored(|w| w.downcast_mut::<SvgToggleIcon>().unwrap().set_current_icon(0));
+        self.maximize_restore.register_window_maximized(|w| {
+            w.downcast_mut::<SvgToggleIcon>()
+                .unwrap()
+                .set_current_icon(1)
+        });
+        self.maximize_restore.register_window_restored(|w| {
+            w.downcast_mut::<SvgToggleIcon>()
+                .unwrap()
+                .set_current_icon(0)
+        });
 
         self.close.width_request(45);
         self.close.height_request(30);
-        self.close.register_mouse_enter(|w| w.set_background(CTRL_BTN_RED));
-        self.close.register_mouse_leave(move |w| w.set_background(background));
-        self.close.register_mouse_released(|w, _| w.window().close());
+        self.close
+            .register_mouse_enter(|w| w.set_background(CTRL_BTN_RED));
+        self.close
+            .register_mouse_leave(move |w| w.set_background(background));
+        self.close
+            .register_mouse_released(|w, _| w.window().close());
     }
 }
 

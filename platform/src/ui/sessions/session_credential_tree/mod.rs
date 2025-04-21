@@ -16,10 +16,8 @@ use cli::{
 use service::SessionCredentialService;
 use tmui::{
     popup::Popupable,
-    tlib::{
-        compare::Compare, events::MouseEvent, figure::Color, namespace::MouseButton, prelude::*,
-        Object,
-    },
+    prelude::*,
+    tlib::{compare::Compare, events::MouseEvent, figure::Color, namespace::MouseButton},
     views::tree_view::{tree_node::TreeNode, TreeView},
     widget::widget_ext::WidgetExt,
 };
@@ -30,11 +28,11 @@ pub struct SessionCredentialTree;
 
 impl SessionCredentialTree {
     #[inline]
-    pub fn view() -> Box<TreeView> {
-        let mut view: Box<TreeView> = Object::new(&[]);
+    pub fn view() -> Tr<TreeView> {
+        let mut view = TreeView::new_alloc();
         view.set_name(SESSION_CREDENTIAL_TREE);
         view.set_background(Color::WHITE);
-        view.add_popup(CtxMenu::new(CtxMenuLoc::SessionCredentialTree));
+        view.add_popup(CtxMenu::new(CtxMenuLoc::SessionCredentialTree).to_dyn_popup_tr());
         view.register_node_pressed(node_pressed);
         view.register_node_released(node_released);
         view.register_free_area_released(node_released);

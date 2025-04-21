@@ -222,7 +222,7 @@ impl Session {
         session
     }
 
-    pub fn create_terminal_view(&mut self) -> Box<ScrollArea> {
+    pub fn create_terminal_view(&mut self) -> Tr<ScrollArea> {
         if self.scrolled_view.is_some() {
             panic!(
                 "Session has already create the `TerminalView`, session id {}",
@@ -236,9 +236,10 @@ impl Session {
         view.set_triple_click_mode(TripleClickMode::SelectWholeLine);
         view.set_terminal_size_startup(true);
         view.set_blinking_cursor(true);
-        view.set_random_seed(view.id());
+        let id = view.id();
+        view.set_random_seed(id);
 
-        let mut scroll_area: Box<ScrollArea> = Object::new(&[]);
+        let mut scroll_area = ScrollArea::new_alloc();
         scroll_area.set_scroll_bar_position(ScrollBarPosition::End);
         scroll_area.set_orientation(Orientation::Vertical);
         scroll_area.set_hexpand(true);
