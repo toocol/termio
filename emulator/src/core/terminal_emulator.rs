@@ -136,6 +136,12 @@ impl TerminalEmulator {
     pub fn switch_session(&mut self, id: SessionPropsId) {
         if let Some(idx) = self.index_map.get(&id).copied() {
             self.switch_index(idx);
+
+            if let Some(cur_terminal_panel) = self.cur_terminal_panel_mut() {
+                cur_terminal_panel.set_session_focus(id);
+            } else {
+                warn!("[TerminalEmulator::switch_session] Current terminal panel is None.");
+            }
         } else {
             warn!(
                 "[TerminalEmulator::switch_session] Get index with session id {} is None.",
@@ -148,6 +154,16 @@ impl TerminalEmulator {
     pub fn remove_session(&mut self, id: SessionPropsId) {
         if let Some(idx) = self.index_map.get(&id).copied() {
             self.remove_index(idx);
+
+            let mut new_indexs = vec![];
+            for (id, index) in self.index_map.iter() {
+                if *index > idx {
+                    new_indexs.push((*id, *index - 1));
+                }
+            }
+            for (id, index) in new_indexs {
+                self.index_map.insert(id, index);
+            }
         } else {
             warn!(
                 "[TerminalEmulator::switch_session] Get index with session id {} is None.",

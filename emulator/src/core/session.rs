@@ -14,7 +14,7 @@ use crate::{
 use cli::{constant::ProtocolType, session::SessionPropsId};
 use derivative::Derivative;
 use log::{debug, warn};
-use std::{cell::RefCell, ptr::NonNull, rc::Rc};
+use std::{cell::RefCell, ptr::NonNull, rc::Rc, time::SystemTime};
 use tmui::{
     prelude::*,
     scroll_area::{ScrollArea, ScrollAreaExt},
@@ -67,6 +67,9 @@ pub struct Session {
     emulation: Option<Box<dyn Emulation>>,
     scrolled_view: Option<NonNull<ScrollArea>>,
     view: Option<NonNull<TerminalView>>,
+
+    #[derivative(Default(value = "SystemTime::now()"))]
+    create_time: SystemTime,
 }
 impl ObjectSubclass for Session {
     const NAME: &'static str = "Session";
@@ -493,5 +496,10 @@ impl Session {
     #[inline]
     pub fn done(&mut self, id: SessionPropsId, _exit_status: ExitStatus) {
         emit!(self, finished(id));
+    }
+
+    #[inline]
+    pub fn get_create_time(&self) -> SystemTime {
+        self.create_time
     }
 }
