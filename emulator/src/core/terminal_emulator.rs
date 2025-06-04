@@ -37,6 +37,8 @@ pub trait TerminalEmulatorTrait: ActionExt {
         TerminalEmulator:
 
         session_finished(SessionPropsId);
+
+        session_panel_finished(ObjectId);
     );
 }
 impl TerminalEmulatorTrait for TerminalEmulator {}
@@ -271,6 +273,8 @@ impl TerminalEmulator {
         self.cur_terminal_panel_mut()
             .unwrap()
             .set_session_focus(session_id);
+
+        emit!(self, session_panel_finished(id));
     }
 
     fn find_session_panel(&self, session_id: SessionPropsId) -> Option<&mut TerminalPanel> {
