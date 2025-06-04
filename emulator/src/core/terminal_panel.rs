@@ -14,7 +14,7 @@ use derivative::Derivative;
 use log::warn;
 use nohash_hasher::IntMap;
 use std::{cell::RefCell, rc::Rc};
-use tlib::{close_handler, iter_executor, signals};
+use tlib::{close_handler, iter_executor, ptr_mut, signals};
 use tmui::{
     prelude::*,
     tlib::{events::KeyEvent, object::ObjectSubclass},
@@ -204,8 +204,15 @@ impl TerminalPanel {
 
 impl IterExecutor for TerminalPanel {
     fn iter_execute(&mut self) {
+        let mut closed = vec![];
+
         for session in self.sessions.values_mut() {
             if let Some(shell_process) = session.get_pty() {
+                if shell_process.is_closed() {
+                    closed.push(shell_process.as_mut_ptr());
+                    continue;
+                }
+
                 let data = shell_process.read_data();
                 if !data.is_empty() {
                     session
@@ -215,6 +222,10 @@ impl IterExecutor for TerminalPanel {
             } else {
                 warn!("The custom pty is not assigned.");
             }
+        }
+
+        for pty in closed {
+            ptr_mut!(pty).emit_finished();
         }
     }
 }

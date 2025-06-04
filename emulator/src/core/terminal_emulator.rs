@@ -28,7 +28,7 @@ thread_local! {
 /// forward the client's input information from the ipc channel.
 #[extends(Widget, Layout(Stack))]
 pub struct TerminalEmulator {
-    index_map: IntMap<SessionPropsId, usize>,
+    index_map: IntMap<ObjectId, usize>,
     session_id_map: IntMap<ObjectId, Vec<SessionPropsId>>,
 }
 
@@ -101,12 +101,14 @@ impl TerminalEmulator {
             .entry(terminal_panel.id())
             .or_default()
             .push(id);
+
+        let panel_id = terminal_panel.id();
         self.add_child(terminal_panel);
 
         self.switch();
 
         let index = self.current_index;
-        self.index_map.insert(id, index);
+        self.index_map.insert(panel_id, index);
 
         if let Some(terminal_panel) = self.cur_terminal_panel_mut() {
             terminal_panel.create_session(id, protocol_type);
@@ -132,12 +134,14 @@ impl TerminalEmulator {
             .entry(terminal_panel.id())
             .or_default()
             .push(id);
+
+        let panel_id = terminal_panel.id();
         self.add_child(terminal_panel);
 
         self.switch();
 
         let index = self.current_index;
-        self.index_map.insert(id, index);
+        self.index_map.insert(panel_id, index);
 
         if let Some(terminal_panel) = self.cur_terminal_panel_mut() {
             terminal_panel.create_custom_session(id, custom_pty);
@@ -146,7 +150,7 @@ impl TerminalEmulator {
 
     #[inline]
     pub fn switch_session(&mut self, id: SessionPropsId) {
-        if let Some(idx) = self.index_map.get(&id).copied() {
+        if let Some(idx) = self.find_session_index(id) {
             self.switch_index(idx);
 
             if let Some(cur_terminal_panel) = self.cur_terminal_panel_mut() {
@@ -227,27 +231,8 @@ impl TerminalEmulator {
 impl TerminalEmulator {
     #[inline]
     fn handle_session_finished(&mut self, panel_id: ObjectId, id: SessionPropsId) {
-        let idx = self.index_map.remove(&id).unwrap_or_else(|| {
-            panic!(
-                "[TerminalEmulator::handle_session_finished] remove with session id {} is None",
-                id
-            )
-        });
-
         if let Some(ids) = self.session_id_map.get_mut(&panel_id) {
             ids.retain(|i| *i != id);
-
-            if ids.is_empty() {
-                let mut new_indexs = vec![];
-                for (id, index) in self.index_map.iter() {
-                    if *index > idx {
-                        new_indexs.push((*id, *index - 1));
-                    }
-                }
-                for (id, index) in new_indexs {
-                    self.index_map.insert(id, index);
-                }
-            }
         }
 
         emit!(self, session_finished(id));
@@ -255,7 +240,24 @@ impl TerminalEmulator {
 
     #[inline]
     fn handle_session_panel_finished(&mut self, id: ObjectId) {
-        self.remove_children(id);
+        let idx = self.index_map.remove(&id).unwrap_or_else(|| {
+            panic!(
+                "[TerminalEmulator::handle_session_finished] remove with session id {} is None",
+                id
+            )
+        });
+
+        self.remove_index(idx);
+
+        let mut new_indexs = vec![];
+        for (id, index) in self.index_map.iter() {
+            if *index > idx {
+                new_indexs.push((*id, *index - 1));
+            }
+        }
+        for (id, index) in new_indexs {
+            self.index_map.insert(id, index);
+        }
 
         let panel_id = match self.cur_terminal_panel() {
             Some(cur) => cur.id(),
@@ -275,6 +277,23 @@ impl TerminalEmulator {
             .set_session_focus(session_id);
 
         emit!(self, session_panel_finished(id));
+    }
+
+    fn find_session_index(&self, session_id: SessionPropsId) -> Option<usize> {
+        let mut session_panel_id = None;
+        for (panel_id, ids) in self.session_id_map.iter() {
+            for id in ids {
+                if *id == session_id {
+                    session_panel_id = Some(*panel_id)
+                }
+            }
+        }
+
+        if let Some(id) = session_panel_id {
+            self.index_map.get(&id).copied()
+        } else {
+            None
+        }
     }
 
     fn find_session_panel(&self, session_id: SessionPropsId) -> Option<&mut TerminalPanel> {
