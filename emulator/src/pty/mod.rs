@@ -55,6 +55,9 @@ pub trait Pty: PtySignals {
     /// Get the status that terminal process is running or not.
     fn is_running(&self) -> bool;
 
+    /// Get the status that terminal process is closed or not.
+    fn is_closed(&self) -> bool;
+
     /// Put the pty into UTF-8 mode on systems which support it.
     fn set_utf8_mode(&mut self, on: bool);
 
@@ -71,6 +74,9 @@ pub trait Pty: PtySignals {
 
     /// Execute when app exited.
     fn on_window_closed(&mut self);
+
+    /// Emit the finished signal.
+    fn emit_finished(&mut self);
 }
 
 pub trait PtySignals: ActionExt {

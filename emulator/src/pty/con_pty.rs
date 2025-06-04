@@ -33,7 +33,7 @@ pub struct ConPty {
     /// Xon/Xoff flow control.
     xon_xoff: bool,
     running: Arc<AtomicBool>,
-    emit_finished: Arc<AtomicBool>,
+    closed: Arc<AtomicBool>,
     data_buffer: Arc<Mutex<Vec<u8>>>,
     fd: i32,
 }
@@ -84,21 +84,21 @@ impl Pty for ConPty {
         };
 
         let running = self.running.clone();
-        let emit_finished = self.emit_finished.clone();
+        let closed = self.closed.clone();
         thread::spawn(move || {
             start_sub_process(fd, &cmd);
             running.store(false, Ordering::Release);
-            emit_finished.store(true, Ordering::Release);
+            closed.store(true, Ordering::Release);
         });
 
         self.running.store(true, Ordering::Release);
+        self.closed.store(false, Ordering::Release);
         self.fd = fd;
         true
     }
 
     #[inline]
     fn close(&mut self) {
-        self.running.store(false, Ordering::Release);
         close_conpty(self.fd);
     }
 
@@ -148,6 +148,11 @@ impl Pty for ConPty {
     }
 
     #[inline]
+    fn is_closed(&self) -> bool {
+        self.closed.load(Ordering::Relaxed)
+    }
+
+    #[inline]
     fn set_utf8_mode(&mut self, on: bool) {
         self.utf8_mode = on;
     }
@@ -171,10 +176,6 @@ impl Pty for ConPty {
 
     #[inline]
     fn read_data(&mut self) -> Vec<u8> {
-        if self.emit_finished.load(Ordering::Relaxed) {
-            self.emit_finished.store(false, Ordering::Release);
-            emit!(self, finished(self.id, ExitStatus::NormalExit));
-        }
         if !self.is_running() {
             return vec![];
         }
@@ -190,6 +191,11 @@ impl Pty for ConPty {
     #[inline]
     fn on_window_closed(&mut self) {
         close_conpty(self.fd);
+    }
+
+    #[inline]
+    fn emit_finished(&mut self) {
+        emit!(self, finished(self.id, ExitStatus::NormalExit));
     }
 }
 
