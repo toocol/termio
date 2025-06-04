@@ -8,6 +8,7 @@ use cli::{constant::ProtocolType, scheme::ColorScheme, session::SessionPropsId};
 use derivative::Derivative;
 use log::warn;
 use nohash_hasher::IntMap;
+use tlib::signals;
 use tmui::{prelude::*, tlib::object::ObjectSubclass};
 
 thread_local! {
@@ -30,6 +31,15 @@ pub struct TerminalEmulator {
     index_map: IntMap<SessionPropsId, usize>,
     session_id_map: IntMap<ObjectId, Vec<SessionPropsId>>,
 }
+
+pub trait TerminalEmulatorTrait: ActionExt {
+    signals!(
+        TerminalEmulator:
+
+        session_finished(SessionPropsId);
+    );
+}
+impl TerminalEmulatorTrait for TerminalEmulator {}
 
 impl ObjectSubclass for TerminalEmulator {
     const NAME: &'static str = "TerminalEmulator";
@@ -152,23 +162,13 @@ impl TerminalEmulator {
 
     #[inline]
     pub fn remove_session(&mut self, id: SessionPropsId) {
-        if let Some(idx) = self.index_map.get(&id).copied() {
-            self.remove_index(idx);
-
-            let mut new_indexs = vec![];
-            for (id, index) in self.index_map.iter() {
-                if *index > idx {
-                    new_indexs.push((*id, *index - 1));
-                }
-            }
-            for (id, index) in new_indexs {
-                self.index_map.insert(id, index);
-            }
+        if let Some(terminal_panel) = self.find_session_panel(id) {
+            terminal_panel.close_session(id);
         } else {
             warn!(
-                "[TerminalEmulator::switch_session] Get index with session id {} is None.",
+                "[TerminalEmulator::remove_session] find session panel with session id {} is None.",
                 id
-            );
+            )
         }
     }
 
@@ -176,6 +176,8 @@ impl TerminalEmulator {
     pub fn set_blinking_cursor(&mut self, id: SessionPropsId, blink: bool) {
         if let Some(terminal_panel) = self.cur_terminal_panel_mut() {
             terminal_panel.set_blinking_cursor(id, blink);
+        } else {
+            warn!("[TerminalEmulator::set_blinking_cursor] get current terminal panel is None.")
         }
     }
 
@@ -183,6 +185,8 @@ impl TerminalEmulator {
     pub fn set_use_local_display(&mut self, id: SessionPropsId, use_local_display: bool) {
         if let Some(terminal_panel) = self.cur_terminal_panel_mut() {
             terminal_panel.set_use_local_display(id, use_local_display);
+        } else {
+            warn!("[TerminalEmulator::set_use_local_display] get current terminal panel is None.")
         }
     }
 
@@ -191,6 +195,8 @@ impl TerminalEmulator {
         self.set_background(theme.background_color());
         if let Some(terminal_panel) = self.cur_terminal_panel_mut() {
             terminal_panel.set_color_scheme(theme);
+        } else {
+            warn!("[TerminalEmulator::set_color_scheme] get current terminal panel is None.")
         }
     }
 
@@ -198,6 +204,8 @@ impl TerminalEmulator {
     pub fn set_terminal_font(&mut self, font: Font) {
         if let Some(terminal_panel) = self.cur_terminal_panel_mut() {
             terminal_panel.set_terminal_font(font);
+        } else {
+            warn!("[TerminalEmulator::set_terminal_font] get current terminal panel is None.")
         }
     }
 
@@ -217,10 +225,30 @@ impl TerminalEmulator {
 impl TerminalEmulator {
     #[inline]
     fn handle_session_finished(&mut self, panel_id: ObjectId, id: SessionPropsId) {
-        self.index_map.remove(&id);
+        let idx = self.index_map.remove(&id).unwrap_or_else(|| {
+            panic!(
+                "[TerminalEmulator::handle_session_finished] remove with session id {} is None",
+                id
+            )
+        });
+
         if let Some(ids) = self.session_id_map.get_mut(&panel_id) {
             ids.retain(|i| *i != id);
+
+            if ids.is_empty() {
+                let mut new_indexs = vec![];
+                for (id, index) in self.index_map.iter() {
+                    if *index > idx {
+                        new_indexs.push((*id, *index - 1));
+                    }
+                }
+                for (id, index) in new_indexs {
+                    self.index_map.insert(id, index);
+                }
+            }
         }
+
+        emit!(self, session_finished(id));
     }
 
     #[inline]
@@ -243,5 +271,28 @@ impl TerminalEmulator {
         self.cur_terminal_panel_mut()
             .unwrap()
             .set_session_focus(session_id);
+    }
+
+    fn find_session_panel(&self, session_id: SessionPropsId) -> Option<&mut TerminalPanel> {
+        let mut session_panel_id = None;
+        for (panel_id, ids) in self.session_id_map.iter() {
+            for id in ids {
+                if *id == session_id {
+                    session_panel_id = Some(*panel_id)
+                }
+            }
+        }
+
+        if let Some(id) = session_panel_id {
+            Some(
+                ApplicationWindow::window()
+                    .find_id_mut(id)
+                    .unwrap()
+                    .downcast_mut::<TerminalPanel>()
+                    .unwrap(),
+            )
+        } else {
+            None
+        }
     }
 }

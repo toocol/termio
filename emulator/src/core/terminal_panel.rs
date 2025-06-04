@@ -175,6 +175,15 @@ impl TerminalPanel {
             session.view_mut().set_focus(true);
         }
     }
+
+    #[inline]
+    pub fn close_session(&mut self, session_id: SessionPropsId) {
+        if let Some(session) = self.sessions.get_mut(&session_id) {
+            session.close();
+        } else {
+            warn!("Find the session by session id {} is None.", session_id);
+        }
+    }
 }
 
 /// Private functions:

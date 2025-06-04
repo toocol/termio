@@ -97,6 +97,12 @@ impl Pty for ConPty {
     }
 
     #[inline]
+    fn close(&mut self) {
+        self.running.store(false, Ordering::Release);
+        close_conpty(self.fd);
+    }
+
+    #[inline]
     fn set_writeable(&mut self, writeable: bool) {
         self.writeable = writeable
     }

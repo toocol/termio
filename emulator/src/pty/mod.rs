@@ -26,6 +26,9 @@ pub trait Pty: PtySignals {
         enviroment: Vec<&str>,
     ) -> bool;
 
+    /// Close the terminal process.
+    fn close(&mut self);
+
     /// Set the terminal process was writeable or not.
     fn set_writeable(&mut self, writeable: bool);
 
