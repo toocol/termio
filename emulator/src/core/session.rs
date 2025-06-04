@@ -502,4 +502,11 @@ impl Session {
     pub fn get_create_time(&self) -> SystemTime {
         self.create_time
     }
+
+    #[inline]
+    pub fn close(&mut self) {
+        if let Some(shell_process) = self.shell_process.as_mut() {
+            shell_process.close();
+        }
+    }
 }
