@@ -112,6 +112,7 @@ impl TerminalEmulator {
 
         if let Some(terminal_panel) = self.cur_terminal_panel_mut() {
             terminal_panel.create_session(id, protocol_type);
+            terminal_panel.set_session_focus(id);
         }
     }
 
@@ -145,6 +146,7 @@ impl TerminalEmulator {
 
         if let Some(terminal_panel) = self.cur_terminal_panel_mut() {
             terminal_panel.create_custom_session(id, custom_pty);
+            terminal_panel.set_session_focus(id);
         }
     }
 
