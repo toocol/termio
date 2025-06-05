@@ -105,7 +105,7 @@ impl TerminalEmulator {
         let panel_id = terminal_panel.id();
         self.add_child(terminal_panel);
 
-        self.switch();
+        self.switch_index(self.children().len() - 1);
 
         let index = self.current_index;
         self.index_map.insert(panel_id, index);
