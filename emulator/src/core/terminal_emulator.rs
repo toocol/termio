@@ -80,7 +80,7 @@ impl TerminalEmulator {
     }
 
     #[inline]
-    pub fn start_session(&mut self, id: SessionPropsId, protocol_type: ProtocolType) {
+    pub fn start_session(&mut self, id: SessionPropsId, protocol_type: ProtocolType) -> ObjectId {
         if protocol_type == ProtocolType::Custom {
             panic!("Use `create_custom_session` instead")
         }
@@ -114,10 +114,12 @@ impl TerminalEmulator {
             terminal_panel.create_session(id, protocol_type);
             terminal_panel.set_session_focus(id);
         }
+
+        panel_id
     }
 
     #[inline]
-    pub fn start_custom_session(&mut self, id: SessionPropsId, custom_pty: Box<dyn Pty>) {
+    pub fn start_custom_session(&mut self, id: SessionPropsId, custom_pty: Box<dyn Pty>) -> ObjectId {
         let terminal_panel = TerminalPanel::new();
         connect!(
             terminal_panel,
@@ -148,6 +150,8 @@ impl TerminalEmulator {
             terminal_panel.create_custom_session(id, custom_pty);
             terminal_panel.set_session_focus(id);
         }
+
+        panel_id
     }
 
     #[inline]
