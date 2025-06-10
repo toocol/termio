@@ -119,7 +119,11 @@ impl TerminalEmulator {
     }
 
     #[inline]
-    pub fn start_custom_session(&mut self, id: SessionPropsId, custom_pty: Box<dyn Pty>) -> ObjectId {
+    pub fn start_custom_session(
+        &mut self,
+        id: SessionPropsId,
+        custom_pty: Box<dyn Pty>,
+    ) -> ObjectId {
         let terminal_panel = TerminalPanel::new();
         connect!(
             terminal_panel,
@@ -265,22 +269,17 @@ impl TerminalEmulator {
             self.index_map.insert(id, index);
         }
 
-        let panel_id = match self.cur_terminal_panel() {
-            Some(cur) => cur.id(),
-            None => return,
-        };
+        if let Some(cur_panel) = self.cur_terminal_panel() {
+            let panel_id = cur_panel.id();
 
-        let session_id = match self.session_id_map.get(&panel_id) {
-            Some(ids) => match ids.first().copied() {
-                Some(id) => id,
-                None => return,
-            },
-            None => return,
-        };
-
-        self.cur_terminal_panel_mut()
-            .unwrap()
-            .set_session_focus(session_id);
+            if let Some(ids) = self.session_id_map.get(&panel_id) {
+                if let Some(session_id) = ids.first().copied() {
+                    self.cur_terminal_panel_mut()
+                        .unwrap()
+                        .set_session_focus(session_id);
+                }
+            }
+        }
 
         emit!(self, session_panel_finished(id));
     }
