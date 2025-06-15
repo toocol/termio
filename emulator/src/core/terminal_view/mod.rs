@@ -176,6 +176,7 @@ pub struct TerminalView {
     motion_after_pasting: MotionAfterPasting,
     confirm_multiline_paste: bool,
     trim_pasted_trailing_new_lines: bool,
+    resized_hint: bool,
 
     input_method_data: InputMethodData,
 
@@ -278,6 +279,14 @@ impl WidgetImpl for TerminalView {
         self.blink_cursor_timer.stop();
         if !self.cursor_blinking {
             self.blink_cursor_event()
+        }
+    }
+
+    fn on_visibility_changed(&mut self, visible: bool) {
+        if visible && self.resized_hint {
+            self.update_image_size();
+            self.process_filters();
+            self.resized_hint = false;
         }
     }
 }

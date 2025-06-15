@@ -612,6 +612,10 @@ impl TerminalView {
         if size == rect.size() {
             return;
         }
+        if !self.visible() {
+            self.resized_hint = true;
+            return;
+        }
         self.update_image_size();
         self.process_filters();
     }
