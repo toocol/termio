@@ -81,9 +81,24 @@ impl TerminalEmulator {
 
     #[inline]
     pub fn start_session(&mut self, id: SessionPropsId, protocol_type: ProtocolType) -> ObjectId {
-        if protocol_type == ProtocolType::Custom {
-            panic!("Use `create_custom_session` instead")
-        }
+        self.start_session_inner(id, protocol_type, None)
+    }
+
+    #[inline]
+    pub fn start_custom_session(
+        &mut self,
+        id: SessionPropsId,
+        custom_pty: Box<dyn Pty>,
+    ) -> ObjectId {
+        self.start_session_inner(id, ProtocolType::Custom, Some(custom_pty))
+    }
+
+    fn start_session_inner(
+        &mut self,
+        id: SessionPropsId,
+        protocol_type: ProtocolType,
+        custom_pty: Option<Box<dyn Pty>>,
+    ) -> ObjectId {
         let terminal_panel = TerminalPanel::new();
         connect!(
             terminal_panel,
@@ -111,47 +126,7 @@ impl TerminalEmulator {
         self.index_map.insert(panel_id, index);
 
         if let Some(terminal_panel) = self.cur_terminal_panel_mut() {
-            terminal_panel.create_session(id, protocol_type);
-            terminal_panel.set_session_focus(id);
-        }
-
-        panel_id
-    }
-
-    #[inline]
-    pub fn start_custom_session(
-        &mut self,
-        id: SessionPropsId,
-        custom_pty: Box<dyn Pty>,
-    ) -> ObjectId {
-        let terminal_panel = TerminalPanel::new();
-        connect!(
-            terminal_panel,
-            session_finished(),
-            self,
-            handle_session_finished(ObjectId, SessionPropsId)
-        );
-        connect!(
-            terminal_panel,
-            finished(),
-            self,
-            handle_session_panel_finished(ObjectId)
-        );
-        self.session_id_map
-            .entry(terminal_panel.id())
-            .or_default()
-            .push(id);
-
-        let panel_id = terminal_panel.id();
-        self.add_child(terminal_panel);
-
-        self.switch();
-
-        let index = self.current_index;
-        self.index_map.insert(panel_id, index);
-
-        if let Some(terminal_panel) = self.cur_terminal_panel_mut() {
-            terminal_panel.create_custom_session(id, custom_pty);
+            terminal_panel.create_session(id, protocol_type, custom_pty);
             terminal_panel.set_session_focus(id);
         }
 
