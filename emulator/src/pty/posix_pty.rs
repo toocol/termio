@@ -71,6 +71,9 @@ impl Pty for PosixPty {
     }
 
     #[inline]
+    fn close(&mut self) {}
+
+    #[inline]
     fn set_writeable(&mut self, writeable: bool) {
         self.writeable = writeable
     }
@@ -112,6 +115,11 @@ impl Pty for PosixPty {
     }
 
     #[inline]
+    fn is_closed(&self) -> bool {
+        false
+    }
+
+    #[inline]
     fn set_utf8_mode(&mut self, on: bool) {
         self.utf8_mode = on
     }
@@ -132,9 +140,10 @@ impl Pty for PosixPty {
     }
 
     #[inline]
-    fn on_window_closed(&mut self) {
-        
-    }
+    fn on_window_closed(&mut self) {}
+
+    #[inline]
+    fn emit_finished(&mut self) {}
 }
 
 impl PtySignals for PosixPty {}

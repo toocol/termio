@@ -6,8 +6,6 @@ pub mod ffi;
 pub mod posix_pty;
 
 use cli::session::SessionPropsId;
-#[cfg(not(target_os = "windows"))]
-use pty::prelude::Fork;
 use std::path::PathBuf;
 use tlib::namespace::ExitStatus;
 use tmui::{prelude::*, tlib::signals};
